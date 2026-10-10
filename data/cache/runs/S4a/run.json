@@ -1,0 +1,139 @@
+{
+ "dataset_id": "S4a",
+ "name": "Transformer-1 \u00b7 scenario S4a (SIMULATED)",
+ "mode": "full",
+ "capabilities": {
+  "thermal_twin": true,
+  "residual_fidelity": true,
+  "wti_check": true,
+  "unbalance": true,
+  "voltage_quality": true,
+  "neutral_measured": true,
+  "oil_leak_theft": true,
+  "through_fault": false,
+  "breathing_index": true,
+  "ageing_rul": true,
+  "lead_time_eval": true
+ },
+ "health_report": {
+  "source": "data/generated",
+  "scenario": "S4a"
+ },
+ "asset": {
+  "asset_id": "transformer-1",
+  "name": "Transformer-1",
+  "site": "MAHE Bengaluru campus, LT kiosk",
+  "rating_kVA": 1000,
+  "lv_voltage_V": 415,
+  "i_rated_A": 1391,
+  "hv_voltage_V": 11000,
+  "vector_group": "Dyn11",
+  "cooling": "ONAN",
+  "load_loss_W": 10000,
+  "no_load_loss_W": 1100,
+  "insulation": "normal",
+  "years_in_service": 3,
+  "breather": "silica_gel",
+  "nameplate_source": "asset.yaml"
+ },
+ "summary": {
+  "mode": "full",
+  "plausibility": {
+   "OTI_C": "plausible",
+   "implausible_fraction": 0.0,
+   "evaluable_rows": 2880
+  },
+  "rul_display": "RUL > 40 years",
+  "life_consumed_days": {
+   "expected": 1.365,
+   "actual": 1.216,
+   "actual_minus_expected": -0.148,
+   "measured_share": 0.967
+  },
+  "drift_message": null,
+  "first_drift_alert": null,
+  "fidelity_rmse_C_last": 0.8786618214012626
+ },
+ "analysis": {
+  "alerts": [
+   {
+    "id": "oil_leak-20260421T2245",
+    "timestamp": "2026-04-21T22:45:00+05:30",
+    "module": "oil",
+    "type": "oil_leak",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 3.1470000000000056,
+    "threshold": 3.0,
+    "explanation": "Oil level fell 3.1 points over 24 h with no sudden step. Pattern of a slow leak.",
+    "recommendation_id": "rec-oil_leak-20260421T2245",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "oil_low-20260423T2200",
+    "timestamp": "2026-04-23T22:00:00+05:30",
+    "module": "oil",
+    "type": "oil_low",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 84.818,
+    "threshold": 85.0,
+    "explanation": "Oil level 84.8 % fell to the 85 % low-level limit.",
+    "recommendation_id": "rec-oil_low-20260423T2200",
+    "simulated": true,
+    "lead_time_h": null
+   }
+  ],
+  "recommendations": [
+   {
+    "id": "rec-oil_leak-20260421T2245",
+    "action": "Inspect the tank and gaskets for leaks; check oil level",
+    "test": "Oil leakage check; insulation resistance test",
+    "urgency": "24h",
+    "rationale": "oil level trend (OLI_pct) = 3.147 (threshold 3) at 2026-04-21 22:45; Oil level fell 3.1 points over 24 h with no sudden step. Pattern of a slow leak.",
+    "alert_id": "oil_leak-20260421T2245",
+    "standard_ref": null
+   },
+   {
+    "id": "rec-oil_low-20260423T2200",
+    "action": "Check oil level and inspect the tank and gaskets for leaks",
+    "test": "Oil leakage check",
+    "urgency": "24h",
+    "rationale": "oil level (OLI_pct) = 84.82 (threshold 85) at 2026-04-23 22:00; Oil level 84.8 % fell to the 85 % low-level limit.",
+    "alert_id": "oil_low-20260423T2200",
+    "standard_ref": null
+   }
+  ],
+  "health": {
+   "score": 93.82540350877194,
+   "band": "Green",
+   "components": {
+    "thermal": 100.0,
+    "ageing": 100.0,
+    "loading": 100.0,
+    "electrical": 100.0,
+    "integrity": 41.34133333333334
+   },
+   "weights": {
+    "thermal": 0.3157894736842105,
+    "ageing": 0.2631578947368421,
+    "loading": 0.15789473684210525,
+    "electrical": 0.15789473684210525,
+    "integrity": 0.10526315789473684
+   },
+   "capped": false
+  },
+  "rul": {
+   "years_low": 142.66,
+   "years_high": 1000,
+   "risk": "Low",
+   "consumed_days": 1096.97,
+   "recent_rate": 0.0567
+  },
+  "fidelity_rmse_C": 0.8786618214012626
+ },
+ "built": "2026-10-10T17:44:23.970764+05:30"
+}

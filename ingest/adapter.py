@@ -77,8 +77,18 @@ def _split_existing_flags(df: pd.DataFrame) -> pd.DataFrame:
 def inspect(paths, synonyms=None) -> InspectResult:
     tables = _tables(paths)
     trend = [(n, d) for n, d, _, r in tables if r == "trend"]
+    records = [(n, d) for n, d, _, r in tables if r == "records"]
+    info = [{"name": n, "role": r, "rows": len(d), "columns": [str(c) for c in d.columns]} for n, d, _, r in tables]
+    if not trend and records:  # snapshot mode: per-test records without time
+        name, df = records[0]
+        idc = shape.record_id_column(df)
+        props = [p for n, d in records for p in cmap.propose(d.drop(columns=[shape.record_id_column(d)]), synonyms)]
+        return InspectResult(tables=info, timestamp={"column": None, "format": "none: records keyed by " + str(idc),
+                                                     "parsed_ok_pct": 0.0},
+                             proposals=props, preview=df.head(10),
+                             warnings=["No time column: loads in snapshot mode (or pass an interval to assign times)"])
     if not trend:
-        raise ValueError("no trend table found")
+        raise ValueError("no trend table found." + _records_hint([d for _, d, _, _ in tables]))
     name, df = trend[0]
     col = ctime.find_time_column(df)
     timed, tinfo = _time(df, {})
@@ -86,10 +96,9 @@ def inspect(paths, synonyms=None) -> InspectResult:
     for n, d in trend:
         t, _ = _time(d, {})
         proposals += cmap.propose(t, synonyms)
-    return InspectResult(
-        tables=[{"name": n, "role": r, "rows": len(d), "columns": [str(c) for c in d.columns]} for n, d, _, r in tables],
-        timestamp={"column": col, "format": tinfo.get("format"), "parsed_ok_pct": tinfo["parsed_ok_pct"]},
-        proposals=proposals, preview=timed.head(10))
+    return InspectResult(tables=info, timestamp={"column": col, "format": tinfo.get("format"),
+                                                 "parsed_ok_pct": tinfo["parsed_ok_pct"]},
+                         proposals=proposals, preview=timed.head(10))
 
 
 def load(paths, schema=None, asset="config/asset.yaml", source: str | None = None,

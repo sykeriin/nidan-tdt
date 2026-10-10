@@ -1,0 +1,379 @@
+{
+ "dataset_id": "S1",
+ "name": "Transformer-1 \u00b7 scenario S1 (SIMULATED)",
+ "mode": "full",
+ "capabilities": {
+  "thermal_twin": true,
+  "residual_fidelity": true,
+  "wti_check": true,
+  "unbalance": true,
+  "voltage_quality": true,
+  "neutral_measured": true,
+  "oil_leak_theft": true,
+  "through_fault": false,
+  "breathing_index": true,
+  "ageing_rul": true,
+  "lead_time_eval": true
+ },
+ "health_report": {
+  "source": "data/generated",
+  "scenario": "S1"
+ },
+ "asset": {
+  "asset_id": "transformer-1",
+  "name": "Transformer-1",
+  "site": "MAHE Bengaluru campus, LT kiosk",
+  "rating_kVA": 1000,
+  "lv_voltage_V": 415,
+  "i_rated_A": 1391,
+  "hv_voltage_V": 11000,
+  "vector_group": "Dyn11",
+  "cooling": "ONAN",
+  "load_loss_W": 10000,
+  "no_load_loss_W": 1100,
+  "insulation": "normal",
+  "years_in_service": 3,
+  "breather": "silica_gel",
+  "nameplate_source": "asset.yaml"
+ },
+ "summary": {
+  "mode": "full",
+  "plausibility": {
+   "OTI_C": "plausible",
+   "implausible_fraction": 0.0,
+   "evaluable_rows": 2880
+  },
+  "rul_display": "RUL 20.2 \u2013 > 40 years",
+  "life_consumed_days": {
+   "expected": 2.608,
+   "actual": 2.261,
+   "actual_minus_expected": -0.347,
+   "measured_share": 0.967
+  },
+  "drift_message": null,
+  "first_drift_alert": null,
+  "fidelity_rmse_C_last": 0.8786618214026983
+ },
+ "analysis": {
+  "alerts": [
+   {
+    "id": "loading_high-20260424T1200",
+    "timestamp": "2026-04-24T12:00:00+05:30",
+    "module": "overloading",
+    "type": "loading_high",
+    "severity": "critical",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 1.0954090582314882,
+    "threshold": 1.0,
+    "explanation": "Loading 1.10 pu reached 1 pu (measured load).",
+    "recommendation_id": "rec-loading_high-20260424T1200",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "hot_spot_high-20260424T1200",
+    "timestamp": "2026-04-24T12:00:00+05:30",
+    "module": "overloading",
+    "type": "hot_spot_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 98.283,
+    "threshold": 98.0,
+    "explanation": "Hot-spot temperature 98.28 C reached 98 C (measured hot spot).",
+    "recommendation_id": "rec-hot_spot_high-20260424T1200",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "ageing_rate_high-20260424T1230",
+    "timestamp": "2026-04-24T12:30:00+05:30",
+    "module": "insulation",
+    "type": "ageing_rate_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 1.5754445395286207,
+    "threshold": 1.0,
+    "explanation": "1 h mean ageing rate 1.58 x normal reached 1 x normal (twin-estimated).",
+    "recommendation_id": "rec-ageing_rate_high-20260424T1230",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "top_oil_high-20260424T1330",
+    "timestamp": "2026-04-24T13:30:00+05:30",
+    "module": "overloading",
+    "type": "top_oil_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 85.84,
+    "threshold": 85.0,
+    "explanation": "Top-oil temperature 85.84 C reached 85 C (measured top oil).",
+    "recommendation_id": "rec-top_oil_high-20260424T1330",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "hot_spot_high-20260424T1345",
+    "timestamp": "2026-04-24T13:45:00+05:30",
+    "module": "overloading",
+    "type": "hot_spot_high",
+    "severity": "critical",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 121.073,
+    "threshold": 120.0,
+    "explanation": "Hot-spot temperature 121.07 C reached 120 C (measured hot spot).",
+    "recommendation_id": "rec-hot_spot_high-20260424T1345",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "loading_high-20260425T1230",
+    "timestamp": "2026-04-25T12:30:00+05:30",
+    "module": "overloading",
+    "type": "loading_high",
+    "severity": "critical",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 1.1711861969805897,
+    "threshold": 1.0,
+    "explanation": "Loading 1.17 pu reached 1 pu (measured load).",
+    "recommendation_id": "rec-loading_high-20260425T1230",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "hot_spot_high-20260425T1245",
+    "timestamp": "2026-04-25T12:45:00+05:30",
+    "module": "overloading",
+    "type": "hot_spot_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 99.007,
+    "threshold": 98.0,
+    "explanation": "Hot-spot temperature 99.01 C reached 98 C (measured hot spot).",
+    "recommendation_id": "rec-hot_spot_high-20260425T1245",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "ageing_rate_high-20260425T1315",
+    "timestamp": "2026-04-25T13:15:00+05:30",
+    "module": "insulation",
+    "type": "ageing_rate_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 1.828290015962439,
+    "threshold": 1.0,
+    "explanation": "1 h mean ageing rate 1.83 x normal reached 1 x normal (twin-estimated).",
+    "recommendation_id": "rec-ageing_rate_high-20260425T1315",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "loading_high-20260426T1245",
+    "timestamp": "2026-04-26T12:45:00+05:30",
+    "module": "overloading",
+    "type": "loading_high",
+    "severity": "critical",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 1.2387886412652767,
+    "threshold": 1.0,
+    "explanation": "Loading 1.24 pu reached 1 pu (measured load).",
+    "recommendation_id": "rec-loading_high-20260426T1245",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "overcurrent-20260426T1245",
+    "timestamp": "2026-04-26T12:45:00+05:30",
+    "module": "overloading",
+    "type": "overcurrent",
+    "severity": "critical",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 1.2387886412652767,
+    "threshold": 1.2,
+    "explanation": "Load current 1.24 pu reached 1.2 pu (measured load).",
+    "recommendation_id": "rec-overcurrent-20260426T1245",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "hot_spot_high-20260426T1300",
+    "timestamp": "2026-04-26T13:00:00+05:30",
+    "module": "overloading",
+    "type": "hot_spot_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 103.66,
+    "threshold": 98.0,
+    "explanation": "Hot-spot temperature 103.66 C reached 98 C (measured hot spot).",
+    "recommendation_id": "rec-hot_spot_high-20260426T1300",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "ageing_rate_high-20260426T1315",
+    "timestamp": "2026-04-26T13:15:00+05:30",
+    "module": "insulation",
+    "type": "ageing_rate_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 1.558946837125898,
+    "threshold": 1.0,
+    "explanation": "1 h mean ageing rate 1.56 x normal reached 1 x normal (twin-estimated).",
+    "recommendation_id": "rec-ageing_rate_high-20260426T1315",
+    "simulated": true,
+    "lead_time_h": null
+   }
+  ],
+  "recommendations": [
+   {
+    "id": "rec-loading_high-20260424T1200",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system and connection inspection",
+    "urgency": "24h",
+    "rationale": "load_pu = 1.095 (threshold 1) at 2026-04-24 12:00; Loading 1.10 pu reached 1 pu (measured load).",
+    "alert_id": "loading_high-20260424T1200",
+    "standard_ref": null
+   },
+   {
+    "id": "rec-hot_spot_high-20260424T1200",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "hot-spot temperature = 98.28 (threshold 98) at 2026-04-24 12:00; Hot-spot temperature 98.28 C reached 98 C (measured hot spot).",
+    "alert_id": "hot_spot_high-20260424T1200",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-ageing_rate_high-20260424T1230",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "ageing rate = 1.575 (threshold 1) at 2026-04-24 12:30; 1 h mean ageing rate 1.58 x normal reached 1 x normal (twin-estimated).",
+    "alert_id": "ageing_rate_high-20260424T1230",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-top_oil_high-20260424T1330",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "top-oil temperature = 85.84 (threshold 85) at 2026-04-24 13:30; Top-oil temperature 85.84 C reached 85 C (measured top oil).",
+    "alert_id": "top_oil_high-20260424T1330",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-hot_spot_high-20260424T1345",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "24h",
+    "rationale": "hot-spot temperature = 121.1 (threshold 120) at 2026-04-24 13:45; Hot-spot temperature 121.07 C reached 120 C (measured hot spot).",
+    "alert_id": "hot_spot_high-20260424T1345",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-loading_high-20260425T1230",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system and connection inspection",
+    "urgency": "24h",
+    "rationale": "load_pu = 1.171 (threshold 1) at 2026-04-25 12:30; Loading 1.17 pu reached 1 pu (measured load).",
+    "alert_id": "loading_high-20260425T1230",
+    "standard_ref": null
+   },
+   {
+    "id": "rec-hot_spot_high-20260425T1245",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "hot-spot temperature = 99.01 (threshold 98) at 2026-04-25 12:45; Hot-spot temperature 99.01 C reached 98 C (measured hot spot).",
+    "alert_id": "hot_spot_high-20260425T1245",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-ageing_rate_high-20260425T1315",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "ageing rate = 1.828 (threshold 1) at 2026-04-25 13:15; 1 h mean ageing rate 1.83 x normal reached 1 x normal (twin-estimated).",
+    "alert_id": "ageing_rate_high-20260425T1315",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-loading_high-20260426T1245",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system and connection inspection",
+    "urgency": "24h",
+    "rationale": "load_pu = 1.239 (threshold 1) at 2026-04-26 12:45; Loading 1.24 pu reached 1 pu (measured load).",
+    "alert_id": "loading_high-20260426T1245",
+    "standard_ref": null
+   },
+   {
+    "id": "rec-overcurrent-20260426T1245",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system and connection inspection",
+    "urgency": "24h",
+    "rationale": "load_pu / I_mean = 1.239 (threshold 1.2) at 2026-04-26 12:45; Load current 1.24 pu reached 1.2 pu (measured load).",
+    "alert_id": "overcurrent-20260426T1245",
+    "standard_ref": null
+   },
+   {
+    "id": "rec-hot_spot_high-20260426T1300",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "hot-spot temperature = 103.7 (threshold 98) at 2026-04-26 13:00; Hot-spot temperature 103.66 C reached 98 C (measured hot spot).",
+    "alert_id": "hot_spot_high-20260426T1300",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-ageing_rate_high-20260426T1315",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "ageing rate = 1.559 (threshold 1) at 2026-04-26 13:15; 1 h mean ageing rate 1.56 x normal reached 1 x normal (twin-estimated).",
+    "alert_id": "ageing_rate_high-20260426T1315",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   }
+  ],
+  "health": {
+   "score": 100.0,
+   "band": "Green",
+   "components": {
+    "thermal": 100.0,
+    "ageing": 100.0,
+    "loading": 100.0,
+    "electrical": 100.0,
+    "integrity": 100.0
+   },
+   "weights": {
+    "thermal": 0.3157894736842105,
+    "ageing": 0.2631578947368421,
+    "loading": 0.15789473684210525,
+    "electrical": 0.15789473684210525,
+    "integrity": 0.10526315789473684
+   },
+   "capped": false
+  },
+  "rul": {
+   "years_low": 20.2,
+   "years_high": 429.46,
+   "risk": "Low",
+   "consumed_days": 1098.01,
+   "recent_rate": 0.2059
+  },
+  "fidelity_rmse_C": 0.8786618214026983
+ },
+ "built": "2026-10-10T17:44:21.810887+05:30"
+}

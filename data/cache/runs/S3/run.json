@@ -1,0 +1,115 @@
+{
+ "dataset_id": "S3",
+ "name": "Transformer-1 \u00b7 scenario S3 (SIMULATED)",
+ "mode": "full",
+ "capabilities": {
+  "thermal_twin": true,
+  "residual_fidelity": true,
+  "wti_check": true,
+  "unbalance": true,
+  "voltage_quality": true,
+  "neutral_measured": true,
+  "oil_leak_theft": true,
+  "through_fault": false,
+  "breathing_index": true,
+  "ageing_rul": true,
+  "lead_time_eval": true
+ },
+ "health_report": {
+  "source": "data/generated",
+  "scenario": "S3"
+ },
+ "asset": {
+  "asset_id": "transformer-1",
+  "name": "Transformer-1",
+  "site": "MAHE Bengaluru campus, LT kiosk",
+  "rating_kVA": 1000,
+  "lv_voltage_V": 415,
+  "i_rated_A": 1391,
+  "hv_voltage_V": 11000,
+  "vector_group": "Dyn11",
+  "cooling": "ONAN",
+  "load_loss_W": 10000,
+  "no_load_loss_W": 1100,
+  "insulation": "normal",
+  "years_in_service": 3,
+  "breather": "silica_gel",
+  "nameplate_source": "asset.yaml"
+ },
+ "summary": {
+  "mode": "full",
+  "plausibility": {
+   "OTI_C": "plausible",
+   "implausible_fraction": 0.0,
+   "evaluable_rows": 2880
+  },
+  "rul_display": "RUL > 40 years",
+  "life_consumed_days": {
+   "expected": 1.477,
+   "actual": 1.313,
+   "actual_minus_expected": -0.164,
+   "measured_share": 0.967
+  },
+  "drift_message": null,
+  "first_drift_alert": null,
+  "fidelity_rmse_C_last": 0.9014900829113653
+ },
+ "analysis": {
+  "alerts": [
+   {
+    "id": "current_unbalance-20260425T0000",
+    "timestamp": "2026-04-25T00:00:00+05:30",
+    "module": "electrical",
+    "type": "current_unbalance",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 13.450135712871173,
+    "threshold": 10.0,
+    "explanation": "Phase current unbalance 13.5 % reached 10 %. Computed from R/Y/B line currents only; no neutral-current or earthing conclusion.",
+    "recommendation_id": "rec-current_unbalance-20260425T0000",
+    "simulated": true,
+    "lead_time_h": null
+   }
+  ],
+  "recommendations": [
+   {
+    "id": "rec-current_unbalance-20260425T0000",
+    "action": "Rebalance single-phase loads; check connections and neutral",
+    "test": "Connection and neutral inspection",
+    "urgency": "7d",
+    "rationale": "current unbalance % = 13.45 (threshold 10) at 2026-04-25 00:00; Phase current unbalance 13.5 % reached 10 %. Computed from R/Y/B line currents only; no neutral-current or earthing conclusion.",
+    "alert_id": "current_unbalance-20260425T0000",
+    "standard_ref": null
+   }
+  ],
+  "health": {
+   "score": 92.5097070139963,
+   "band": "Green",
+   "components": {
+    "thermal": 100.0,
+    "ageing": 100.0,
+    "loading": 100.0,
+    "electrical": 52.56147775530989,
+    "integrity": 100.0
+   },
+   "weights": {
+    "thermal": 0.3157894736842105,
+    "ageing": 0.2631578947368421,
+    "loading": 0.15789473684210525,
+    "electrical": 0.15789473684210525,
+    "integrity": 0.10526315789473684
+   },
+   "capped": false
+  },
+  "rul": {
+   "years_low": 108.8,
+   "years_high": 1000,
+   "risk": "Low",
+   "consumed_days": 1097.06,
+   "recent_rate": 0.0705
+  },
+  "fidelity_rmse_C": 0.9014900829113653
+ },
+ "built": "2026-10-10T17:44:23.315772+05:30"
+}

@@ -12,3 +12,7 @@ xlrd
 pyarrow
 requests
 pytest
+fastapi
+uvicorn
+python-multipart
+httpx

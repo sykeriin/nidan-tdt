@@ -1,0 +1,189 @@
+{
+ "dataset_id": "S5",
+ "name": "Transformer-1 \u00b7 scenario S5 (SIMULATED)",
+ "mode": "full",
+ "capabilities": {
+  "thermal_twin": true,
+  "residual_fidelity": true,
+  "wti_check": true,
+  "unbalance": true,
+  "voltage_quality": true,
+  "neutral_measured": true,
+  "oil_leak_theft": true,
+  "through_fault": true,
+  "breathing_index": true,
+  "ageing_rul": true,
+  "lead_time_eval": true
+ },
+ "health_report": {
+  "source": "data/generated",
+  "scenario": "S5"
+ },
+ "asset": {
+  "asset_id": "transformer-1",
+  "name": "Transformer-1",
+  "site": "MAHE Bengaluru campus, LT kiosk",
+  "rating_kVA": 1000,
+  "lv_voltage_V": 415,
+  "i_rated_A": 1391,
+  "hv_voltage_V": 11000,
+  "vector_group": "Dyn11",
+  "cooling": "ONAN",
+  "load_loss_W": 10000,
+  "no_load_loss_W": 1100,
+  "insulation": "normal",
+  "years_in_service": 3,
+  "breather": "silica_gel",
+  "nameplate_source": "asset.yaml"
+ },
+ "summary": {
+  "mode": "full",
+  "plausibility": {
+   "OTI_C": "plausible",
+   "implausible_fraction": 0.0,
+   "evaluable_rows": 2880
+  },
+  "rul_display": "RUL > 40 years",
+  "life_consumed_days": {
+   "expected": 1.365,
+   "actual": 1.216,
+   "actual_minus_expected": -0.148,
+   "measured_share": 0.967
+  },
+  "drift_message": null,
+  "first_drift_alert": null,
+  "fidelity_rmse_C_last": 0.8786618214012626
+ },
+ "analysis": {
+  "alerts": [
+   {
+    "id": "through_fault-20260427T1012",
+    "timestamp": "2026-04-27T10:12:31+05:30",
+    "module": "short_circuit",
+    "type": "through_fault",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 6.0,
+    "threshold": 3.0,
+    "explanation": "Moderate through-fault: peak 6.0 pu for 300 ms (I2t 10.80 pu2.s).",
+    "recommendation_id": "rec-through_fault-20260427T1012",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "through_fault-20260427T1447",
+    "timestamp": "2026-04-27T14:47:05+05:30",
+    "module": "short_circuit",
+    "type": "through_fault",
+    "severity": "critical",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 10.0,
+    "threshold": 8.0,
+    "explanation": "Severe through-fault: peak 10.0 pu for 500 ms (I2t 50.00 pu2.s).",
+    "recommendation_id": "rec-through_fault-20260427T1447",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "through_fault_stress-20260427T1447",
+    "timestamp": "2026-04-27T14:47:05+05:30",
+    "module": "short_circuit",
+    "type": "through_fault_stress",
+    "severity": "critical",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 60.8,
+    "threshold": null,
+    "explanation": "Through-fault stress rule met: 1 severe or 3 moderate events since reset (2 qualifying so far, cumulative I2t 60.8 pu2.s). Measure short-circuit impedance (%X) and compare with the IS 1180 acceptance limit.",
+    "recommendation_id": "rec-through_fault_stress-20260427T1447",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "through_fault-20260427T1630",
+    "timestamp": "2026-04-27T16:30:12+05:30",
+    "module": "short_circuit",
+    "type": "through_fault",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 3.5,
+    "threshold": 3.0,
+    "explanation": "Moderate through-fault: peak 3.5 pu for 250 ms (I2t 3.06 pu2.s).",
+    "recommendation_id": "rec-through_fault-20260427T1630",
+    "simulated": true,
+    "lead_time_h": null
+   }
+  ],
+  "recommendations": [
+   {
+    "id": "rec-through_fault-20260427T1012",
+    "action": "Log the through-fault event and review protection records",
+    "test": "Short-circuit impedance (%X) measurement if the cumulative stress limit is crossed",
+    "urgency": "next_scheduled",
+    "rationale": "through-fault event peak (pu) = 6 (threshold 3) at 2026-04-27 10:12; Moderate through-fault: peak 6.0 pu for 300 ms (I2t 10.80 pu2.s).",
+    "alert_id": "through_fault-20260427T1012",
+    "standard_ref": "IS 1180:2014 short-circuit acceptance limit (from CPRI presentation); to verify against the standard"
+   },
+   {
+    "id": "rec-through_fault-20260427T1447",
+    "action": "Log the through-fault event and review protection records",
+    "test": "Short-circuit impedance (%X) measurement if the cumulative stress limit is crossed",
+    "urgency": "next_scheduled",
+    "rationale": "through-fault event peak (pu) = 10 (threshold 8) at 2026-04-27 14:47; Severe through-fault: peak 10.0 pu for 500 ms (I2t 50.00 pu2.s).",
+    "alert_id": "through_fault-20260427T1447",
+    "standard_ref": "IS 1180:2014 short-circuit acceptance limit (from CPRI presentation); to verify against the standard"
+   },
+   {
+    "id": "rec-through_fault_stress-20260427T1447",
+    "action": "Measure short-circuit impedance (%X) and compare with the IS 1180 limit",
+    "test": "Short-circuit impedance (%X) measurement",
+    "urgency": "7d",
+    "rationale": "cumulative through-fault stress = 60.8 at 2026-04-27 14:47; Through-fault stress rule met: 1 severe or 3 moderate events since reset (2 qualifying so far, cumulative I2t 60.8 pu2.s). Measure short-circuit impedance (%X) and compare with the IS 1180 acceptance limit.",
+    "alert_id": "through_fault_stress-20260427T1447",
+    "standard_ref": "IS 1180:2014 short-circuit acceptance limit (from CPRI presentation); to verify against the standard"
+   },
+   {
+    "id": "rec-through_fault-20260427T1630",
+    "action": "Log the through-fault event and review protection records",
+    "test": "Short-circuit impedance (%X) measurement if the cumulative stress limit is crossed",
+    "urgency": "next_scheduled",
+    "rationale": "through-fault event peak (pu) = 3.5 (threshold 3) at 2026-04-27 16:30; Moderate through-fault: peak 3.5 pu for 250 ms (I2t 3.06 pu2.s).",
+    "alert_id": "through_fault-20260427T1630",
+    "standard_ref": "IS 1180:2014 short-circuit acceptance limit (from CPRI presentation); to verify against the standard"
+   }
+  ],
+  "health": {
+   "score": 96.5,
+   "band": "Green",
+   "components": {
+    "thermal": 100.0,
+    "ageing": 100.0,
+    "loading": 100.0,
+    "electrical": 100.0,
+    "integrity": 100.0,
+    "fault_stress": 30.0
+   },
+   "weights": {
+    "thermal": 0.3,
+    "ageing": 0.25,
+    "loading": 0.15,
+    "electrical": 0.15,
+    "integrity": 0.1,
+    "fault_stress": 0.05
+   },
+   "capped": false
+  },
+  "rul": {
+   "years_low": 142.66,
+   "years_high": 1000,
+   "risk": "Low",
+   "consumed_days": 1096.97,
+   "recent_rate": 0.0567
+  },
+  "fidelity_rmse_C": 0.8786618214012626
+ },
+ "built": "2026-10-10T17:44:25.348570+05:30"
+}

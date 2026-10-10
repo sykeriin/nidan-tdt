@@ -1,0 +1,235 @@
+{
+ "dataset_id": "S2",
+ "name": "Transformer-1 \u00b7 scenario S2 (SIMULATED)",
+ "mode": "full",
+ "capabilities": {
+  "thermal_twin": true,
+  "residual_fidelity": true,
+  "wti_check": true,
+  "unbalance": true,
+  "voltage_quality": true,
+  "neutral_measured": true,
+  "oil_leak_theft": true,
+  "through_fault": false,
+  "breathing_index": true,
+  "ageing_rul": true,
+  "lead_time_eval": true
+ },
+ "health_report": {
+  "source": "data/generated",
+  "scenario": "S2"
+ },
+ "asset": {
+  "asset_id": "transformer-1",
+  "name": "Transformer-1",
+  "site": "MAHE Bengaluru campus, LT kiosk",
+  "rating_kVA": 1000,
+  "lv_voltage_V": 415,
+  "i_rated_A": 1391,
+  "hv_voltage_V": 11000,
+  "vector_group": "Dyn11",
+  "cooling": "ONAN",
+  "load_loss_W": 10000,
+  "no_load_loss_W": 1100,
+  "insulation": "normal",
+  "years_in_service": 3,
+  "breather": "silica_gel",
+  "nameplate_source": "asset.yaml"
+ },
+ "summary": {
+  "mode": "full",
+  "plausibility": {
+   "OTI_C": "plausible",
+   "implausible_fraction": 0.03333333333333333,
+   "evaluable_rows": 2880
+  },
+  "rul_display": "RUL > 40 years",
+  "life_consumed_days": {
+   "expected": 1.365,
+   "actual": 1.816,
+   "actual_minus_expected": 0.452,
+   "measured_share": 0.967
+  },
+  "drift_message": "model drift \u2014 check cooling / recalibrate",
+  "first_drift_alert": "2026-04-25T05:30:00+05:30",
+  "fidelity_rmse_C_last": 4.713125583285778
+ },
+ "analysis": {
+  "alerts": [
+   {
+    "id": "residual_drift-20260422T0900",
+    "timestamp": "2026-04-22T09:00:00+05:30",
+    "module": "insulation",
+    "type": "residual_drift",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "residual",
+    "value": 0.050159231468032243,
+    "threshold": 0.04595608719357043,
+    "explanation": "Measured top-oil temperature exceeds the twin by 5.0 % of the twin's rise above ambient on a 2 h average, above the 4.6 % trip (baseline mean -3.0 % + 4 sigma of 1.90 %; load-normalised; Normal-scenario baseline). Possible cooling degradation.",
+    "recommendation_id": "rec-residual_drift-20260422T0900",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "hot_spot_high-20260427T1400",
+    "timestamp": "2026-04-27T14:00:00+05:30",
+    "module": "overloading",
+    "type": "hot_spot_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 98.788,
+    "threshold": 98.0,
+    "explanation": "Hot-spot temperature 98.79 C reached 98 C (measured hot spot).",
+    "recommendation_id": "rec-hot_spot_high-20260427T1400",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "ageing_rate_high-20260427T1415",
+    "timestamp": "2026-04-27T14:15:00+05:30",
+    "module": "insulation",
+    "type": "ageing_rate_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 1.077910101010891,
+    "threshold": 1.0,
+    "explanation": "1 h mean ageing rate 1.08 x normal reached 1 x normal (twin-estimated).",
+    "recommendation_id": "rec-ageing_rate_high-20260427T1415",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "top_oil_high-20260427T1500",
+    "timestamp": "2026-04-27T15:00:00+05:30",
+    "module": "overloading",
+    "type": "top_oil_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 85.226,
+    "threshold": 85.0,
+    "explanation": "Top-oil temperature 85.23 C reached 85 C (measured top oil).",
+    "recommendation_id": "rec-top_oil_high-20260427T1500",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "hot_spot_high-20260428T1530",
+    "timestamp": "2026-04-28T15:30:00+05:30",
+    "module": "overloading",
+    "type": "hot_spot_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 98.632,
+    "threshold": 98.0,
+    "explanation": "Hot-spot temperature 98.63 C reached 98 C (measured hot spot).",
+    "recommendation_id": "rec-hot_spot_high-20260428T1530",
+    "simulated": true,
+    "lead_time_h": null
+   },
+   {
+    "id": "ageing_rate_high-20260428T1545",
+    "timestamp": "2026-04-28T15:45:00+05:30",
+    "module": "insulation",
+    "type": "ageing_rate_high",
+    "severity": "warning",
+    "origin": "asset",
+    "detector": "rule",
+    "value": 1.087020779679836,
+    "threshold": 1.0,
+    "explanation": "1 h mean ageing rate 1.09 x normal reached 1 x normal (twin-estimated).",
+    "recommendation_id": "rec-ageing_rate_high-20260428T1545",
+    "simulated": true,
+    "lead_time_h": null
+   }
+  ],
+  "recommendations": [
+   {
+    "id": "rec-residual_drift-20260422T0900",
+    "action": "Inspect radiators and cooling; check oil level",
+    "test": "Radiator and cooling inspection; oil level check",
+    "urgency": "7d",
+    "rationale": "measured minus twin oil temperature (residual_oil_C) = 0.05016 (threshold 0.04596) at 2026-04-22 09:00; Measured top-oil temperature exceeds the twin by 5.0 % of the twin's rise above ambient on a 2 h average, above the 4.6 % trip (baseline mean -3.0 % + 4 sigma of 1.90 %; load-normalised; Normal-scenario baseline). Possible cooling degradation.",
+    "alert_id": "residual_drift-20260422T0900",
+    "standard_ref": null
+   },
+   {
+    "id": "rec-hot_spot_high-20260427T1400",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "hot-spot temperature = 98.79 (threshold 98) at 2026-04-27 14:00; Hot-spot temperature 98.79 C reached 98 C (measured hot spot).",
+    "alert_id": "hot_spot_high-20260427T1400",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-ageing_rate_high-20260427T1415",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "ageing rate = 1.078 (threshold 1) at 2026-04-27 14:15; 1 h mean ageing rate 1.08 x normal reached 1 x normal (twin-estimated).",
+    "alert_id": "ageing_rate_high-20260427T1415",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-top_oil_high-20260427T1500",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "top-oil temperature = 85.23 (threshold 85) at 2026-04-27 15:00; Top-oil temperature 85.23 C reached 85 C (measured top oil).",
+    "alert_id": "top_oil_high-20260427T1500",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-hot_spot_high-20260428T1530",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "hot-spot temperature = 98.63 (threshold 98) at 2026-04-28 15:30; Hot-spot temperature 98.63 C reached 98 C (measured hot spot).",
+    "alert_id": "hot_spot_high-20260428T1530",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   },
+   {
+    "id": "rec-ageing_rate_high-20260428T1545",
+    "action": "Review load and transfer load if possible; check cooling; schedule an inspection",
+    "test": "Cooling system inspection",
+    "urgency": "7d",
+    "rationale": "ageing rate = 1.087 (threshold 1) at 2026-04-28 15:45; 1 h mean ageing rate 1.09 x normal reached 1 x normal (twin-estimated).",
+    "alert_id": "ageing_rate_high-20260428T1545",
+    "standard_ref": "IEC 60076-7 loading guide; to verify against the standard"
+   }
+  ],
+  "health": {
+   "score": 100.0,
+   "band": "Green",
+   "components": {
+    "thermal": 100.0,
+    "ageing": 100.0,
+    "loading": 100.0,
+    "electrical": 100.0,
+    "integrity": 100.0
+   },
+   "weights": {
+    "thermal": 0.3157894736842105,
+    "ageing": 0.2631578947368421,
+    "loading": 0.15789473684210525,
+    "electrical": 0.15789473684210525,
+    "integrity": 0.10526315789473684
+   },
+   "capped": false
+  },
+  "rul": {
+   "years_low": 54.25,
+   "years_high": 1000,
+   "risk": "Low",
+   "consumed_days": 1097.57,
+   "recent_rate": 0.1352
+  },
+  "fidelity_rmse_C": 4.713125583285778
+ },
+ "built": "2026-10-10T17:44:22.479400+05:30"
+}

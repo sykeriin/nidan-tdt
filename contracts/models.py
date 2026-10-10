@@ -85,3 +85,32 @@ class AnalysisResult:
     health: Health
     rul: RUL | None
     fidelity_rmse_C: float | None
+
+
+# ---- dashboard facade (dt/api.py). Added 2026-10-10 for P4; tell the team before changing. ----
+@dataclass
+class Run:
+    """Everything the dashboard needs for one dataset, precomputed (batch == streaming, see tests)."""
+    dataset_id: str
+    name: str
+    mode: str                      # full | meter_only | data_only | snapshot
+    trend: pd.DataFrame            # canonical columns + twin columns (TWIN_COLUMNS); snapshot: record_id instead of time
+    events: pd.DataFrame           # canonical event table
+    health_series: pd.DataFrame    # timestamp, score, band, sub-scores, capped (empty in snapshot mode)
+    analysis: AnalysisResult
+    capabilities: dict[str, bool]
+    health_report: dict            # adapter Data Health Report (JSON-safe parts)
+    asset: dict
+    summary: dict                  # twin summary: plausibility, rul_display, life_consumed_days, drift_message, ...
+
+
+@dataclass
+class StateAt:
+    """The twin and analytics as they stood at one moment (replay / time slider)."""
+    timestamp: pd.Timestamp
+    row: dict                      # canonical measured values at that sample
+    twin: dict                     # twin columns at that sample
+    mode: str
+    health: Health                 # Health Index at that sample (sub-scores in components)
+    alerts: list[Alert]            # alerts raised in the 24 h up to this moment
+    simulated: bool

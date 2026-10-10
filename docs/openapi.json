@@ -1,0 +1,1509 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Distribution-transformer digital twin API",
+  "description": "Wraps dt/api.py. Timestamps ISO 8601 with offset; NaN -> null. Everything generated is SIMULATED (see `simulated` fields).",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/api/datasets": {
+   "get": {
+    "tags": [
+     "datasets"
+    ],
+    "summary": "List Datasets",
+    "description": "api.list_datasets() \u2014 cached scenarios, Kaggle and uploads.",
+    "operationId": "list_datasets_api_datasets_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/DatasetInfoModel"
+         },
+         "type": "array",
+         "title": "Response List Datasets Api Datasets Get"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "import"
+    ],
+    "summary": "Load File",
+    "description": "api.load_file() \u2014 upload, map, run the twin and analytics, cache the run, register the dataset.",
+    "operationId": "load_file_api_datasets_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_load_file_api_datasets_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DatasetModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/inspect": {
+   "post": {
+    "tags": [
+     "import"
+    ],
+    "summary": "Inspect File",
+    "description": "api.inspect_file() \u2014 auto-mapping proposal for the Import page. Nothing is stored.",
+    "operationId": "inspect_file_api_inspect_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_inspect_file_api_inspect_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InspectResultModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/run": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Get Run",
+    "description": "api.get_run() \u2014 summary, analysis, and every numeric trend/twin/health column as a series.",
+    "operationId": "get_run_api_datasets__dataset_id__run_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "start",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ISO 8601; naive = Asia/Kolkata",
+       "title": "Start"
+      },
+      "description": "ISO 8601; naive = Asia/Kolkata"
+     },
+     {
+      "name": "end",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ISO 8601; naive = Asia/Kolkata",
+       "title": "End"
+      },
+      "description": "ISO 8601; naive = Asia/Kolkata"
+     },
+     {
+      "name": "max_points",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 2000,
+       "minimum": 10,
+       "default": 2000,
+       "title": "Max Points"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RunModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/state": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "State At",
+    "description": "api.state_at() \u2014 twin, Health Index and the last 24 h of alerts at time t.",
+    "operationId": "state_at_api_datasets__dataset_id__state_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "t",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date-time",
+       "description": "ISO 8601; naive = Asia/Kolkata",
+       "title": "T"
+      },
+      "description": "ISO 8601; naive = Asia/Kolkata"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StateAtModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/replay": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Replay",
+    "description": "api.replay() \u2014 NDJSON stream of StateAt objects.",
+    "operationId": "replay_api_datasets__dataset_id__replay_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "speed",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "exclusiveMinimum": 0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "data-seconds per wall-second; omit = no waiting",
+       "title": "Speed"
+      },
+      "description": "data-seconds per wall-second; omit = no waiting"
+     },
+     {
+      "name": "start",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Start"
+      }
+     },
+     {
+      "name": "end",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "End"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 50000,
+       "minimum": 1,
+       "default": 500,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "dropout",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "minimum": 0,
+       "exclusiveMaximum": 1,
+       "description": "simulated comms loss (seeded)",
+       "default": 0.0,
+       "title": "Dropout"
+      },
+      "description": "simulated comms loss (seeded)"
+     },
+     {
+      "name": "seed",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 0,
+       "title": "Seed"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "one StateAt JSON object per line",
+      "content": {
+       "application/json": {
+        "schema": {}
+       },
+       "application/x-ndjson": {}
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
+  "/api/self-test": {
+   "get": {
+    "tags": [
+     "self-test"
+    ],
+    "summary": "Self Test",
+    "description": "api.self_test() \u2014 CPRI Excel format: reference vs software, diff, % diff, pass (<= 1 %), trip checks.",
+    "operationId": "self_test_api_self_test_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TableModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/snapshot": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Snapshot Table",
+    "description": "api.snapshot_table() \u2014 records (or daily peak operating points) ranked worst Health Index first.",
+    "operationId": "snapshot_table_api_datasets__dataset_id__snapshot_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TableModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/report.pdf": {
+   "get": {
+    "tags": [
+     "reports"
+    ],
+    "summary": "Report Pdf",
+    "description": "api.report_pdf() \u2014 not built yet: 501 with the reason.",
+    "operationId": "report_pdf_api_datasets__dataset_id__report_pdf_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       },
+       "application/pdf": {}
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "501": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Implemented"
+     }
+    }
+   }
+  },
+  "/api/health": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Healthcheck",
+    "operationId": "healthcheck_api_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "AlertModel": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Timestamp"
+     },
+     "module": {
+      "type": "string",
+      "title": "Module",
+      "description": "overloading | insulation | short_circuit | electrical | oil | moisture | data"
+     },
+     "type": {
+      "type": "string",
+      "title": "Type"
+     },
+     "severity": {
+      "type": "string",
+      "title": "Severity",
+      "description": "info | warning | critical"
+     },
+     "origin": {
+      "type": "string",
+      "title": "Origin",
+      "description": "asset | sensor"
+     },
+     "detector": {
+      "type": "string",
+      "title": "Detector",
+      "description": "rule | residual | ml | physics"
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Value"
+     },
+     "threshold": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Threshold"
+     },
+     "explanation": {
+      "type": "string",
+      "title": "Explanation"
+     },
+     "recommendation_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recommendation Id"
+     },
+     "simulated": {
+      "type": "boolean",
+      "title": "Simulated"
+     },
+     "lead_time_h": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lead Time H"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "timestamp",
+     "module",
+     "type",
+     "severity",
+     "origin",
+     "detector",
+     "value",
+     "threshold",
+     "explanation",
+     "recommendation_id",
+     "simulated",
+     "lead_time_h"
+    ],
+    "title": "AlertModel"
+   },
+   "AnalysisResultModel": {
+    "properties": {
+     "alerts": {
+      "items": {
+       "$ref": "#/components/schemas/AlertModel"
+      },
+      "type": "array",
+      "title": "Alerts"
+     },
+     "recommendations": {
+      "items": {
+       "$ref": "#/components/schemas/RecommendationModel"
+      },
+      "type": "array",
+      "title": "Recommendations"
+     },
+     "health": {
+      "$ref": "#/components/schemas/HealthModel"
+     },
+     "rul": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/RULModel"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "fidelity_rmse_C": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fidelity Rmse C"
+     }
+    },
+    "type": "object",
+    "required": [
+     "alerts",
+     "recommendations",
+     "health",
+     "rul",
+     "fidelity_rmse_C"
+    ],
+    "title": "AnalysisResultModel"
+   },
+   "Body_inspect_file_api_inspect_post": {
+    "properties": {
+     "files": {
+      "items": {
+       "type": "string",
+       "contentMediaType": "application/octet-stream"
+      },
+      "type": "array",
+      "title": "Files",
+      "description": "CSV/Excel file(s)"
+     }
+    },
+    "type": "object",
+    "required": [
+     "files"
+    ],
+    "title": "Body_inspect_file_api_inspect_post"
+   },
+   "Body_load_file_api_datasets_post": {
+    "properties": {
+     "files": {
+      "items": {
+       "type": "string",
+       "contentMediaType": "application/octet-stream"
+      },
+      "type": "array",
+      "title": "Files",
+      "description": "CSV/Excel file(s)"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "mapping": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mapping",
+      "description": "JSON {\"source col\": {\"to\": \"IR\", \"unit\": \"A\"}}; omit = auto-map"
+     },
+     "asset": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Asset",
+      "description": "JSON {\"rating_kVA\": 1000, \"lv_voltage_V\": 415}; \"estimate\"; omit = asset.yaml"
+     },
+     "interval": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Interval",
+      "description": "records without time: assign timestamps every e.g. 15min (ASSUMED_TIME)"
+     }
+    },
+    "type": "object",
+    "required": [
+     "files"
+    ],
+    "title": "Body_load_file_api_datasets_post"
+   },
+   "DatasetInfoModel": {
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "title": "Dataset Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "mode": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mode"
+     },
+     "rows": {
+      "type": "integer",
+      "title": "Rows"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End"
+     },
+     "simulated": {
+      "type": "boolean",
+      "title": "Simulated"
+     },
+     "source": {
+      "type": "string",
+      "title": "Source"
+     },
+     "health_score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Health Score"
+     },
+     "health_band": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Health Band"
+     },
+     "cached": {
+      "type": "boolean",
+      "title": "Cached"
+     },
+     "files": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Files",
+      "description": "original file names (uploads only)"
+     }
+    },
+    "type": "object",
+    "required": [
+     "dataset_id",
+     "name",
+     "mode",
+     "rows",
+     "start",
+     "end",
+     "simulated",
+     "source",
+     "health_score",
+     "health_band",
+     "cached"
+    ],
+    "title": "DatasetInfoModel"
+   },
+   "DatasetModel": {
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "title": "Dataset Id"
+     },
+     "mode": {
+      "type": "string",
+      "title": "Mode"
+     },
+     "rows": {
+      "type": "integer",
+      "title": "Rows"
+     },
+     "capabilities": {
+      "additionalProperties": {
+       "type": "boolean"
+      },
+      "type": "object",
+      "title": "Capabilities"
+     },
+     "health_report": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Health Report"
+     },
+     "asset": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Asset"
+     }
+    },
+    "type": "object",
+    "required": [
+     "dataset_id",
+     "mode",
+     "rows",
+     "capabilities",
+     "health_report",
+     "asset"
+    ],
+    "title": "DatasetModel",
+    "description": "contracts.models.Dataset without the frames (fetch them with /run)."
+   },
+   "ErrorModel": {
+    "properties": {
+     "detail": {
+      "type": "string",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "required": [
+     "detail"
+    ],
+    "title": "ErrorModel"
+   },
+   "HealthModel": {
+    "properties": {
+     "score": {
+      "type": "number",
+      "title": "Score",
+      "description": "0-100"
+     },
+     "band": {
+      "type": "string",
+      "title": "Band",
+      "description": "Green (>= 80) | Yellow (60-79) | Red (< 60)"
+     },
+     "components": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Components",
+      "description": "sub-scores 0-100: thermal, ageing, loading, electrical, integrity, fault_stress"
+     },
+     "weights": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Weights"
+     },
+     "capped": {
+      "type": "boolean",
+      "title": "Capped"
+     }
+    },
+    "type": "object",
+    "required": [
+     "score",
+     "band",
+     "components",
+     "weights",
+     "capped"
+    ],
+    "title": "HealthModel"
+   },
+   "InspectResultModel": {
+    "properties": {
+     "tables": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Tables"
+     },
+     "timestamp": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Timestamp"
+     },
+     "proposals": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Proposals"
+     },
+     "preview": {
+      "$ref": "#/components/schemas/TableModel"
+     },
+     "warnings": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Warnings"
+     }
+    },
+    "type": "object",
+    "required": [
+     "tables",
+     "timestamp",
+     "proposals",
+     "preview",
+     "warnings"
+    ],
+    "title": "InspectResultModel"
+   },
+   "RULModel": {
+    "properties": {
+     "years_low": {
+      "type": "number",
+      "title": "Years Low"
+     },
+     "years_high": {
+      "type": "number",
+      "title": "Years High"
+     },
+     "risk": {
+      "type": "string",
+      "title": "Risk",
+      "description": "Low | Med | High"
+     },
+     "consumed_days": {
+      "type": "number",
+      "title": "Consumed Days"
+     },
+     "recent_rate": {
+      "type": "number",
+      "title": "Recent Rate"
+     }
+    },
+    "type": "object",
+    "required": [
+     "years_low",
+     "years_high",
+     "risk",
+     "consumed_days",
+     "recent_rate"
+    ],
+    "title": "RULModel"
+   },
+   "RecommendationModel": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "action": {
+      "type": "string",
+      "title": "Action"
+     },
+     "test": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Test"
+     },
+     "urgency": {
+      "type": "string",
+      "title": "Urgency",
+      "description": "immediate | 24h | 7d | next_scheduled"
+     },
+     "rationale": {
+      "type": "string",
+      "title": "Rationale"
+     },
+     "alert_id": {
+      "type": "string",
+      "title": "Alert Id"
+     },
+     "standard_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Standard Ref"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "action",
+     "test",
+     "urgency",
+     "rationale",
+     "alert_id",
+     "standard_ref"
+    ],
+    "title": "RecommendationModel"
+   },
+   "RunModel": {
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "title": "Dataset Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "mode": {
+      "type": "string",
+      "title": "Mode"
+     },
+     "capabilities": {
+      "additionalProperties": {
+       "type": "boolean"
+      },
+      "type": "object",
+      "title": "Capabilities"
+     },
+     "health_report": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Health Report"
+     },
+     "asset": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Asset"
+     },
+     "summary": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Summary"
+     },
+     "analysis": {
+      "$ref": "#/components/schemas/AnalysisResultModel"
+     },
+     "series": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/SeriesModel"
+      },
+      "type": "object",
+      "title": "Series"
+     },
+     "health_series": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/SeriesModel"
+      },
+      "type": "object",
+      "title": "Health Series"
+     },
+     "bands": {
+      "additionalProperties": {
+       "items": {},
+       "type": "array"
+      },
+      "type": "object",
+      "title": "Bands",
+      "description": "health band per health_series sample time"
+     },
+     "events": {
+      "$ref": "#/components/schemas/TableModel"
+     },
+     "records": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/TableModel"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "snapshot mode: records ranked worst first"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End"
+     },
+     "rows_in_range": {
+      "type": "integer",
+      "title": "Rows In Range"
+     },
+     "max_points": {
+      "type": "integer",
+      "title": "Max Points"
+     },
+     "downsampled": {
+      "type": "boolean",
+      "title": "Downsampled"
+     }
+    },
+    "type": "object",
+    "required": [
+     "dataset_id",
+     "name",
+     "mode",
+     "capabilities",
+     "health_report",
+     "asset",
+     "summary",
+     "analysis",
+     "series",
+     "health_series",
+     "bands",
+     "events",
+     "start",
+     "end",
+     "rows_in_range",
+     "max_points",
+     "downsampled"
+    ],
+    "title": "RunModel",
+    "description": "contracts.models.Run; trend and health_series as downsampled series (<= max_points per series)."
+   },
+   "SeriesModel": {
+    "properties": {
+     "t": {
+      "items": {
+       "type": "string",
+       "format": "date-time"
+      },
+      "type": "array",
+      "title": "T",
+      "description": "sample times, ISO 8601 with offset"
+     },
+     "v": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "V"
+     }
+    },
+    "type": "object",
+    "required": [
+     "t",
+     "v"
+    ],
+    "title": "SeriesModel"
+   },
+   "StateAtModel": {
+    "properties": {
+     "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Timestamp"
+     },
+     "row": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Row"
+     },
+     "twin": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Twin"
+     },
+     "mode": {
+      "type": "string",
+      "title": "Mode"
+     },
+     "health": {
+      "$ref": "#/components/schemas/HealthModel"
+     },
+     "alerts": {
+      "items": {
+       "$ref": "#/components/schemas/AlertModel"
+      },
+      "type": "array",
+      "title": "Alerts"
+     },
+     "simulated": {
+      "type": "boolean",
+      "title": "Simulated"
+     }
+    },
+    "type": "object",
+    "required": [
+     "timestamp",
+     "row",
+     "twin",
+     "mode",
+     "health",
+     "alerts",
+     "simulated"
+    ],
+    "title": "StateAtModel"
+   },
+   "TableModel": {
+    "properties": {
+     "columns": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Columns"
+     },
+     "rows": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Rows"
+     }
+    },
+    "type": "object",
+    "required": [
+     "columns",
+     "rows"
+    ],
+    "title": "TableModel"
+   }
+  }
+ }
+}

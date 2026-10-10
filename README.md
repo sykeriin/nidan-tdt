@@ -12,7 +12,7 @@ assumptions: [`docs/assumptions.md`](docs/assumptions.md) · data provenance: [`
 ```powershell
 uv venv --python 3.12 .venv            # or: py -3.12 -m venv .venv
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
-.venv\Scripts\python -m pytest -q       # 272 tests, runs offline
+.venv\Scripts\python -m pytest -q       # full suite, runs offline
 ```
 
 | Command | Does |
@@ -24,6 +24,9 @@ uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 | `python -m sim.fixtures` | Ingestion fixtures → `data/fixtures/` |
 | `python -m eval.run_eval` | Lead-time and false-alarm table → `docs/figures/lead_time.md` |
 | `python -m ingest.enrich fetch YEAR MONTH [SITE]` | Cache Open-Meteo weather (only command that needs network) |
+| `python -m dt.api rebuild [ID…]` | Precompute dashboard runs (N, S1–S5, kaggle) → `data/cache/runs/` |
+| `uvicorn server.app:app --port 8000` | API at `/api`, docs at `/docs`, React build (`web/dist` or `DT_WEB_DIST`) at `/` — see [`docs/API.md`](docs/API.md) |
+| `python -m server.export_openapi` | OpenAPI schema → `docs/openapi.json` |
 
 ## Pipeline
 
@@ -61,7 +64,9 @@ res = analyze(twin, ds.events, effective_caps(ds.capabilities, twin), load_thres
 | `config/` | all | `asset.yaml`, `scenarios.yaml`, `thresholds.yaml`, `health.yaml`, `twin.yaml`, `synonyms.yaml`, `schema/kaggle.yaml` |
 | `data/` | P1 | `raw/` (Kaggle, ETT, weather), `clean/`, `generated/`, `fixtures/`, `cache/weather/`, `PROVENANCE.md` |
 | `docs/` | all | PRD, ingestion spec, assumptions, P3 handoff, figures, `reference/` (organizers' problem statement and draft sheet) |
-| `app/`, `alerts/`, `reports/` | P4 | Empty: dashboard, Telegram, PDF not built yet |
+| `dt/` | P4/all | `api.py`: the single backend facade for the dashboard (DataFrames / contract dataclasses only) |
+| `server/` | P4 | FastAPI wrapper: one endpoint per facade function, uploads, downsampling, CORS, static React build |
+| `app/`, `alerts/`, `reports/` | P4 | Empty: React app, Telegram, PDF not built yet |
 
 ## Status
 
@@ -71,7 +76,10 @@ fidelity drift, physics plausibility check · analytics: 0 false alarms on all s
 degradation and 47 h on the slow leak vs plain thresholds (`docs/figures/lead_time.md`) · Kaggle bad sensors give
 sensor alerts only · replay.
 
-**Not built yet:** dashboard API facade and Streamlit app (P4) · PDF report · self-test panel · Telegram alerts ·
+**Backend for the dashboard:** `dt/api.py` facade and `server/` FastAPI (one endpoint per function, uploads,
+downsampling, OpenAPI in `docs/openapi.json`), self-test in CPRI's Excel format, ranked snapshot tables.
+
+**Not built yet:** the React app itself (P4) · PDF report (`report.pdf` returns 501) · Telegram alerts ·
 IsolationForest · breathing-stress index · Tier 2 ingestion (JSON/Parquet/ZIP, long/historian format, multi-asset).
 
 **Known open issues:** Kaggle unbalance detector chatters (2,042 alerts) and the stuck-sensor rule over-fires on 1 °C
