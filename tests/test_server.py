@@ -179,6 +179,16 @@ def test_thermal_profile_and_components(client, dataset_id):
     assert client.get(f"/api/datasets/{dataset_id}/components", params={"t": "1990-01-01T00:00"}).status_code == 400
 
 
+def test_whatif_and_findings(client):
+    j = client.get("/api/whatif", params={"load_pu": 1.1, "ambient_C": 40, "cooling": 0.8}).json()
+    assert j["hot_spot_C"] > j["top_oil_C"] > 40 and len(j["curve"]["t_min"]) == len(j["curve"]["top_oil_C"])
+    assert j["start"]["from"] == "cold (ambient)"
+    assert client.get("/api/whatif", params={"load_pu": 5, "ambient_C": 40}).status_code == 422
+    f = client.get("/api/datasets/S5/findings").json()
+    assert f["stress"]["triggered"] and any(g["cause"] == "Short circuit" for g in f["findings"])
+    assert "class" in f["stress"]["last_event"]
+
+
 @pytest.mark.parametrize("dataset_id", IDS)
 def test_frames(client, dataset_id):
     full = api.get_run(dataset_id).trend

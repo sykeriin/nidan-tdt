@@ -89,3 +89,23 @@ export async function uploadDataset(files: File[], estimateRating: boolean): Pro
   }
   return res.json() as Promise<DatasetLoaded>;
 }
+
+export type WhatIf = components["schemas"]["WhatIfModel"];
+export type Findings = components["schemas"]["FindingsModel"];
+export type Finding = components["schemas"]["FindingModel"];
+export interface WhatIfInput { load: number; ambient: number; cooling: number }
+// Simulate: one steady-state answer per slider position (the approach starts from the twin state at `t`).
+export const useWhatIf = (inp: WhatIfInput | null, dataset: string, t: string | null) =>
+  useQuery({
+    queryKey: ["whatif", dataset, t, inp?.load, inp?.ambient, inp?.cooling], enabled: !!inp, staleTime: Infinity,
+    queryFn: () => get<WhatIf>("/whatif", { load_pu: inp!.load, ambient_C: inp!.ambient, cooling: inp!.cooling,
+      dataset_id: dataset, t: t ?? undefined }),
+    placeholderData: (prev) => prev,
+  });
+// Diagnose: findings up to the replay cursor.
+export const useFindings = (dataset: string, t: string | null, enabled: boolean) =>
+  useQuery({
+    queryKey: ["findings", dataset, t], enabled, staleTime: Infinity,
+    queryFn: () => get<Findings>(`/datasets/${dataset}/findings`, { t: t ?? undefined }),
+    placeholderData: (prev) => prev,
+  });

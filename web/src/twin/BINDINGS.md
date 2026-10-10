@@ -144,3 +144,46 @@ Trust badge (presentation of backend flags, `data/fields.ts`):
 
 Colour key: measured values vermilion `#D9480F`, twin values blueprint `#2457A6`, residual ink double-underlined.
 Health colours only in the health stamp.
+
+## Simulate mode (GET /api/whatif, W)
+
+The what-if answer is loaded into the replay clock as a one-row frame (`sheet/Simulate.tsx whatIfFrames`, renaming
+only), so every layer above shows the simulated state through the same bindings:
+
+| Frame column | What-if field |
+|---|---|
+| `load_pu`, `amb_C`, `IR`/`IY`/`IB` | `load_pu`, `ambient_C`, `current_A` |
+| `twin_oil_C`, `twin_hs_C`, `hs_ageing_C` | `top_oil_C`, `hot_spot_C`, `hot_spot_C` |
+| `bottom_oil_C`, `avg_winding_C`, `hs_gradient_K`, `top_oil_ss_C`, `hot_spot_ss_C` | `bottom_oil_C`, `avg_winding_C`, `winding_gradient_K`, `top_oil_C`, `hot_spot_C` |
+| losses, `heat_dissipated_W`, `heat_stored_W`, `oil_flow_intensity`, `radiator_effectiveness`, `tau_*` | same names |
+| `aging_rate` / `days_aged_cum` (life clock, "full cooling") | `ageing_rate_nominal_cooling` |
+| `aging_rate_actual` / `days_aged_actual_cum` (life clock, "this cooling") | `ageing_rate` |
+
+| Element | Field |
+|---|---|
+| Rulers (load 0.3–1.4 pu, ambient 15–50 °C, cooling 50–100 %) | request inputs; start values from the cursor's `load_pu`, `amb_C`, `radiator_effectiveness` |
+| Readout | `hot_spot_C`, `top_oil_C`, `ageing_rate`, `time_to_steady_min`, `hot_spot_nominal_cooling_C`, `ageing_rate_nominal_cooling`, `start.from` |
+| Approach curve | `curve.*`; dashed: `top_oil_C`, `hot_spot_C`; τ: `tau_oil_min`; "steady" mark: `time_to_steady_min` |
+| Life clock (per day) | full turn = 1 × normal ageing, pegged above |
+| SIMULATION stamp | Simulate mode |
+
+## Diagnose mode (GET /api/datasets/{id}/findings?t=, G)
+
+| Element | Field |
+|---|---|
+| Findings panel, grouped by cause | `G.findings[]`: `cause`, `type` (plain name), `severity` / `origin` / `indicative`, `explanation`, `parts`, `count`, `last`, `recommendation.test`, `.urgency`, `.standard_ref` |
+| Numbered markers on parts | finding index on each id in `parts`; marker ring: worst asset `severity` (dashed = sensor only) |
+| Hover a finding | highlights its `parts` |
+| Through-fault stress gauge | `G.stress.qualifying / moderate_limit` (full when `triggered`), `severe_seen`, `cum_i2t_pu2s`, `last_event` |
+
+## Electrical and through-fault layers
+
+| Visual | Field |
+|---|---|
+| Dots running up each LV lead, speed ∝ I / I_rated | `IR`, `IY`, `IB` (F); `params.I_rated_A` (P) |
+| Phase labels, neutral label | `IR`, `IY`, `IB`, `IN` |
+| Winding flash + stamp when the cursor is within 40 min of an event | `R.events.rows[]`: `timestamp`, `peak_pu`, `duration_ms`, `phase` |
+
+## Explain tour
+
+Nine scripted camera poses and captions (`twin/Tour.tsx`), 6.5 s each; presentation only, no data bindings.

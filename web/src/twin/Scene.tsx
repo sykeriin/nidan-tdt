@@ -7,6 +7,8 @@ import { Transformer, TwinContext } from "./Transformer";
 import { AnchorTracker, CalloutLayer, type Anchors, type CalloutData } from "./Callout";
 import { ThermalDriver, ThermalMarkers, TwinGhost } from "./Thermal";
 import { OilFlow } from "./OilFlow";
+import { Electrical, ThroughFaults } from "./Electrical";
+import { CameraTour } from "./Tour";
 import { HeatFlow } from "./HeatFlow";
 import { ALL_ON, type Layers } from "./layers";
 import type { PartId } from "./parts";
@@ -21,7 +23,12 @@ function FitZoom() {
 }
 
 export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = false, meterOnly = false, otiSuspect = false,
-  layers = ALL_ON, ratedW = null, reserveRight = 0, bubbles }: {
+  layers = ALL_ON, ratedW = null, reserveRight = 0, bubbles, bubbleClass, highlight = [], markers = true, iRated = null, events = [] }: {
+  bubbleClass?: Partial<Record<PartId, string>>;
+  highlight?: PartId[];
+  markers?: boolean;
+  iRated?: number | null;
+  events?: { timestamp: string; peak_pu?: number; duration_ms?: number; phase?: string }[]; // hot-spot and residual tags (off in Diagnose, where the finding numbers take their place)
   bubbles?: Partial<Record<PartId, string>>;
   otiSuspect?: boolean;
   layers?: Layers;
@@ -52,14 +59,16 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
     return () => ro.disconnect();
   }, []);
 
-  const active = useMemo(() => new Set<PartId>([...pinned, ...(hovered ? [hovered] : [])]), [pinned, hovered]);
+  const active = useMemo(() => new Set<PartId>([...pinned, ...highlight, ...(hovered ? [hovered] : [])]), [pinned, hovered, highlight]);
   const ctx = useMemo(() => ({
     active,
     onOver: (id: PartId) => setHovered(id),
     onOut: (id: PartId) => setHovered((h) => (h === id ? null : h)),
     onClick: (id: PartId) => setPinned(pinned.includes(id) ? pinned.filter((p) => p !== id) : [...pinned, id]),
   }), [active, pinned, setPinned]);
+  const bubbleKey = Object.keys(bubbles ?? {}).join(",");
   const shown = useMemo(() => [...new Set([...pinned, ...(hovered ? [hovered] : [])])], [pinned, hovered]);
+  const tracked = useMemo(() => [...new Set([...shown, ...(bubbleKey ? bubbleKey.split(",") as PartId[] : [])])], [shown, bubbleKey]);
 
   return (
     <div className="scene" ref={box}>
@@ -80,16 +89,19 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
         {thermal && <>
           {layers.temperature && <ThermalDriver otiSuspect={otiSuspect} />}
           {layers.ghost && <TwinGhost otiSuspect={otiSuspect} />}
-          <ThermalMarkers meterOnly={meterOnly} otiSuspect={otiSuspect} />
+          {markers && <ThermalMarkers meterOnly={meterOnly} otiSuspect={otiSuspect} />}
           {layers.oilflow && <OilFlow cut={cut || active.has("tank")} otiSuspect={otiSuspect} />}
-          {layers.heatflow && <HeatFlow ratedW={ratedW} />}
+          {layers.heatflow && markers && <HeatFlow ratedW={ratedW} />}
+          {layers.electrical && <Electrical iRated={iRated} />}
+          {layers.faults && events.length > 0 && <ThroughFaults events={events} />}
         </>}
-        <AnchorTracker ids={shown} onChange={setAnchors} />
-        <OrbitControls target={[0.1, 1.1, 0]} enableDamping dampingFactor={0.12} minZoom={60} maxZoom={600}
+        <AnchorTracker ids={tracked} onChange={setAnchors} />
+        <CameraTour />
+        <OrbitControls makeDefault target={[0.1, 1.1, 0]} enableDamping dampingFactor={0.12} minZoom={60} maxZoom={600}
           maxPolarAngle={Math.PI * 0.49} />
       </Canvas>
       <CalloutLayer shown={shown} pinned={pinned} anchors={anchors} data={data} width={Math.max(0, dims.w - reserveRight)} height={dims.h}
-        fieldRect={dims.field} sheetRect={dims.sheet} bubbles={bubbles}
+        fieldRect={dims.field} sheetRect={dims.sheet} bubbles={bubbles} bubbleClass={bubbleClass}
         onUnpin={(id) => setPinned(pinned.filter((p) => p !== id))} />
     </div>
   );

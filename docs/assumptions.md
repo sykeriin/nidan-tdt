@@ -151,6 +151,11 @@ cooling fault. A quasi-steady estimate: it lags real changes by about τo. [Assu
 rise; stored heat = losses − heat to air. It is exact at steady state (tested) and a first-order estimate in
 transients. Losses use the placeholder nameplate values (asset.yaml). [Assumed]
 
+**A32. What-if cooling effectiveness k scales the top-oil rise by k^(−x)** (the inverse of A30), leaving the winding
+gradient unchanged (it does not depend on the radiators). The approach curve uses the IEC 60076-7 exponential
+equations with the library's k11 = k21 = 1 (no winding overshoot term). Time to steady state: until top-oil and
+gradient are within 1 K. [Assumed]
+
 ## Weather
 
 **A11. Site point for Transformer-1 weather: Bengaluru city (12.97 N, 77.59 E)**, Open-Meteo archive, cached

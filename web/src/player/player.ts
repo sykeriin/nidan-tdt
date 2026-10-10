@@ -16,6 +16,7 @@ class Player {
   frames: Frames | null = null;
   t = 0;
   playing = false;
+  rev = 0; // bumps whenever new frames are loaded (replay data, or a Simulate result): views re-read values
   speed = 1440; // data-seconds per wall-second
   private idx = 0;
   private indexFns = new Set<Fn>();
@@ -26,6 +27,7 @@ class Player {
   load(f: Frames, t0?: number) {
     this.pause();
     this.frames = f;
+    this.rev++;
     this.t = t0 ?? f.t[0];
     this.idx = -1;
     this.sync(true);
@@ -94,6 +96,7 @@ export const player = new Player();
 
 /** React: re-render when the current sample changes. */
 export function usePlayerIndex(): number {
+  useSyncExternalStore((fn) => player.onIndex(fn), () => player.rev); // new data at the same index re-renders too
   return useSyncExternalStore((fn) => player.onIndex(fn), () => player.index);
 }
 /** React: re-render on play/pause/speed changes (and ticks; use sparingly). */

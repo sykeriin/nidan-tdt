@@ -61,13 +61,14 @@ function zoneOf(px: number, py: number, field: DOMRect | undefined, sheet: DOMRe
   return `${row}${col}`;
 }
 
-export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, height, onUnpin, fieldRect, sheetRect, bubbles = {} }: {
+export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, height, onUnpin, fieldRect, sheetRect, bubbles = {}, bubbleClass = {} }: {
+  bubbleClass?: Partial<Record<PartId, string>>;
   bubbles?: Partial<Record<PartId, string>>; // pinned parts whose detail view is open: a lettered bubble instead of a box
   shown: PartId[]; pinned: PartId[]; anchors: Anchors; data: CalloutData; width: number; height: number;
   onUnpin: (id: PartId) => void; fieldRect?: DOMRect; sheetRect?: DOMRect;
 }) {
   // heights: measured after render (estimate until then), so stacked boxes never overlap
-  const shown = allShown.filter((id) => !bubbles[id]);
+  const shown = allShown.filter((id) => !(bubbles[id] && pinned.includes(id))); // a pinned part with a detail view: bubble only
   const [measured, setMeasured] = useState<Partial<Record<PartId, number>>>({});
   const boxes = useRef(new Map<PartId, HTMLDivElement>());
   const measure = () => {
@@ -120,12 +121,14 @@ export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, he
       <svg className="leaders" width={width} height={height} aria-hidden="true">
         {(Object.keys(bubbles) as PartId[]).filter((id) => anchors[id]).map((id) => {
           const a = anchors[id]!;
+          const label = bubbles[id]!;
+          const w = Math.max(20, 7 * label.length + 10); // one character: a circle; several numbers: a capsule
           return (
-            <g key={`b-${id}`} className="detail-bubble">
+            <g key={`b-${id}`} className={`detail-bubble ${bubbleClass[id] ?? ""}`}>
               <polyline points={`${a.x},${a.y} ${a.x + 16},${a.y - 16}`} />
               <circle cx={a.x} cy={a.y} r={2.8} />
-              <circle cx={a.x + 25} cy={a.y - 25} r={10} className="ring" />
-              <text x={a.x + 25} y={a.y - 21} textAnchor="middle">{bubbles[id]}</text>
+              <rect x={a.x + 15} y={a.y - 35} width={w} height={20} rx={10} className="ring" />
+              <text x={a.x + 15 + w / 2} y={a.y - 21} textAnchor="middle">{label}</text>
             </g>
           );
         })}

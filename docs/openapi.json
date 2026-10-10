@@ -770,6 +770,215 @@
     }
    }
   },
+  "/api/whatif": {
+   "get": {
+    "tags": [
+     "simulate"
+    ],
+    "summary": "Whatif",
+    "description": "api.whatif() \u2014 steady state, ageing, time to steady state and the approach curve.",
+    "operationId": "whatif_api_whatif_get",
+    "parameters": [
+     {
+      "name": "load_pu",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "number",
+       "maximum": 2,
+       "minimum": 0,
+       "title": "Load Pu"
+      }
+     },
+     {
+      "name": "ambient_C",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "number",
+       "maximum": 60,
+       "minimum": -10,
+       "title": "Ambient C"
+      }
+     },
+     {
+      "name": "cooling",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.5,
+       "minimum": 0.05,
+       "description": "1 = radiators as designed",
+       "default": 1.0,
+       "title": "Cooling"
+      },
+      "description": "1 = radiators as designed"
+     },
+     {
+      "name": "dataset_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "use this dataset's asset",
+       "title": "Dataset Id"
+      },
+      "description": "use this dataset's asset"
+     },
+     {
+      "name": "t",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "start the approach from the twin state at t",
+       "title": "T"
+      },
+      "description": "start the approach from the twin state at t"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WhatIfModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/findings": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Findings",
+    "description": "api.findings() \u2014 findings on parts grouped by CPRI cause, recommendations, through-fault stress.",
+    "operationId": "findings_api_datasets__dataset_id__findings_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "t",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "findings up to t; omit = whole run",
+       "title": "T"
+      },
+      "description": "findings up to t; omit = whole run"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FindingsModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
   "/api/self-test": {
    "get": {
     "tags": [
@@ -1227,6 +1436,38 @@
     "title": "ComponentsModel",
     "description": "Per-part view at one instant; part ids match web/src/twin/parts.ts."
    },
+   "CurveModel": {
+    "properties": {
+     "t_min": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "T Min"
+     },
+     "top_oil_C": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Top Oil C"
+     },
+     "hot_spot_C": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Hot Spot C"
+     }
+    },
+    "type": "object",
+    "required": [
+     "t_min",
+     "top_oil_C",
+     "hot_spot_C"
+    ],
+    "title": "CurveModel"
+   },
    "DatasetInfoModel": {
     "properties": {
      "dataset_id": {
@@ -1459,6 +1700,143 @@
     ],
     "title": "ErrorModel"
    },
+   "FindingModel": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "type": {
+      "type": "string",
+      "title": "Type"
+     },
+     "origin": {
+      "type": "string",
+      "title": "Origin"
+     },
+     "severity": {
+      "type": "string",
+      "title": "Severity"
+     },
+     "cause": {
+      "type": "string",
+      "title": "Cause",
+      "description": "CPRI cause group: Overloading | Insulation | Short circuit | Supply and connections | Oil | Sensors and data"
+     },
+     "module": {
+      "type": "string",
+      "title": "Module"
+     },
+     "parts": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Parts"
+     },
+     "count": {
+      "type": "integer",
+      "title": "Count"
+     },
+     "first": {
+      "type": "string",
+      "format": "date-time",
+      "title": "First"
+     },
+     "last": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last"
+     },
+     "explanation": {
+      "type": "string",
+      "title": "Explanation"
+     },
+     "indicative": {
+      "type": "boolean",
+      "title": "Indicative",
+      "description": "severity info: shown, not counted (A27)"
+     },
+     "recommendation": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/RecommendationBrief"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "type",
+     "origin",
+     "severity",
+     "cause",
+     "module",
+     "parts",
+     "count",
+     "first",
+     "last",
+     "explanation",
+     "indicative",
+     "recommendation"
+    ],
+    "title": "FindingModel"
+   },
+   "FindingsModel": {
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "title": "Dataset Id"
+     },
+     "timestamp": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Timestamp"
+     },
+     "causes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Causes"
+     },
+     "findings": {
+      "items": {
+       "$ref": "#/components/schemas/FindingModel"
+      },
+      "type": "array",
+      "title": "Findings"
+     },
+     "stress": {
+      "$ref": "#/components/schemas/StressModel"
+     },
+     "simulated": {
+      "type": "boolean",
+      "title": "Simulated"
+     }
+    },
+    "type": "object",
+    "required": [
+     "dataset_id",
+     "timestamp",
+     "causes",
+     "findings",
+     "stress",
+     "simulated"
+    ],
+    "title": "FindingsModel"
+   },
    "FramesModel": {
     "properties": {
      "dataset_id": {
@@ -1581,6 +1959,35 @@
      "warnings"
     ],
     "title": "InspectResultModel"
+   },
+   "LastEventModel": {
+    "properties": {
+     "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Timestamp"
+     },
+     "peak_pu": {
+      "type": "number",
+      "title": "Peak Pu"
+     },
+     "duration_ms": {
+      "type": "number",
+      "title": "Duration Ms"
+     },
+     "class": {
+      "type": "string",
+      "title": "Class"
+     }
+    },
+    "type": "object",
+    "required": [
+     "timestamp",
+     "peak_pu",
+     "duration_ms",
+     "class"
+    ],
+    "title": "LastEventModel"
    },
    "PartAlertModel": {
     "properties": {
@@ -1759,6 +2166,48 @@
      "recent_rate"
     ],
     "title": "RULModel"
+   },
+   "RecommendationBrief": {
+    "properties": {
+     "action": {
+      "type": "string",
+      "title": "Action"
+     },
+     "test": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Test"
+     },
+     "urgency": {
+      "type": "string",
+      "title": "Urgency"
+     },
+     "standard_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Standard Ref"
+     }
+    },
+    "type": "object",
+    "required": [
+     "action",
+     "test",
+     "urgency",
+     "standard_ref"
+    ],
+    "title": "RecommendationBrief"
    },
    "RecommendationModel": {
     "properties": {
@@ -2070,6 +2519,65 @@
     ],
     "title": "StateAtModel"
    },
+   "StressModel": {
+    "properties": {
+     "events": {
+      "type": "integer",
+      "title": "Events"
+     },
+     "moderate_pu": {
+      "type": "number",
+      "title": "Moderate Pu"
+     },
+     "severe_pu": {
+      "type": "number",
+      "title": "Severe Pu"
+     },
+     "moderate_limit": {
+      "type": "integer",
+      "title": "Moderate Limit"
+     },
+     "qualifying": {
+      "type": "integer",
+      "title": "Qualifying"
+     },
+     "severe_seen": {
+      "type": "boolean",
+      "title": "Severe Seen"
+     },
+     "triggered": {
+      "type": "boolean",
+      "title": "Triggered"
+     },
+     "cum_i2t_pu2s": {
+      "type": "number",
+      "title": "Cum I2T Pu2S"
+     },
+     "last_event": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/LastEventModel"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "events",
+     "moderate_pu",
+     "severe_pu",
+     "moderate_limit",
+     "qualifying",
+     "severe_seen",
+     "triggered",
+     "cum_i2t_pu2s",
+     "last_event"
+    ],
+    "title": "StressModel"
+   },
    "TableModel": {
     "properties": {
      "columns": {
@@ -2223,6 +2731,180 @@
      "source"
     ],
     "title": "ValueModel"
+   },
+   "WhatIfModel": {
+    "properties": {
+     "load_pu": {
+      "type": "number",
+      "title": "Load Pu"
+     },
+     "ambient_C": {
+      "type": "number",
+      "title": "Ambient C"
+     },
+     "cooling": {
+      "type": "number",
+      "title": "Cooling"
+     },
+     "current_A": {
+      "type": "number",
+      "title": "Current A"
+     },
+     "top_oil_C": {
+      "type": "number",
+      "title": "Top Oil C"
+     },
+     "hot_spot_C": {
+      "type": "number",
+      "title": "Hot Spot C"
+     },
+     "bottom_oil_C": {
+      "type": "number",
+      "title": "Bottom Oil C"
+     },
+     "avg_winding_C": {
+      "type": "number",
+      "title": "Avg Winding C"
+     },
+     "winding_gradient_K": {
+      "type": "number",
+      "title": "Winding Gradient K"
+     },
+     "hot_spot_factor": {
+      "type": "number",
+      "title": "Hot Spot Factor"
+     },
+     "losses_noload_W": {
+      "type": "number",
+      "title": "Losses Noload W"
+     },
+     "losses_load_W": {
+      "type": "number",
+      "title": "Losses Load W"
+     },
+     "losses_total_W": {
+      "type": "number",
+      "title": "Losses Total W"
+     },
+     "heat_dissipated_W": {
+      "type": "number",
+      "title": "Heat Dissipated W"
+     },
+     "heat_stored_W": {
+      "type": "number",
+      "title": "Heat Stored W"
+     },
+     "oil_flow_intensity": {
+      "type": "number",
+      "title": "Oil Flow Intensity"
+     },
+     "radiator_effectiveness": {
+      "type": "number",
+      "title": "Radiator Effectiveness"
+     },
+     "tau_oil_min": {
+      "type": "number",
+      "title": "Tau Oil Min"
+     },
+     "tau_winding_min": {
+      "type": "number",
+      "title": "Tau Winding Min"
+     },
+     "ageing_rate": {
+      "type": "number",
+      "title": "Ageing Rate"
+     },
+     "ageing_rate_nominal_cooling": {
+      "type": "number",
+      "title": "Ageing Rate Nominal Cooling",
+      "description": "same load and ambient with radiators as designed"
+     },
+     "hot_spot_nominal_cooling_C": {
+      "type": "number",
+      "title": "Hot Spot Nominal Cooling C"
+     },
+     "time_to_steady_min": {
+      "type": "number",
+      "title": "Time To Steady Min",
+      "description": "until top-oil and gradient are within 1 K of steady state"
+     },
+     "curve": {
+      "$ref": "#/components/schemas/CurveModel"
+     },
+     "start": {
+      "$ref": "#/components/schemas/WhatIfStartModel"
+     },
+     "params": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Params"
+     },
+     "estimated": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Estimated",
+      "description": "fields that rest on IEC typical values or placeholder losses"
+     }
+    },
+    "type": "object",
+    "required": [
+     "load_pu",
+     "ambient_C",
+     "cooling",
+     "current_A",
+     "top_oil_C",
+     "hot_spot_C",
+     "bottom_oil_C",
+     "avg_winding_C",
+     "winding_gradient_K",
+     "hot_spot_factor",
+     "losses_noload_W",
+     "losses_load_W",
+     "losses_total_W",
+     "heat_dissipated_W",
+     "heat_stored_W",
+     "oil_flow_intensity",
+     "radiator_effectiveness",
+     "tau_oil_min",
+     "tau_winding_min",
+     "ageing_rate",
+     "ageing_rate_nominal_cooling",
+     "hot_spot_nominal_cooling_C",
+     "time_to_steady_min",
+     "curve",
+     "start",
+     "params",
+     "estimated"
+    ],
+    "title": "WhatIfModel",
+    "description": "Steady state at a load, ambient and cooling effectiveness, plus the approach curve (Simulate mode)."
+   },
+   "WhatIfStartModel": {
+    "properties": {
+     "top_oil_C": {
+      "type": "number",
+      "title": "Top Oil C"
+     },
+     "gradient_K": {
+      "type": "number",
+      "title": "Gradient K"
+     },
+     "from": {
+      "type": "string",
+      "title": "From"
+     }
+    },
+    "type": "object",
+    "required": [
+     "top_oil_C",
+     "gradient_K",
+     "from"
+    ],
+    "title": "WhatIfStartModel"
    }
   }
  }

@@ -213,6 +213,100 @@ class ComponentsModel(BaseModel):
     simulated: bool
 
 
+class CurveModel(BaseModel):
+    t_min: list[float]
+    top_oil_C: list[float]
+    hot_spot_C: list[float]
+
+
+class WhatIfStartModel(BaseModel):
+    top_oil_C: float
+    gradient_K: float
+    from_: str = Field(alias="from")
+
+
+class WhatIfModel(BaseModel):
+    """Steady state at a load, ambient and cooling effectiveness, plus the approach curve (Simulate mode)."""
+    load_pu: float
+    ambient_C: float
+    cooling: float
+    current_A: float
+    top_oil_C: float
+    hot_spot_C: float
+    bottom_oil_C: float
+    avg_winding_C: float
+    winding_gradient_K: float
+    hot_spot_factor: float
+    losses_noload_W: float
+    losses_load_W: float
+    losses_total_W: float
+    heat_dissipated_W: float
+    heat_stored_W: float
+    oil_flow_intensity: float
+    radiator_effectiveness: float
+    tau_oil_min: float
+    tau_winding_min: float
+    ageing_rate: float
+    ageing_rate_nominal_cooling: float = Field(description="same load and ambient with radiators as designed")
+    hot_spot_nominal_cooling_C: float
+    time_to_steady_min: float = Field(description="until top-oil and gradient are within 1 K of steady state")
+    curve: CurveModel
+    start: WhatIfStartModel
+    params: dict[str, float]
+    estimated: list[str] = Field(description="fields that rest on IEC typical values or placeholder losses")
+
+
+class RecommendationBrief(BaseModel):
+    action: str
+    test: str | None
+    urgency: str
+    standard_ref: str | None
+
+
+class FindingModel(BaseModel):
+    id: str
+    type: str
+    origin: str
+    severity: str
+    cause: str = Field(description="CPRI cause group: Overloading | Insulation | Short circuit | Supply and connections | Oil | Sensors and data")
+    module: str
+    parts: list[str]
+    count: int
+    first: datetime
+    last: datetime
+    explanation: str
+    indicative: bool = Field(description="severity info: shown, not counted (A27)")
+    recommendation: RecommendationBrief | None
+
+
+class LastEventModel(BaseModel):
+    timestamp: datetime
+    peak_pu: float
+    duration_ms: float
+    class_: str = Field(alias="class")
+
+
+class StressModel(BaseModel):
+    events: int
+    moderate_pu: float
+    severe_pu: float
+    moderate_limit: int
+    qualifying: int
+    severe_seen: bool
+    triggered: bool
+    cum_i2t_pu2s: float
+    last_event: LastEventModel | None
+
+
+class FindingsModel(BaseModel):
+    dataset_id: str
+    timestamp: datetime | None
+    causes: list[str]
+    findings: list[FindingModel]
+    stress: StressModel
+    simulated: bool
+
+
 class StateAtModel(BaseModel):
     timestamp: datetime
     row: dict[str, Any]

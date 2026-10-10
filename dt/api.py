@@ -10,6 +10,8 @@
     frames(dataset_id, fields, start, end)  -> DataFrame          (full-resolution aligned columns for replay)
     thermal_profile(dataset_id, t)          -> dict               (IEC 60076-7 thermal diagram + heat flow at t)
     components(dataset_id, t)               -> dict               (per-part quantities, live equations, findings)
+    whatif(load_pu, ambient_C, cooling, ...) -> dict              (steady state + approach curve; Simulate mode)
+    findings(dataset_id, t)                 -> dict               (findings on parts by CPRI cause; Diagnose mode)
     snapshot_table(dataset_id)              -> DataFrame          (records ranked worst health first)
     report_pdf(dataset_id)                  -> bytes              (stub: final signature, not built yet)
 
@@ -473,6 +475,85 @@ def components(dataset_id: str, t) -> dict:
                            run.analysis.recommendations, oti_suspect=oti_suspect)
     return {"dataset_id": dataset_id, "timestamp": ts, "mode": run.mode, "parts": parts,
             "simulated": bool(row.get("simulated", False))}
+
+
+CAUSES = {  # alert module -> CPRI cause group (the three causes first), in display order
+    "overloading": "Overloading", "insulation": "Insulation", "short_circuit": "Short circuit",
+    "electrical": "Supply and connections", "oil": "Oil", "moisture": "Oil", "data": "Sensors and data"}
+
+
+def whatif(load_pu: float, ambient_C: float, cooling: float = 1.0, dataset_id: str | None = None, t=None) -> dict:
+    """Steady state of the twin at a load, ambient and cooling effectiveness (twin/profile.py whatif).
+
+    With dataset_id: that dataset's asset (rating, losses). With dataset_id and t: the approach starts from the
+    twin's state at t (top-oil and winding gradient), else from cold (ambient)."""
+    if not 0 <= load_pu <= 2:
+        raise ValueError("load_pu must be within 0-2")
+    if not -10 <= ambient_C <= 60:
+        raise ValueError("ambient_C must be within -10..60")
+    if not 0.05 <= cooling <= 1.5:
+        raise ValueError("cooling must be within 0.05-1.5 (1 = radiators as designed)")
+    start_top = start_grad = None
+    if dataset_id is not None:
+        run = get_run(dataset_id)
+        p = _params(run)
+        if t is not None and run.mode != "snapshot":
+            row = run.trend.iloc[_index_at(run, t)]
+            if pd.notna(row.get("twin_oil_C")) and pd.notna(row.get("twin_hs_C")):
+                start_top, start_grad = float(row["twin_oil_C"]), float(row["twin_hs_C"] - row["twin_oil_C"])
+    else:
+        a = adapter.enrich.resolve_asset("config/asset.yaml")
+        p = profile_mod.params(profile_mod.specs_for(a), float(twin_config()["bottom_oil_ratio"]))
+    out = profile_mod.whatif(p, float(load_pu), float(ambient_C), float(cooling), start_top, start_grad)
+    out["params"] = p
+    out["estimated"] = sorted(k for k, (_, est) in profile_mod.COLUMNS.items() if est)
+    return out
+
+
+def findings(dataset_id: str, t=None) -> dict:
+    """Findings up to t (default: the whole run), one per alert type and part set (the latest, with a count),
+    grouped by CPRI cause, each with the parts it is drawn on and its recommendation; plus the through-fault
+    stress state (cumulative I2t, qualifying events vs the %X-test rule)."""
+    from analytics import through_fault
+    run = get_run(dataset_id)
+    ts_end = None
+    if t is not None:
+        ts_end = pd.Timestamp(t)
+        ts_end = ts_end.tz_localize(TZ) if ts_end.tzinfo is None else ts_end
+    alerts = [a for a in run.analysis.alerts if ts_end is None or a.timestamp <= ts_end]
+    recs = {r.alert_id: r for r in run.analysis.recommendations}
+    groups: dict[tuple, dict] = {}
+    for a in sorted(alerts, key=lambda a: a.timestamp):
+        parts = comp_mod.parts_for_alert(a)
+        key = (a.type, a.origin, parts)
+        g = groups.setdefault(key, {"type": a.type, "origin": a.origin, "parts": list(parts), "count": 0,
+                                    "first": a.timestamp, "cause": CAUSES.get(a.module, a.module)})
+        r = recs.get(a.id)
+        g.update(count=g["count"] + 1, id=a.id, last=a.timestamp, severity=a.severity, explanation=a.explanation,
+                 module=a.module, indicative=a.severity == "info",
+                 recommendation=None if r is None else {"action": r.action, "test": r.test, "urgency": r.urgency,
+                                                         "standard_ref": r.standard_ref})
+    order = list(dict.fromkeys(CAUSES.values()))
+    sev = {"critical": 0, "warning": 1, "info": 2}
+    items = sorted(groups.values(), key=lambda g: (order.index(g["cause"]) if g["cause"] in order else 99,
+                                                   g["origin"] == "sensor", sev.get(g["severity"], 3), g["last"]))
+    th = load_thresholds(asset=run.asset)["operating"]["through_fault"]
+    ev = run.events
+    if len(ev) and ts_end is not None:
+        ev = ev[pd.to_datetime(ev["timestamp"]) <= ts_end]
+    st = through_fault.stress_table(ev, load_thresholds(asset=run.asset)) if len(ev) else pd.DataFrame()
+    last = st.iloc[-1] if len(st) else None
+    stress = {"events": int(len(st)), "moderate_pu": th["moderate_pu"], "severe_pu": th["severe_pu"],
+              "moderate_limit": int(th["moderate_count"]),
+              "qualifying": 0 if last is None else int(last["moderate_count_since_reset"]),
+              "severe_seen": bool(len(st) and (st["severity_class"] == "severe").any()),
+              "triggered": bool(last is not None and last["triggered"]),
+              "cum_i2t_pu2s": 0.0 if last is None else float(last["cum_i2t_pu2s"]),
+              "last_event": None if last is None else {"timestamp": last["timestamp"], "peak_pu": float(last["peak_pu"]),
+                                                       "duration_ms": float(last["duration_ms"]),
+                                                       "class": str(last["severity_class"])}}
+    return {"dataset_id": dataset_id, "timestamp": ts_end, "causes": order, "findings": items, "stress": stress,
+            "simulated": bool(run.trend["simulated"].any()) if "simulated" in run.trend else False}
 
 
 def snapshot_table(dataset_id: str) -> pd.DataFrame:

@@ -81,7 +81,7 @@ export function ThermalMarkers({ meterOnly, otiSuspect }: { meterOnly: boolean; 
     const amps = (["R", "Y", "B"] as const).map((p) => num(player.value(`I${p}`, i)) ?? -1);
     const ph = (["R", "Y", "B"] as const)[amps.indexOf(Math.max(...amps))];
     if (marker.current) marker.current.position.set(LIMBS[ph], 1.25, 0.2);
-    const key = `${i}|${ph}`;
+    const key = `${player.rev}|${i}|${ph}`;
     if (key === last.current || !hs.current || !tag.current) return; // Html children mount after the first frames
     last.current = key;
     if (hs.current) {

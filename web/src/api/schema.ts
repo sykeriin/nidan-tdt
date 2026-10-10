@@ -168,6 +168,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/whatif": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whatif
+         * @description api.whatif() — steady state, ageing, time to steady state and the approach curve.
+         */
+        get: operations["whatif_api_whatif_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/datasets/{dataset_id}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Findings
+         * @description api.findings() — findings on parts grouped by CPRI cause, recommendations, through-fault stress.
+         */
+        get: operations["findings_api_datasets__dataset_id__findings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/self-test": {
         parameters: {
             query?: never;
@@ -358,6 +398,15 @@ export interface components {
             /** Simulated */
             simulated: boolean;
         };
+        /** CurveModel */
+        CurveModel: {
+            /** T Min */
+            t_min: number[];
+            /** Top Oil C */
+            top_oil_C: number[];
+            /** Hot Spot C */
+            hot_spot_C: number[];
+        };
         /** DatasetInfoModel */
         DatasetInfoModel: {
             /** Dataset Id */
@@ -436,6 +485,60 @@ export interface components {
             /** Detail */
             detail: string;
         };
+        /** FindingModel */
+        FindingModel: {
+            /** Id */
+            id: string;
+            /** Type */
+            type: string;
+            /** Origin */
+            origin: string;
+            /** Severity */
+            severity: string;
+            /**
+             * Cause
+             * @description CPRI cause group: Overloading | Insulation | Short circuit | Supply and connections | Oil | Sensors and data
+             */
+            cause: string;
+            /** Module */
+            module: string;
+            /** Parts */
+            parts: string[];
+            /** Count */
+            count: number;
+            /**
+             * First
+             * Format: date-time
+             */
+            first: string;
+            /**
+             * Last
+             * Format: date-time
+             */
+            last: string;
+            /** Explanation */
+            explanation: string;
+            /**
+             * Indicative
+             * @description severity info: shown, not counted (A27)
+             */
+            indicative: boolean;
+            recommendation: components["schemas"]["RecommendationBrief"] | null;
+        };
+        /** FindingsModel */
+        FindingsModel: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Timestamp */
+            timestamp: string | null;
+            /** Causes */
+            causes: string[];
+            /** Findings */
+            findings: components["schemas"]["FindingModel"][];
+            stress: components["schemas"]["StressModel"];
+            /** Simulated */
+            simulated: boolean;
+        };
         /**
          * FramesModel
          * @description Full-resolution, time-aligned columns (not downsampled): one list per field, same length as timestamp.
@@ -495,6 +598,20 @@ export interface components {
             preview: components["schemas"]["TableModel"];
             /** Warnings */
             warnings: string[];
+        };
+        /** LastEventModel */
+        LastEventModel: {
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Peak Pu */
+            peak_pu: number;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Class */
+            class: string;
         };
         /** PartAlertModel */
         PartAlertModel: {
@@ -571,6 +688,17 @@ export interface components {
             consumed_days: number;
             /** Recent Rate */
             recent_rate: number;
+        };
+        /** RecommendationBrief */
+        RecommendationBrief: {
+            /** Action */
+            action: string;
+            /** Test */
+            test: string | null;
+            /** Urgency */
+            urgency: string;
+            /** Standard Ref */
+            standard_ref: string | null;
         };
         /** RecommendationModel */
         RecommendationModel: {
@@ -693,6 +821,26 @@ export interface components {
             /** Simulated */
             simulated: boolean;
         };
+        /** StressModel */
+        StressModel: {
+            /** Events */
+            events: number;
+            /** Moderate Pu */
+            moderate_pu: number;
+            /** Severe Pu */
+            severe_pu: number;
+            /** Moderate Limit */
+            moderate_limit: number;
+            /** Qualifying */
+            qualifying: number;
+            /** Severe Seen */
+            severe_seen: boolean;
+            /** Triggered */
+            triggered: boolean;
+            /** Cum I2T Pu2S */
+            cum_i2t_pu2s: number;
+            last_event: components["schemas"]["LastEventModel"] | null;
+        };
         /** TableModel */
         TableModel: {
             /** Columns */
@@ -761,6 +909,84 @@ export interface components {
              * @description measured | twin | model
              */
             source: string;
+        };
+        /**
+         * WhatIfModel
+         * @description Steady state at a load, ambient and cooling effectiveness, plus the approach curve (Simulate mode).
+         */
+        WhatIfModel: {
+            /** Load Pu */
+            load_pu: number;
+            /** Ambient C */
+            ambient_C: number;
+            /** Cooling */
+            cooling: number;
+            /** Current A */
+            current_A: number;
+            /** Top Oil C */
+            top_oil_C: number;
+            /** Hot Spot C */
+            hot_spot_C: number;
+            /** Bottom Oil C */
+            bottom_oil_C: number;
+            /** Avg Winding C */
+            avg_winding_C: number;
+            /** Winding Gradient K */
+            winding_gradient_K: number;
+            /** Hot Spot Factor */
+            hot_spot_factor: number;
+            /** Losses Noload W */
+            losses_noload_W: number;
+            /** Losses Load W */
+            losses_load_W: number;
+            /** Losses Total W */
+            losses_total_W: number;
+            /** Heat Dissipated W */
+            heat_dissipated_W: number;
+            /** Heat Stored W */
+            heat_stored_W: number;
+            /** Oil Flow Intensity */
+            oil_flow_intensity: number;
+            /** Radiator Effectiveness */
+            radiator_effectiveness: number;
+            /** Tau Oil Min */
+            tau_oil_min: number;
+            /** Tau Winding Min */
+            tau_winding_min: number;
+            /** Ageing Rate */
+            ageing_rate: number;
+            /**
+             * Ageing Rate Nominal Cooling
+             * @description same load and ambient with radiators as designed
+             */
+            ageing_rate_nominal_cooling: number;
+            /** Hot Spot Nominal Cooling C */
+            hot_spot_nominal_cooling_C: number;
+            /**
+             * Time To Steady Min
+             * @description until top-oil and gradient are within 1 K of steady state
+             */
+            time_to_steady_min: number;
+            curve: components["schemas"]["CurveModel"];
+            start: components["schemas"]["WhatIfStartModel"];
+            /** Params */
+            params: {
+                [key: string]: number;
+            };
+            /**
+             * Estimated
+             * @description fields that rest on IEC typical values or placeholder losses
+             */
+            estimated: string[];
+        };
+        /** WhatIfStartModel */
+        WhatIfStartModel: {
+            /** Top Oil C */
+            top_oil_C: number;
+            /** Gradient K */
+            gradient_K: number;
+            /** From */
+            from: string;
         };
     };
     responses: never;
@@ -1187,6 +1413,114 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComponentsModel"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    whatif_api_whatif_get: {
+        parameters: {
+            query: {
+                load_pu: number;
+                ambient_C: number;
+                /** @description 1 = radiators as designed */
+                cooling?: number;
+                /** @description use this dataset's asset */
+                dataset_id?: string | null;
+                /** @description start the approach from the twin state at t */
+                t?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatIfModel"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    findings_api_datasets__dataset_id__findings_get: {
+        parameters: {
+            query?: {
+                /** @description findings up to t; omit = whole run */
+                t?: string | null;
+            };
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingsModel"];
                 };
             };
             /** @description Bad Request */

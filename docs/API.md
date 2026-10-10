@@ -256,6 +256,28 @@ Per-part view for the 3D callouts and detail panels (`dt/components.py`; part id
 - alerts: active in the last 24 h, mapped to parts by type (asset findings) or by channel (sensor faults).
 - `verdict` (oti only): `inside`, `above` (hotter than a healthy unit: cooling fault or sensor) or `suspect`.
 
+### `whatif(load_pu, ambient_C, cooling, dataset_id, t)` / `GET /api/whatif?load_pu=&ambient_C=&cooling=&dataset_id=&t=`
+
+Steady state of the twin at a load (0–2 pu), ambient (−10–60 °C) and cooling effectiveness (0.05–1.5; 1 = radiators as
+designed). `dataset_id` picks that dataset's asset (rating, losses); with `t` the approach starts from the twin's state
+there, else from cold (ambient). About 10 ms.
+
+Returns the thermal-profile fields at steady state (`top_oil_C`, `hot_spot_C`, `bottom_oil_C`, `avg_winding_C`,
+`winding_gradient_K`, losses, `heat_dissipated_W` = losses, `heat_stored_W` = 0, `oil_flow_intensity`,
+`radiator_effectiveness` = cooling, `tau_*`), `current_A`, `ageing_rate` and, for comparison, `ageing_rate_nominal_cooling`
+/ `hot_spot_nominal_cooling_C` (same load and ambient with full cooling), `time_to_steady_min` (top-oil and gradient
+within 1 K), `curve {t_min[], top_oil_C[], hot_spot_C[]}` (IEC 60076-7 exponential approach), `start`, `params` and
+`estimated` (the field names that rest on estimates). Reduced cooling scales the top-oil rise by cooling^(−x) (A32).
+
+### `findings(dataset_id, t)` / `GET /api/datasets/{id}/findings?t=`
+
+Findings up to `t` (omit = whole run): one per alert type, origin and part set (the latest, with `count`, `first`,
+`last`), ordered by CPRI cause (`Overloading`, `Insulation`, `Short circuit`, then `Supply and connections`, `Oil`,
+`Sensors and data`), asset findings before sensor findings. Each carries `parts` (ids of `web/src/twin/parts.ts`),
+`severity`, `indicative` (A27), `explanation` and `recommendation {action, test, urgency, standard_ref}`.
+`stress`: through-fault state up to `t` (`events`, `qualifying` vs `moderate_limit`, `severe_seen`, `triggered`,
+`cum_i2t_pu2s`, `last_event`) for the %X-test gauge.
+
 ### `self_test()` / `GET /api/self-test`
 
 This is the self-test panel in CPRI's Excel format (`docs/reference/Draft Data for Condition Monitoring.xlsx`).

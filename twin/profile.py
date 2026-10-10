@@ -111,3 +111,46 @@ def _radiator(trend: pd.DataFrame, twin_rise: np.ndarray, p: dict) -> np.ndarray
     k[use] = (twin_rise[use] / meas_rise[use]) ** (1 / p["x"])
     s = pd.Series(k, index=pd.DatetimeIndex(trend["timestamp"]))
     return np.clip(s.rolling(RADIATOR_WINDOW, min_periods=1).median().to_numpy(), 0, 1.5)
+
+
+def whatif(p: dict, K: float, amb: float, cooling: float, start_top: float | None = None,
+           start_grad: float | None = None, settle_K: float = 1.0, points: int = 61) -> dict:
+    """Steady state at load K (pu), ambient (°C) and cooling effectiveness (1 = radiators as designed).
+
+    Reduced cooling scales the top-oil rise by cooling^(−x) (inverse of A30's k); the winding gradient does not
+    depend on the radiators. The approach from a start state uses the IEC 60076-7 exponential equations with the
+    library's k11 = k21 = 1: θo(t) = θo,ss + (θo,0 − θo,ss)·e^(−t/τo), gradient likewise with τw.
+    time_to_steady_min: until both are within settle_K of steady state (3·τo from cold when no start is given).
+    """
+    from twin import ageing
+    k = min(1.5, max(0.05, float(cooling)))
+    rise_nom = p["d_theta_or_K"] * ((1 + p["R"] * K ** 2) / (1 + p["R"])) ** p["x"]
+    rise = rise_nom * k ** (-p["x"])
+    grad = p["H"] * p["gr_K"] * K ** p["y"]
+    top, hs = amb + rise, amb + rise + grad
+    hs_nom = amb + rise_nom + grad
+    v, v_nom = (float(x) for x in ageing.rate([hs, hs_nom]))
+    losses = p["P0_W"] + p["Pk_W"] * K ** 2
+    bottom = amb + p["beta_bottom"] * rise
+    avg_w = (top + bottom) / 2 + p["gr_K"] * K ** p["y"]
+    t0, g0 = (amb, 0.0) if start_top is None else (float(start_top), float(start_grad or 0.0))
+    to, tw = p["tau_oil_min"], p["tau_winding_min"]
+    need_o = to * np.log(abs(t0 - top) / settle_K) if abs(t0 - top) > settle_K else 0.0
+    need_w = tw * np.log(abs(g0 - grad) / settle_K) if abs(g0 - grad) > settle_K else 0.0
+    t_settle = max(need_o, need_w)
+    tt = np.linspace(0, max(4 * to, t_settle * 1.1), points)
+    top_t = top + (t0 - top) * np.exp(-tt / to)
+    hs_t = top_t + grad + (g0 - grad) * np.exp(-tt / tw)
+    return {
+        "load_pu": K, "ambient_C": amb, "cooling": k, "current_A": K * p["I_rated_A"],
+        "top_oil_C": top, "hot_spot_C": hs, "bottom_oil_C": bottom, "avg_winding_C": avg_w,
+        "winding_gradient_K": grad, "hot_spot_factor": p["H"],
+        "losses_noload_W": p["P0_W"], "losses_load_W": p["Pk_W"] * K ** 2, "losses_total_W": losses,
+        "heat_dissipated_W": losses, "heat_stored_W": 0.0,
+        "oil_flow_intensity": float(flow_intensity(p, losses)), "radiator_effectiveness": k,
+        "tau_oil_min": to, "tau_winding_min": tw,
+        "ageing_rate": v, "ageing_rate_nominal_cooling": v_nom, "hot_spot_nominal_cooling_C": hs_nom,
+        "time_to_steady_min": float(t_settle),
+        "curve": {"t_min": tt.tolist(), "top_oil_C": top_t.tolist(), "hot_spot_C": hs_t.tolist()},
+        "start": {"top_oil_C": t0, "gradient_K": g0, "from": "cold (ambient)" if start_top is None else "twin state"},
+    }

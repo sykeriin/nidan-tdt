@@ -165,6 +165,43 @@ def test_components_findings_on_parts():
     assert any(a["id"].endswith("-OTI_C") for a in k["parts"]["oti"]["alerts"])
 
 
+def test_whatif_matches_twin_steady_state():
+    """At cooling 1 the what-if steady state equals the twin's own steady state (profile columns)."""
+    from twin import profile
+    from twin.engine import TwinEngine
+    eng = TwinEngine()
+    ts = pd.date_range("2026-04-01", periods=3 * 96, freq="15min", tz="Asia/Kolkata")
+    res = eng.run(pd.DataFrame({"timestamp": ts, "I_mean": 0.9 * eng.i_rated, "amb_C": 33.0}))
+    w = api.whatif(0.9, 33.0, 1.0)
+    assert w["top_oil_C"] == pytest.approx(res["twin_oil_C"].iloc[-1], abs=0.05)
+    assert w["hot_spot_C"] == pytest.approx(res["twin_hs_C"].iloc[-1], abs=0.05)
+    assert w["ageing_rate"] == pytest.approx(2 ** ((w["hot_spot_C"] - 98) / 6), rel=1e-3)
+    assert w["heat_stored_W"] == 0 and w["heat_dissipated_W"] == w["losses_total_W"]
+
+
+def test_whatif_cooling_and_start():
+    good, weak = api.whatif(0.8, 30, 1.0), api.whatif(0.8, 30, 0.6)
+    assert weak["top_oil_C"] > good["top_oil_C"] and weak["winding_gradient_K"] == good["winding_gradient_K"]
+    assert weak["ageing_rate"] > weak["ageing_rate_nominal_cooling"] == pytest.approx(good["ageing_rate"])
+    c = good["curve"]
+    assert c["top_oil_C"][0] == pytest.approx(30) and abs(c["top_oil_C"][-1] - good["top_oil_C"]) < 1.0
+    w = api.whatif(0.74, 36.4, 1.0, "S2", "2026-04-27T15:00")
+    assert w["start"]["from"] == "twin state" and 0 < w["time_to_steady_min"] < 4 * 180
+    with pytest.raises(ValueError):
+        api.whatif(0.8, 30, 0.0)
+
+
+def test_findings_groups_and_parts():
+    f = api.findings("S2", "2026-04-28T00:00")
+    causes = {g["cause"] for g in f["findings"]}
+    assert {"Overloading", "Insulation"} <= causes
+    drift = next(g for g in f["findings"] if g["type"] == "residual_drift")
+    assert "radiators" in drift["parts"] and drift["recommendation"]["test"]
+    assert api.findings("S2", "2026-04-01T06:00")["findings"] == []          # before the fault: nothing
+    s = api.findings("S5")["stress"]
+    assert s["triggered"] and s["qualifying"] >= s["moderate_limit"] and s["cum_i2t_pu2s"] > 0
+
+
 @pytest.mark.parametrize("dataset_id", IDS)
 def test_frames(dataset_id):
     r = api.get_run(dataset_id)

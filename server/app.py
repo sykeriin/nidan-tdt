@@ -261,6 +261,25 @@ def components(dataset_id: str, t: Annotated[datetime, Query(description="ISO 86
     return plain(api.components(dataset_id, _local(t)))
 
 
+@app.get("/api/whatif", response_model=S.WhatIfModel, response_model_by_alias=True, responses=ERRORS, tags=["simulate"])
+def whatif(load_pu: Annotated[float, Query(ge=0, le=2)], ambient_C: Annotated[float, Query(ge=-10, le=60)],
+           cooling: Annotated[float, Query(ge=0.05, le=1.5, description="1 = radiators as designed")] = 1.0,
+           dataset_id: Annotated[str | None, Query(description="use this dataset's asset")] = None,
+           t: Annotated[datetime | None, Query(description="start the approach from the twin state at t")] = None):
+    """api.whatif() — steady state, ageing, time to steady state and the approach curve."""
+    if dataset_id is not None:
+        _known(dataset_id)
+    return plain(api.whatif(load_pu, ambient_C, cooling, dataset_id=dataset_id, t=_local(t)))
+
+
+@app.get("/api/datasets/{dataset_id}/findings", response_model=S.FindingsModel, response_model_by_alias=True,
+         responses=ERRORS, tags=["run"])
+def findings(dataset_id: str, t: Annotated[datetime | None, Query(description="findings up to t; omit = whole run")] = None):
+    """api.findings() — findings on parts grouped by CPRI cause, recommendations, through-fault stress."""
+    _known(dataset_id)
+    return plain(api.findings(dataset_id, _local(t)))
+
+
 @app.get("/api/self-test", response_model=S.TableModel, tags=["self-test"])
 def self_test():
     """api.self_test() — CPRI Excel format: reference vs software, diff, % diff, pass (<= 1 %), trip checks."""

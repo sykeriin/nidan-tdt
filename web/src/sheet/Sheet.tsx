@@ -21,8 +21,8 @@ export function Frame() {
 export type TwinMode = "mirror" | "simulate" | "diagnose";
 const MODES: { id: TwinMode; label: string; hint: string; ready: boolean }[] = [
   { id: "mirror", label: "Mirror", hint: "The twin follows the data", ready: true },
-  { id: "simulate", label: "Simulate", hint: "What-if: change load, ambient, cooling", ready: false },
-  { id: "diagnose", label: "Diagnose", hint: "Findings shown on the parts", ready: false },
+  { id: "simulate", label: "Simulate", hint: "What-if: load, ambient, cooling", ready: true },
+  { id: "diagnose", label: "Diagnose", hint: "Findings shown on the parts", ready: true },
 ];
 
 export function SheetTabs({ mode, onMode }: { mode: TwinMode; onMode: (m: TwinMode) => void }) {
@@ -151,7 +151,7 @@ export function TitleBlock({ run, time, simulated }: { run: Run | undefined; tim
           <tr><th>Asset</th><td colSpan={3}>{a.asset_id ? "Transformer-1, MAHE Bengaluru" : estimated ? "Unrated unit, rating estimated from data" : "—"}</td></tr>
           <tr><th>Rating</th><td colSpan={3}>{rating}</td></tr>
           <tr><th>Dataset</th><td colSpan={3}>{run?.name ?? "—"}</td></tr>
-          <tr><th>Mode</th><td>{run?.mode ?? "—"}</td><th>Time</th><td>{time ? time.replace("T", " ").slice(0, 16) : "—"}</td></tr>
+          <tr><th>Mode</th><td>{run?.mode ?? "—"}</td><th>Time</th><td>{time ? (/^\d{4}-/.test(time) ? time.replace("T", " ").slice(0, 16) : time) : "—"}</td></tr>
           <tr><th>Scale</th><td>Schematic, not to scale</td><th>Sheet</th><td>1 of 1</td></tr>
         </tbody>
       </table>
