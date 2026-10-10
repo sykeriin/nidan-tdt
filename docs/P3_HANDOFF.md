@@ -94,6 +94,19 @@ False alarms: 0 in every scenario. **These prove the detectors on a stand-in dat
 9. **IS 1180 limits, tan-delta as a CEA recommendation, IEC 60076-7 limits** are [To verify]; recommendation text says so and never states numeric limits.
 10. The thresholds file is the PRD section 9 defaults, all [Assumed].
 
+## 7a. Concerns (advisor notes, please read before relying on these results)
+1. **Every performance number is from a stand-in dataset I wrote.** The mock thermal model is a simplified first-order model with a deliberate 3% parameter mismatch. Real transformers will behave differently. Treat the lead-time table as a unit test, not evidence.
+2. **The twin adds lead time on only two of six faults.** Cooling degradation and the slow oil leak. For overload, unbalance and theft a plain threshold alarms at the same moment. Do not overclaim "AI detects faults earlier".
+3. **Some detectors were tuned after inspecting the real Kaggle data.** The oil theft persistence rule, the sensor-fault load-step excuse and the range limits were adjusted once glitches were seen. Passing that data afterwards is not an independent test. Evaluate on a second unit or a held-out period before quoting a result.
+4. **The theft rule can miss a real theft followed by a refill within 24 h,** and it makes a theft alert appear 1 h late and disappear if the level recovers (visible to streaming consumers). That trade-off is a design decision made on one unit's data.
+5. **The load-robust residual was tested on one mock seed where the mismatch is exactly proportional to the rise.** That is the case it handles best. Fixed temperature offsets are seen less at high load. `MIN_RISE_C = 10` is a judgement call (raising it to 20 C cost about 5 h of lead on S2).
+6. **The Health Index has no ground truth.** Weights, curves, the 40-point cap and the 24 h cap window are our own choices. It is explainable sub-score by sub-score, but not validated. State that it is a transparent engineering score.
+7. **The Kaggle unit is a different, unrated transformer** with a bimodal oil gauge, a dead winding-temperature channel and heavy duplicate timestamps. Findings on it say something about data quality, not about Transformer-1.
+8. **Several recommendation rows have no basis in the PRD** (voltage alerts) and some standards references are secondary-source only (tan-delta as a CEA recommendation, IS 1180 limits). They are marked "to verify" in the text. Do not print numeric limits on a slide until the standard text has been read.
+9. **`StreamAnalyzer` re-runs the whole analysis on every row** (O(n^2) over a stream). Fine for a 30-day replay at demo speed; it will not scale to live data without incremental detectors.
+10. **Nothing here has been reviewed by a domain expert.** The 30-minute review in the PRD open items (item 10) is still outstanding and is the largest remaining risk.
+11. **Contracts are drafts nobody else has agreed to.** `analyze()` has an extra optional argument. Integration work from other roles may require changes here.
+
 ## 8. What P1 and P2 must provide
 - **P2:** twin columns named as in section 3; a Normal run for `residual.calibrate`; the asset block replacing `thresholds["reference"]`. Soften scenario S1: with placeholder losses the PRD's 1.15-1.35 pu overload drives the hot spot to ~150 C and the ageing rate to ~550x, which a domain judge would find implausible.
 - **P1:** cleaned canonical data with `dq_flags`; `tests/kaggle_loader.py` is a stand-in until the adapter exists.
