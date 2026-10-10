@@ -48,6 +48,11 @@ JUMP_LOAD_STEP = 0.25  # a temperature step that coincides with a relative load 
 JUMP_LOAD_WINDOW_H = 3.0  # ... and for this long afterwards (oil time constant 180 min, as in tests/mock_data TAU_STEPS)
 JUMP_LOAD_EXCUSE_MAX_C = 60.0  # but never a step beyond the whole rated top-oil rise (60 K, IEC default): that is not the load
 JUMP_MERGE_ROWS = 4  # jump samples closer than this many rows belong to one episode (a spike = up + down)
+# NOT in spec. A temperature step is physical, not a sensor fault, when the twin (driven by the measured load and
+# ambient) predicts at least this fraction of the observed step in the same direction. The winding hot spot has a
+# ~4 min time constant, so it legitimately moves well over 5 C per 15 min when the load steps.
+JUMP_TWIN_EXPLAINS = 0.5
+TWIN_OF = {"OTI_C": "twin_oil_C", "WTI_C": "twin_hs_C"}
 DEAD_MAX_ABS = 1.0  # dead channel: |value| never above this (real Kaggle WTI is a 0/1 flag, max 1.0)
 DEAD_MIN_HOURS = 24.0  # need this much online data before declaring a channel dead
 DEAD_REF_VARIATION_C = 5.0  # another temperature channel must span at least this much ("others vary")
@@ -61,7 +66,6 @@ UNRELIABLE_FRACTION = 0.5    # a channel stuck/implausible on more than this sha
 
 TEMP_CHANNELS = ("OTI_C", "WTI_C", "amb_C")
 JUMP_CHANNELS = ("OTI_C", "WTI_C")
-TWIN_OF = {"OTI_C": "twin_oil_C", "WTI_C": "twin_hs_C"}  # a step the twin also makes is physics, not the sensor
 VOLT_CHANNELS = ("VR", "VY", "VB")
 CURR_CHANNELS = ("IR", "IY", "IB", "I_mean")
 STUCK_CHANNELS = ("OTI_C", "WTI_C", "VR", "VY", "VB")
@@ -137,6 +141,20 @@ def _load(df: pd.DataFrame) -> np.ndarray | None:
     return None if s is None else s.to_numpy()
 
 
+def _twin_explained(df: pd.DataFrame, ch: str) -> np.ndarray | None:
+    """Row mask where a real step (>= the jump limit) is matched by at least JUMP_TWIN_EXPLAINS of it in the twin.
+
+    None without a twin. A flag on a sample where the measured value did not actually step is never excused.
+    """
+    meas, twin = _num(df, ch), _num(df, TWIN_OF.get(ch, ""))
+    if meas is None or twin is None:
+        return None
+    sm, st = np.diff(meas.to_numpy(), prepend=np.nan), np.diff(twin.to_numpy(), prepend=np.nan)
+    with np.errstate(invalid="ignore"):
+        return ((np.abs(sm) >= JUMP_C_PER_15MIN) & (np.sign(sm) == np.sign(st))
+                & (np.abs(st) >= JUMP_TWIN_EXPLAINS * np.abs(sm)))
+
+
 def _canon_channel(df: pd.DataFrame, code_suffix: str) -> str | None:
     for cand in (code_suffix, code_suffix + "_C", code_suffix + "_pct"):
         if cand in df.columns:
@@ -188,15 +206,12 @@ def _jump(b: _Builder, offline: np.ndarray, h: float) -> None:
             w = max(1, int(round(JUMP_LOAD_WINDOW_H / h)))
             stepped = pd.Series(np.nan_to_num(rel, nan=0.0) > JUMP_LOAD_STEP).astype(float).rolling(w, min_periods=1).max()
             ok &= ~((stepped.to_numpy() > 0) & (d <= JUMP_LOAD_EXCUSE_MAX_C))
+        explained = _twin_explained(b.df, ch)
+        if explained is not None:  # the twin predicts this step from the load: physical, not a sensor fault
+            ok &= ~explained
         limit = JUMP_C_PER_15MIN * dt_h / 0.25
-        tw = _num(b.df, TWIN_OF[ch])
-        if tw is not None:  # the twin explains a physical response to load (e.g. winding hot-spot, 4 min constant)
-            unexplained = np.abs(sd - np.diff(tw.to_numpy(), prepend=np.nan))
-            unexplained = np.where(np.isnan(unexplained), d, unexplained)
-        else:
-            unexplained = d
         mask = np.zeros(len(x), dtype=bool)
-        mask[ok] = (d[ok] > limit[ok]) & (d2[ok] > limit[ok]) & (unexplained[ok] > limit[ok])
+        mask[ok] = (d[ok] > limit[ok]) & (d2[ok] > limit[ok])
         for s, e in _merge(runs(mask), JUMP_MERGE_ROWS):
             step = x[s] - x[s - 1]
             b.add("jump_sensor", ch, s, e, step, limit[s],
@@ -297,6 +312,11 @@ def _dq(b: _Builder) -> None:
             if type_ and ch:
                 found.setdefault((type_, ch), np.zeros(len(df), dtype=bool))[i] = True
     for (type_, ch), mask in sorted(found.items()):
+        if type_ == "jump_sensor":  # the adapter's JUMP flag knows nothing about load: drop steps the twin explains
+            explained = _twin_explained(df, ch)
+            if explained is not None:
+                near = explained | np.roll(explained, 1) | np.roll(explained, -1)  # dq may flag either side of a step
+                mask = mask & ~near
         covered = np.zeros(len(df), dtype=bool)
         for ep in b.eps:
             if ep.channel == ch and ep.type == type_:
