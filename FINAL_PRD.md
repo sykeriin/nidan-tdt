@@ -91,12 +91,12 @@ A **device acceptance test, not data.** Useful content: fault families (overload
 |---|---|---|
 | **Generated campus data** (plant model, §5) | Primary demo dataset for Transformer-1; ground-truth scenarios; lead-time evaluation | Build |
 | **Organizers' dataset** | Loaded live via the adapter on the day | [Open] format unknown |
-| **Kaggle "Distributed Transformer Monitoring"** — `kaggle.com/datasets/sreshta140/ai-transformer-monitoring` | "Real field data" page: adapter demo, data-quality flags, sensor-vs-asset faults, a twin **fitted to that unit** | [Confirmed]: Jun 2019–Apr 2020, 15-min; files CurrentVoltage/Overview/Power/PowerFactor/TotalPower; OTI, WTI, ATI, OLI, OTI_A, OTI_T, MOG_A (= magnetic oil gauge indicator), VL1–3, IL1–3, INUT |
+| **Kaggle "Distributed Transformer Monitoring"** — `kaggle.com/datasets/sreshta140/ai-transformer-monitoring` | "Real field data" page: adapter demo, data-quality flags, sensor-vs-asset faults, **physics plausibility check** of its temperature channels (§7.4) | [Confirmed]: Jun 2019–Apr 2020, 15-min; files CurrentVoltage/Overview/Power/PowerFactor/TotalPower; OTI, WTI, ATI, OLI, OTI_A, OTI_T, MOG_A (= magnetic oil gauge indicator), VL1–3, IL1–3, INUT |
 | **Open-Meteo** (Bengaluru hourly temperature + RH, cached offline) | Real ambient/humidity for generator and enrichment | [Open] permission to download; fallback synthetic ambient |
 | **ETT** (github.com/zhouhaoyi/ETDataset) | Optional realism check of oil-temperature dynamics | LICENSE reads CC BY-ND 4.0: validation only, cite Zhou et al. AAAI 2021, no modified copies |
 
 **Kaggle rules:**
-- It's a **different, unrated transformer**. Never calibrate Transformer-1 on it. Fit a separate twin to it (rating and rise fitted from data, tagged [Assumed — fitted]).
+- It's a **different, unrated transformer**. Never calibrate Transformer-1 on it. No twin is fitted to it: its OTI fails the physics plausibility check (§7.4), so fitting would learn a ~2 K rated rise. Rating estimated from data, tagged [Assumed — estimated].
 - Known issues (audit repo `MohamedMehery/transformer-telemetry-integrity-audit`): duplicate timestamps in every file (Overview: 931 groups, 363 conflicting); abrupt OTI jumps; uncertain single-asset continuity. Clean and flag, don't hide.
 - `MOG_A` = "oil gauge alarm," never "leak label." Check MOG_A vs OLI correlation and report it.
 - **Never** use `OTI_A`/`OTI_T`/`MOG_A` as ML targets or features (label leakage — how public notebooks claim "99% AUC").
@@ -169,14 +169,33 @@ Input load = `I_mean` (A). Thin wrapper `twin/thermal.py` so the library can be 
 
 ### 7.2 Outputs per timestep
 `twin_oil_C`, `twin_hs_C`, `aging_rate`, `days_aged_cum`, `residual_oil_C` (= OTI − twin, NaN in meter-only), `fidelity_rmse_C` (rolling 24 h), `load_pu`.
+Also (implemented): `aging_rate_actual` / `days_aged_actual_cum` from measured OTI + twin gradient where OTI is trusted (`ageing_source`), so a cooling fault shows as life consumed (S2: 1.82 d actual vs 1.36 d expected in the month); `rise_low_K`/`rise_high_K`/`implausible_rise` (§7.4); `twin_restart`; `fidelity_alert`. RUL uses actual ageing; display capped at "> 40 years" (docs/assumptions.md A14–A15).
 
 Fidelity above threshold → dashboard: **"model drift — check cooling / recalibrate."** (CIGRE JWG A2/D2.65 "reality gap" framing.)
 
 ### 7.3 Meter-only mode
 Automatic when OTI is absent; also a manual toggle for demo. Shows estimated oil and hot-spot from load + ambient; residual detector disabled. Pitch: runs on DT smart-meter data alone.
 
-### 7.4 Fitted twin (Kaggle / unknown-rating data)
-When nameplate is estimated, fit top-oil rise and hot-spot factor (and `I_rated` if needed) on the first 2/3 of the data, test on the last 1/3; report RMSE. Tagged [Assumed — fitted].
+### 7.4 Physics plausibility check (replaces the fitted twin)
+*Decision 2026-10-10:* the Kaggle OTI reads a median **2 K** above ambient at ~0.34 pu load. Any oil-immersed ONAN unit
+at that load shows ≥ 9 K even with the coolest plausible design, and ≥ 4.4 K from core losses alone at zero load.
+Fitting a twin to it would produce a physically meaningless model (~2 K rated rise), so we don't fit one. Instead,
+the twin checks whether the sensors can be telling the truth.
+
+`twin/plausibility.py` — `check(trend, i_rated_A, weather)` runs on any dataset with OTI, load and ambient:
+- **Top-oil rise vs IEC 60076-7 band.** The library is run on the measured load and ambient for three parameter
+  sets. *Low*: 30 K rated rise (below IS 1180's 35 K [To verify]), load/no-load loss ratio R = 10, no enclosure
+  surcharge. *Nominal*: library defaults. *High*: 60 K, R = 4, +10 K surcharge. Rows with measured OTI − ambient
+  more than 2 K outside the band → `IMPLAUSIBLE_RISE`. RANGE/JUMP/STUCK rows are excluded (already sensor faults).
+- **Ambient vs Open-Meteo** for the site → `ATI_MISMATCH` (> 8 °C for > 6 h); bias, MAE and correlation reported.
+- **Verdict per channel:** plausible / suspect (> 50 % of evaluable rows outside the band). Also reported: the same
+  test against Open-Meteo air temperature (so the verdict doesn't hinge on ATI), and rating sensitivity (a 5×
+  larger nameplate still predicts more rise than measured).
+- **Result on Kaggle:** OTI **suspect** (87 % of rows below the band; 73 % even against weather), ATI
+  **plausible** (bias +2.3 °C, daily corr 0.63 with Hyderabad). On generated Normal: both plausible, 0 rows flagged.
+- **Dashboard line (Real Field Data):** "Our twin's physics says this oil-temperature sensor can't be reading
+  top-oil. Check its placement." It's a real data problem that a pure ML model would happily learn from.
+- Plot: `docs/figures/kaggle_plausibility.png`. Tests: `tests/test_plausibility.py`.
 
 ---
 
@@ -291,7 +310,7 @@ Global: scenario/dataset selector, replay speed, play/pause, meter-only toggle, 
 | **Loading & Temperatures** | Loading %, R/Y/B currents & voltages, measured vs twin oil temp, hot-spot, ambient, residual, fidelity |
 | **Failure Modules** | Overloading · Insulation · Short circuit; plus oil leak/theft, unbalance, moisture, through-fault log |
 | **Alerts & Maintenance** | Alert feed (asset vs sensor origin, detector, lead time), recommendation table |
-| **Real Field Data** | Kaggle unit: fitted twin, data-quality flags, sensor-fault alerts (different transformer, labeled) |
+| **Real Field Data** | Kaggle unit: physics plausibility verdict (OTI suspect, ATI plausible), data-quality flags, sensor-fault alerts (different transformer, labeled) |
 | **Self-Test** | Excel format: reference vs software, % diff, pass ≤ 1%, 50 A / 60 °C trips, oil channel, "status to master number" (Telegram, with in-app fallback) |
 | **Reports** | PDF summary (incl. Data Health appendix), CSV export, lead-time table |
 | **About** | Twin definition (CIGRE JWG A2/D2.65), architecture, assumptions register, citations, fidelity explanation |
@@ -306,7 +325,8 @@ Replay via `st.fragment(run_every=…)` (confirm version) or equivalent. Plotly.
 |---|---|---|
 | **Lead time** | Per scenario: hours between first twin alert and (a) first baseline-threshold crossing, (b) ground-truth onset. Baseline = plain thresholds only | P3 |
 | **False alarms** | On Normal (target 0); also per month on cleaned Kaggle | P3 |
-| **Twin fidelity** | Rolling RMSE on Normal (mismatch caveat stated); fitted-twin test RMSE on Kaggle | P2 |
+| **Twin fidelity** | Rolling RMSE on Normal (mismatch caveat stated) | P2 |
+| **Sensor plausibility** | §7.4 verdict per channel on Kaggle (suspect OTI) and Normal (plausible) | P2 |
 | **Ingestion robustness** | 14-fixture matrix passes | P1 |
 | ETT realism (stretch) | Compare oil dynamics qualitatively | P2 |
 
@@ -358,10 +378,11 @@ class Replay:  # iterates canonical rows at chosen speed, fixed seed
 
 # twin/engine.py (P2)
 class TwinEngine:
-    def __init__(self, asset: dict, fitted: dict | None = None): ...
+    def __init__(self, asset: dict): ...
     def run(self, ds: Dataset) -> pd.DataFrame          # trend + twin columns (§7.2)
     def step(self, row: dict) -> TwinState               # streaming
-def fit(ds: Dataset, asset: dict) -> dict               # §7.4
+# twin/plausibility.py (P2) — replaces fit() (contract change 2026-10-10)
+def check(trend, i_rated_A, weather=None) -> PlausibilityResult   # §7.4; add_flags() writes IMPLAUSIBLE_RISE / ATI_MISMATCH
 
 # analytics/pipeline.py (P3)
 def analyze(df_twin: pd.DataFrame, events: pd.DataFrame, caps: dict, thresholds: dict) -> AnalysisResult
@@ -420,7 +441,7 @@ class AnalysisResult:
 | Role | Person | Owns |
 |---|---|---|
 | **P1 Data** | ______ | Universal adapter, synonyms, fixtures & robustness tests, Open-Meteo cache, Kaggle download/cleaning/provenance, replay, finale drill |
-| **P2 Physics** | ______ | `asset.yaml`, generator (plant vs twin, 6 scenarios, events), twin wrapper, ageing, RUL, fitted twin, fidelity, amps regression test |
+| **P2 Physics** | ______ | `asset.yaml`, generator (plant vs twin, 6 scenarios, events), twin wrapper, ageing, RUL, physics plausibility check, fidelity, amps regression test |
 | **P3 Intelligence** | ______ | Thresholds, rules + hysteresis, residual detector, IsolationForest, sensor-vs-asset, electrical, oil leak/theft, through-fault, breathing, HI, recommendations, lead time, false alarms |
 | **P4 Product** | ______ | Repo/README, dashboard (all pages incl. Import & Data Health UI on P1's API), self-test, Telegram, PDF, docs, deck, demo script, backup video, Q&A, integration checkpoints, `main` merges |
 
@@ -447,7 +468,7 @@ class AnalysisResult:
 | Scenarios S1–S5 + events | Each plotted; ground truth in `gt_*` |
 | Twin wrapper, residual, fidelity | Normal: residual ≈ 0 ± noise |
 | Ageing, RUL | Rate ≈ 1.26 at 100 °C test passes |
-| Fitted twin on Kaggle | Train/test RMSE reported |
+| Physics plausibility check (§7.4) | Kaggle OTI suspect, Normal plausible, tests pass — **done** |
 | `run()` == `step()` | Batch vs streaming test passes |
 
 **P3 — Intelligence**
@@ -485,7 +506,7 @@ class AnalysisResult:
 | 0–2 | Contracts, mock data, synonyms draft, Kaggle download | venv 3.12, smoke test (amps), `asset.yaml` | `thresholds.yaml`, `models.py` with P1 | Repo, README, app shell, email organizers (rubric, data format) | **G1: contracts frozen, stubs merged** |
 | 2–5 | Adapter steps 1–5, fixtures F1–F6 | Generator Normal + plots | Rules + hysteresis on mock | Walking skeleton | **G2: mock → stubs → UI end to end** |
 | 5–8 | Steps 6–9, F7–F14, Open-Meteo cache | Twin wrapper, residual, fidelity, ageing, RUL; scenarios S1–S5 | Residual detector, electrical, oil, through-fault | Overview, Loading & Temps pages | **G3: Normal scenario real end to end, HI green, 0 alarms** |
-| 8–11 | Kaggle cleaning, provenance, replay | Fitted twin on Kaggle, `run()`==`step()` | Sensor-vs-asset, IsolationForest, HI, recommendations, breathing | Failure Modules, Alerts, Import, Data Health pages | **G4: each scenario triggers its detector** |
+| 8–11 | Kaggle cleaning, provenance, replay | Plausibility check on Kaggle (done), `run()`==`step()` | Sensor-vs-asset, IsolationForest, HI, recommendations, breathing | Failure Modules, Alerts, Import, Data Health pages | **G4: each scenario triggers its detector** |
 | 11–16 | Finale drill #1, adapter hardening | Tuning, ETT check (stretch) | Lead time, false alarms, figures | Real Field Data, Self-Test, Reports pages; replay | **G5: full demo path works** |
 | 16–18 | Drill #2 | Methodology sections | Methodology sections | PDF, Telegram, meter-only polish | **G6 (hour 18): FEATURE FREEZE** |
 | 18–22 | Docs: data, user guide input | Docs: twin, assumptions | Docs: analytics, ledger | Docs assembly, deck, rehearsal ×2 | All deliverables present |
@@ -504,7 +525,7 @@ class AnalysisResult:
 Failures are the owner's top priority before new work. One branch per task, small PRs, reviewer from another role.
 
 ### Cut order if behind
-Breathing index → IsolationForest → Telegram → ETT check → PDF (fallback CSV + HTML) → Real Field Data fitted twin (keep data-quality view) → self-test polish.
+Breathing index → IsolationForest → Telegram → ETT check → PDF (fallback CSV + HTML) → Real Field Data polish (keep data-quality view + plausibility verdict) → self-test polish.
 
 **Never cut:** adapter + Import page, generator, twin, HI, the scenarios, Overview, docs.
 
@@ -542,7 +563,7 @@ Backup video of the full demo always ready.
 
 ## 17. Judge Q&A (rehearse; answers in `docs/qa_prep.md`)
 1. How is this a twin and not a dashboard? → physics model in the loop, residual, what-if, fidelity.
-2. How did you validate the thermal model? → plant/twin mismatch on generated data; fitted twin train/test on real Kaggle data; honest about no heat-run data yet.
+2. How did you validate the thermal model? → plant/twin mismatch on generated data; physics plausibility check on real Kaggle data (the twin rejects its OTI sensor instead of learning from it); honest about no heat-run data yet.
 3. What's real and what's simulated? → `simulated` column, badges, ledger.
 4. What if a sensor fails or lies? → sensor-vs-asset module.
 5. Why not just thresholds? → lead-time table vs baseline.
@@ -579,7 +600,7 @@ Backup video of the full demo always ready.
 9. Plant–twin mismatch and noise injected deliberately.
 10. Rooftop solar on LV bus ignored.
 11. Operating thresholds rescaled for 1000 kVA; Excel's 50 A / 60 °C used only in self-test.
-12. Kaggle unit is a different transformer; its twin is fitted, not nameplate-based.
+12. Kaggle unit is a different transformer; no twin is fitted to it (its OTI fails the plausibility check); rating estimated from data; location assumed Hyderabad (ATI fits Hyderabad weather).
 13. Adapter-derived/estimated values (derived channels, estimated rating, imputed ambient) are flagged and listed in the Data Health Report.
 
 ---
@@ -593,7 +614,11 @@ Backup video of the full demo always ready.
 | Hackathon, CPRI × MIT Bengaluru, fair-play rule 01 | powernext-ai.in | **Confirmed** |
 | Solution must work with datasets provided during hackathon | Problem PDF | Confirmed |
 | Kaggle dataset link, files, columns, MOG_A = magnetic oil gauge indicator | Kaggle page / dataset description | **Confirmed** |
-| Kaggle duplicates / conflicts / jumps | Public audit repo | Reported (verify on download) |
+| Kaggle duplicates / conflicts / jumps | Public audit repo; our inspection (data/PROVENANCE.md) | **Confirmed** (Overview 931 groups / 363 conflicting, exact match) |
+| Kaggle `WTI` is a winding temperature | Dataset description | **False — WTI is a 0/1 flag** (values 0/1 only). Mapped to `alarm_WTI`, display only. The dataset's own description is misleading; we checked |
+| Kaggle `MOG_A` marks oil-level drops / leaks | — | **False — MOG_A doesn't track OLI.** No OLI drop at any of its 5 rising edges; only set Jul 2–Aug 10 2019 while OLI 38–41 %, silent afterwards at the same level. Display-only |
+| Kaggle contains real leak / theft events | — | **No.** OLI never drops at an alarm; it drifts 40 → 100 % (Sep–Nov 2019, no refill step) and then saturates. Leak vs theft is demonstrated on generated S4a/S4b only |
+| Kaggle OTI glitches (245–250 °C plateaus) and OLI drift are sensor faults | Our inspection | Confirmed as data faults; used as real examples for the sensor-fault detector (§8.6) |
 | CPRI's three failure causes | CPRI journal abstract | **Confirmed (abstract)** |
 | IS 1180 %X limits 2% / 7.5% | CPRI Bhopal IS 1180:2014 deck | Confirmed from CPRI deck; verify vs standard |
 | ~1.3 M DT failures/yr | CEA meeting, Mercom headline | Confirmed (reported headline) |

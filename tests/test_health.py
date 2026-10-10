@@ -39,7 +39,7 @@ def test_s3_unbalance_lowers_electrical_only():
 
 
 def test_weights_renormalize_when_caps_missing():
-    caps = mock_caps() | {"oil_level": False, "through_fault": False, "unbalance_current": False, "voltage_quality": False}
+    caps = mock_caps() | {"oil_level": False, "through_fault": False, "unbalance": False, "voltage_quality": False}
     h = health.compute(_frame("N"), [], caps, TH)
     assert set(h.components) == {"thermal", "ageing", "loading"}
     assert h.weights["thermal"] == pytest.approx(30 / 70)
@@ -55,7 +55,7 @@ def test_missing_columns_disable_subscores_without_crashing():
 
 def test_meter_only_still_scores():
     df = _frame("S1").drop(columns=["OTI_C", "WTI_C", "twin_oil_C", "twin_hs_C", "residual_oil_C", "aging_rate", "days_aged_cum"])
-    caps = mock_caps(meter_only=True) | {"aging_rul": False, "thermal_twin": False}
+    caps = mock_caps(meter_only=True) | {"ageing_rul": False, "thermal_twin": False}
     s = health.compute_series(df, [], caps, TH)
     assert s.score.between(0, 100).all() and s.score.notna().all()
     h = health.compute(df, [], caps, TH)

@@ -1,11 +1,5 @@
-"""Shared dataclasses. DRAFT, NOT FROZEN.
-
-Copied verbatim from FINAL_PRD.md section 12.3. Co-owned by P1 and P3; any change needs
-agreement from all four owners. Do not edit in feature branches without telling the team.
-"""
-from __future__ import annotations
-
-from dataclasses import dataclass
+"""Shared dataclasses (FINAL_PRD.md §12.3). Contract: change only with all four owners agreeing."""
+from dataclasses import dataclass, field
 
 import pandas as pd
 
@@ -15,9 +9,19 @@ class Dataset:
     trend: pd.DataFrame
     events: pd.DataFrame
     capabilities: dict[str, bool]
-    mode: str
+    mode: str                      # full | meter_only | data_only
     health_report: dict
     asset: dict
+
+
+@dataclass
+class InspectResult:
+    """Adapter proposal before anything is committed (Import page input)."""
+    tables: list[dict]             # [{name, role, rows, columns}]
+    timestamp: dict                # {column, dayfirst, parsed_ok_pct}
+    proposals: list[dict]          # [{source, canonical, confidence, unit, unit_options}]
+    preview: pd.DataFrame
+    warnings: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -32,11 +36,11 @@ class TwinState:
 class Alert:
     id: str
     timestamp: pd.Timestamp
-    module: str  # overloading | insulation | short_circuit | electrical | oil | moisture | data
-    type: str  # e.g. residual_drift, through_fault, oil_theft, oil_leak, jump_oti, unbalance
-    severity: str  # info | warning | critical
-    origin: str  # asset | sensor
-    detector: str  # rule | residual | ml | physics
+    module: str        # overloading | insulation | short_circuit | electrical | oil | moisture | data
+    type: str          # e.g. residual_drift, through_fault, oil_theft, oil_leak, jump_oti, unbalance
+    severity: str      # info | warning | critical
+    origin: str        # asset | sensor
+    detector: str      # rule | residual | ml | physics
     value: float | None
     threshold: float | None
     explanation: str
@@ -50,7 +54,7 @@ class Recommendation:
     id: str
     action: str
     test: str | None
-    urgency: str  # immediate | 24h | 7d | next_scheduled
+    urgency: str       # immediate | 24h | 7d | next_scheduled
     rationale: str
     alert_id: str
     standard_ref: str | None

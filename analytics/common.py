@@ -10,8 +10,11 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from contracts.canonical import QUARANTINE_PREFIXES
 from contracts.models import Alert
+
+# Columns that must never reach a detector: ground truth (gt_) and device alarm flags (alarm_).
+# Kept here, not in contracts/canonical.py, because that file is owned by P1 and has no such constant.
+QUARANTINE_PREFIXES = ("gt_", "alarm_")
 
 DEFAULT_THRESHOLDS_PATH = Path(__file__).resolve().parent.parent / "config" / "thresholds.yaml"
 

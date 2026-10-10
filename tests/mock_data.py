@@ -154,9 +154,10 @@ def ground_truth(scenario: str) -> list[dict]:
 
 
 def mock_caps(meter_only: bool = False) -> dict[str, bool]:
-    """Capability matrix for the mock data (all channels present except IN)."""
+    """Capability matrix for the mock data, using the key names of ingest/capabilities.py (all channels but IN)."""
     return {
-        "thermal_twin": True, "residual": not meter_only, "hotspot_wti": True, "unbalance_current": True,
-        "voltage_quality": True, "neutral_current": False, "oil_level": True, "through_fault": True,
-        "breathing": True, "aging_rul": True, "lead_time": True,
+        "thermal_twin": True, "residual": not meter_only, "residual_fidelity": not meter_only, "wti_check": True,
+        "unbalance": True, "voltage_quality": True, "neutral_measured": False, "oil_level": True,
+        "oil_leak_theft": True, "through_fault": True, "breathing_index": True, "ageing_rul": True,
+        "lead_time_eval": True,
     }

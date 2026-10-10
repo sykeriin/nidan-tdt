@@ -18,11 +18,11 @@ Transparent mapping (the PRD gives no formula; every parameter is [Assumed] in c
     thermal      min(top-oil curve on OTI_C else twin_oil_C, hot-spot curve on twin_hs_C else WTI_C),
                  using top_oil_c and hot_spot_c warning/critical.
     ageing       aging_rate rolling mean (windows_h.ageing) on the ageing_rate points in health.yaml
-                 (1.0 is the reference rate at hot-spot 98 C). Needs caps["aging_rul"].
+                 (1.0 is the reference rate at hot-spot 98 C). Needs caps["ageing_rul"].
     loading      load_pu (else loading_pct/100) rolling mean (windows_h.loading) vs loading_pu warning/alarm.
     electrical   min(current unbalance % vs current_unbalance_pct warning/alarm, voltage unbalance % with
                  voltage_unbalance_pct.alarm as warning, voltage deviation from nominal as a fraction of the
-                 voltage_pu limit). Needs caps["unbalance_current"] and/or caps["voltage_quality"].
+                 voltage_pu limit). Needs caps["unbalance"] and/or caps["voltage_quality"].
     integrity    OLI_pct on a lower-is-worse curve (ok_pct -> oil_level_pct.low -> critical_pct), then capped
                  at alert_scores while an oil_leak/oil_theft alert is in effect. Needs caps["oil_level"].
     fault_stress 100 - per_event_penalty per through_fault alert so far (damage does not heal, no reset is
@@ -154,7 +154,7 @@ def _load_pu(df: pd.DataFrame) -> np.ndarray | None:
 def _electrical(df: pd.DataFrame, op: dict, caps: dict, cfg: dict, load: np.ndarray | None, v_nom: float) -> np.ndarray | None:
     parts = []
     mult = cfg["voltage"]["critical_multiple"]
-    if caps.get("unbalance_current"):
+    if caps.get("unbalance"):
         iu = _unbalance(df, ("IR", "IY", "IB"), "I_mean")
         if iu is not None:
             if load is not None:
@@ -225,13 +225,13 @@ def compute_series(df: pd.DataFrame, alerts: list[Alert], caps: dict, thresholds
     sub: dict[str, np.ndarray | None] = dict.fromkeys(SUB_SCORES)
     sub["thermal"] = _thermal(df, op, cfg)
     rate = _col(df, "aging_rate")
-    if caps.get("aging_rul") and rate is not None:
+    if caps.get("ageing_rul") and rate is not None:
         a = cfg["ageing_rate"]
         sub["ageing"] = _curve(_rolling_mean(rate, steps(cfg["windows_h"]["ageing"])), a["ok"], a["warning"], a["critical"], cfg)
     if load is not None:
         lp = op["loading_pu"]
         sub["loading"] = _generic(_rolling_mean(load, steps(cfg["windows_h"]["loading"])), lp["warning"], lp["alarm"], cfg)
-    if caps.get("unbalance_current") or caps.get("voltage_quality"):
+    if caps.get("unbalance") or caps.get("voltage_quality"):
         sub["electrical"] = _electrical(df, op, caps, cfg, load, thresholds.get("reference", {}).get("v_ln_nominal_v", DEFAULT_V_LN_NOMINAL_V))
     if caps.get("oil_level"):
         sub["integrity"] = _integrity(df, t_ns, alerts, op, cfg)

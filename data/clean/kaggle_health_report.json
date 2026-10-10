@@ -1,0 +1,214 @@
+{
+ "tables": [
+  {
+   "name": "CurrentVoltage.csv",
+   "role": "trend",
+   "rows_read": 19352,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  },
+  {
+   "name": "Overview.csv",
+   "role": "trend",
+   "rows_read": 20316,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  },
+  {
+   "name": "Power.csv",
+   "role": "trend",
+   "rows_read": 19309,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  },
+  {
+   "name": "PowerFactor.csv",
+   "role": "trend",
+   "rows_read": 19308,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  },
+  {
+   "name": "TotalPower.csv",
+   "role": "trend",
+   "rows_read": 19248,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  }
+ ],
+ "dedupe": {
+  "CurrentVoltage.csv": {
+   "rows_in": 19352,
+   "dup_groups": 437,
+   "dup_rows": 874,
+   "conflict_groups": 405,
+   "identical_groups": 32,
+   "rows_out": 18915
+  },
+  "Overview.csv": {
+   "rows_in": 20316,
+   "dup_groups": 931,
+   "dup_rows": 1871,
+   "conflict_groups": 363,
+   "identical_groups": 568,
+   "rows_out": 19376
+  },
+  "Power.csv": {
+   "rows_in": 19309,
+   "dup_groups": 438,
+   "dup_rows": 876,
+   "conflict_groups": 9,
+   "identical_groups": 429,
+   "rows_out": 18871
+  },
+  "PowerFactor.csv": {
+   "rows_in": 19308,
+   "dup_groups": 431,
+   "dup_rows": 862,
+   "conflict_groups": 430,
+   "identical_groups": 1,
+   "rows_out": 18877
+  },
+  "TotalPower.csv": {
+   "rows_in": 19248,
+   "dup_groups": 406,
+   "dup_rows": 812,
+   "conflict_groups": 13,
+   "identical_groups": 393,
+   "rows_out": 18842
+  }
+ },
+ "merge": {
+  "tables": 5,
+  "rows_per_table": [
+   18915,
+   19376,
+   18871,
+   18877,
+   18842
+  ],
+  "rows_after_merge": 20024,
+  "rows_in_all_tables": 18324
+ },
+ "interval": "0 days 00:15:00",
+ "rows_after_cleaning": 17104,
+ "time_span": [
+  "2019-07-01 11:10:00+05:30",
+  "2020-03-24 23:45:00+05:30"
+ ],
+ "flag_counts": {
+  "ATI_MISMATCH": 57,
+  "DERIVED_loading_pct": 16134,
+  "DUP_CONFLICT": 348,
+  "DUP_IDENT": 124,
+  "GAP": 57,
+  "IMPUTED_AMB": 594,
+  "IMPUTED_RH": 17104,
+  "JUMP_OTI": 43,
+  "RANGE_ATI_C": 10,
+  "RANGE_OTI_C": 59,
+  "RANGE_VB": 4,
+  "RANGE_VR": 2,
+  "RANGE_VY": 9,
+  "RANGE_freq_Hz": 2,
+  "STUCK_IB": 14,
+  "STUCK_IY": 14,
+  "STUCK_OLI": 8731,
+  "STUCK_OTI": 770
+ },
+ "derived": [],
+ "enrichment": [
+  "amb_C from Open-Meteo cache for 594 rows",
+  "RH_pct from Open-Meteo cache for 17104 rows"
+ ],
+ "capabilities": {
+  "thermal_twin": true,
+  "residual_fidelity": true,
+  "wti_check": false,
+  "unbalance": true,
+  "voltage_quality": true,
+  "neutral_measured": true,
+  "oil_leak_theft": true,
+  "through_fault": false,
+  "breathing_index": true,
+  "ageing_rul": true,
+  "lead_time_eval": false
+ },
+ "mode": "full",
+ "nameplate_source": "estimated",
+ "warnings": [
+  "Rating unknown: estimated I_rated 214.7 A (155.3 kVA) from data [Assumed - estimated from data]"
+ ],
+ "plausibility": {
+  "verdict": {
+   "OTI_C": "suspect",
+   "ATI_C": "plausible"
+  },
+  "i_rated_A": 214.7,
+  "ambient_used": "ATI_C",
+  "tol_K": 2.0,
+  "bands": {
+   "low": {
+    "top_oil_temp_rise": 30.0,
+    "R": 10.0,
+    "amb_temp_surcharge": 0.0
+   },
+   "nominal": {
+    "top_oil_temp_rise": 60.0,
+    "R": 9.090909090909092,
+    "amb_temp_surcharge": 10.0
+   },
+   "high": {
+    "top_oil_temp_rise": 60.0,
+    "R": 4.0,
+    "amb_temp_surcharge": 10.0
+   }
+  },
+  "rise": {
+   "evaluable_rows": 15628,
+   "implausible_rows": 13618,
+   "below_band": 13618,
+   "above_band": 0,
+   "implausible_fraction": 0.871,
+   "observed_rise_median_K": 2.0,
+   "predicted_low_median_K": 9.09,
+   "predicted_nominal_median_K": 20.88,
+   "predicted_high_median_K": 27.45,
+   "load_pu_median": 0.342,
+   "no_load_floor_low_K": 4.41,
+   "observed_rise_vs_weather_median_K": 4.2,
+   "below_band_vs_weather_fraction": 0.733
+  },
+  "rating_sensitivity": {
+   "x1": 8.19,
+   "x1.5": 6.16,
+   "x2": 5.41,
+   "x3": 4.86,
+   "x5": 4.57
+  },
+  "ambient": {
+   "rows": 16510,
+   "bias_C": 2.27,
+   "mae_C": 3.49,
+   "corr_15min": 0.738,
+   "corr_daily": 0.633,
+   "mismatch_rows": 57,
+   "mismatch_fraction": 0.0033
+  }
+ },
+ "flag_counts_final": {
+  "IMPLAUSIBLE_RISE": 13618,
+  "ATI_MISMATCH": 57
+ },
+ "asset": {
+  "i_rated_A": 214.7,
+  "rating_kVA": 155.3,
+  "lv_voltage_V": 417.5,
+  "nameplate_source": "estimated"
+ }
+}

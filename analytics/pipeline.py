@@ -12,8 +12,7 @@ from __future__ import annotations
 import pandas as pd
 
 from analytics import electrical, health, oil, recommend, residual, rules, sensor_faults, through_fault
-from analytics.common import strip_quarantined
-from contracts.canonical import QUARANTINE_PREFIXES
+from analytics.common import QUARANTINE_PREFIXES, strip_quarantined
 from contracts.models import AnalysisResult, TwinState
 
 

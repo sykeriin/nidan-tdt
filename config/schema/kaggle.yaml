@@ -1,0 +1,36 @@
+# Kaggle "Distributed Transformer Monitoring" (sreshta140) -> canonical. Reviewed by hand; see data/PROVENANCE.md.
+# Different, unrated transformer: rating is estimated from data, never Transformer-1's asset.yaml.
+name: kaggle
+source: kaggle_real
+simulated: false
+asset: estimate
+site: hyderabad              # weather for ambient fill + ATI_MISMATCH. [Assumed location]: ATI fits Hyderabad
+                             # (daily corr 0.63) far better than Bengaluru (0.27); see data/PROVENANCE.md
+timestamp: {column: DeviceTimeStamp, dayfirst: false}   # ISO 8601 in the files; tz assumed Asia/Kolkata
+range:
+  start: "2019-07-01 00:00"    # before: not energised (zero current, OTI = ATI)
+  end: "2020-03-24 23:59"      # after: load regime change (evening peak -33 %)
+columns:
+  IL1: {to: IR, unit: A}
+  IL2: {to: IY, unit: A}
+  IL3: {to: IB, unit: A}
+  INUT: {to: IN, unit: A}
+  VL1: {to: VR, unit: V}       # phase-neutral, median ~242 V
+  VL2: {to: VY, unit: V}
+  VL3: {to: VB, unit: V}
+  VL12: {to: VRY, unit: V}     # line-line, median ~417 V
+  VL23: {to: VYB, unit: V}
+  VL31: {to: VBR, unit: V}
+  KVA: {to: S_kVA, unit: kVA}
+  KW: {to: P_kW, unit: kW}
+  KVAR: {to: Q_kVAr, unit: kVAr}
+  Avg_PF: {to: PF, unit: fraction}
+  FRQ: {to: freq_Hz, unit: Hz}
+  OTI: {to: OTI_C, unit: C}
+  ATI: {to: ATI_C, unit: C}
+  OLI: {to: OLI_pct, unit: percent}
+  WTI: {to: alarm_WTI}         # 0/1 only in this dataset: a flag, NOT a winding temperature
+  OTI_A: {to: alarm_OTI_A}     # device alarm flags: display only, never ML features/targets
+  OTI_T: {to: alarm_OTI_T}
+  MOG_A: {to: alarm_MOG_A}     # magnetic oil gauge alarm, not a leak label
+  # everything else (WL*, VAL*, RVAL*, PFL*, THD*, MDIL*, KWH*, KVARH, MPD, MKVAD, Sum_PF) -> extra_*

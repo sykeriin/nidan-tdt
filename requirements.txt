@@ -1,0 +1,14 @@
+# Python 3.12 (transformer-thermal-model needs >= 3.11)
+transformer-thermal-model==0.6.0
+numpy
+pandas
+pyyaml
+scikit-learn
+streamlit
+plotly
+matplotlib
+openpyxl
+xlrd
+pyarrow
+requests
+pytest

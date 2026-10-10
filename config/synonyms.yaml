@@ -1,0 +1,36 @@
+# Header synonyms for auto-mapping (DATA_INGESTION_SPEC.md §2.4). Extend on the day.
+# Headers are normalised first: lowercase, units in ()/[] stripped, separators -> "_".
+# Organizer style (CPRI screening workbook): Title_Case words + unit suffix (Load_Current_A, Ambient_Temperature_C,
+# Applied_Voltage_kV, Test_Duration_min). The suffix is stripped only if the full name doesn't match first.
+# "ib"/"vb" are deliberately absent: resolved by phase-scheme context in ingest/map.py.
+
+IR: [ir, i_r, ia, i_a, il1, i1, i_l1, l1_current, current_l1, current_r, r_current, phase_r_current, curr_r, amp_r, r_phase_amps, r_phase_current, ir_a, current_ir]
+IY: [iy, i_y, il2, i2, i_l2, l2_current, current_l2, current_y, y_current, phase_y_current, curr_y, amp_y, y_phase_amps, y_phase_current]
+IB: [ic, i_c, il3, i3, i_l3, l3_current, current_l3, current_b, b_current, phase_b_current, curr_b, amp_b, b_phase_amps, b_phase_current]
+IN: [in, i_n, inut, neutral, neutral_current, i0, current_n]
+VR: [vr, v_r, va, v_a, vl1, v1, v_l1, vrn, van, voltage_r, l1_voltage, voltage_l1, r_voltage, r_phase_voltage, vr_n]
+VY: [vy, v_y, vl2, v2, v_l2, vyn, voltage_y, l2_voltage, voltage_l2, y_voltage, y_phase_voltage]
+VB: [vc, v_c, vl3, v3, v_l3, vbn, vcn, voltage_b, l3_voltage, voltage_l3, b_voltage, b_phase_voltage]
+VRY: [vry, v_ry, vab, v_ab, vl12, v12, v_l1_l2, l1_l2_voltage, voltage_ry, line_voltage_ry,
+      voltage, applied_voltage, supply_voltage, line_voltage, system_voltage]   # single 3-phase voltage = line-line by convention
+VYB: [vyb, v_yb, vbc, v_bc, vl23, v23, v_l2_l3, l2_l3_voltage, voltage_yb, line_voltage_yb]
+VBR: [vbr, v_br, vca, v_ca, vl31, v31, v_l3_l1, l3_l1_voltage, voltage_br, line_voltage_br]
+I_total: [current, load_current, i, amps, total_current, i_total]
+S_kVA: [kva, apparent_power, s, s_kva, total_kva]
+P_kW: [kw, active_power, p, real_power, p_kw, total_kw]
+Q_kVAr: [kvar, reactive_power, q, q_kvar]
+PF: [pf, power_factor, cos_phi, avg_pf, average_pf]
+freq_Hz: [f, freq, frequency, hz, frq]
+loading_pct: [loading, load_pct, load_percent, percent_load, utilization, loading_percent]
+OTI_C: [oti, top_oil, oil_temp, oil_temperature, tot, top_oil_temp, top_oil_temperature]
+WTI_C: [wti, winding_temp, winding_temperature, hst, hot_spot, hotspot, hot_spot_temp]
+ATI_C: [ati, ambient, amb_temp, ambient_temperature, outdoor_temp, ambient_temp]
+OLI_pct: [oli, oil_level, level, conservator_level]
+RH_pct: [rh, humidity, relative_humidity]
+transformer_id: [transformer_id, dt_id, asset, tr_no]
+
+# Pattern families (exact names or glob). Alarm flags -> alarm_*, display only.
+# Ground truth -> gt_*, evaluation only, never reaches detectors.
+alarm: [oti_a, oti_t, mog_a, "*_alarm", "*_trip", buchholz, prv]
+ground_truth: [fault, label, fault_type, fault_label, class, anomaly, status_label, is_fault,
+               validity_label, validity, reference_parameter, "*_label", "predicted_*", target]   # CPRI screening hidden outputs

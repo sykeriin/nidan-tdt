@@ -6,7 +6,7 @@ Contract:
 Current unbalance % = max |I_phase - I_mean| / I_mean * 100. Voltage unbalance likewise.
 Emits: current_unbalance, voltage_unbalance, voltage_high, voltage_low.
 Voltage pu uses thresholds["reference"]["v_ln_nominal_v"].
-No neutral-current or earthing claim is made. Gated on caps unbalance_current / voltage_quality.
+No neutral-current or earthing claim is made. Gated on caps unbalance / voltage_quality.
 """
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ def detect(df: pd.DataFrame, thresholds: dict, caps: dict) -> list[Alert]:
     clear = op.get("hysteresis_clear_fraction", 0.95)
     alerts: list[Alert] = []
 
-    cur = _phases(df, _I) if caps.get("unbalance_current") else None
+    cur = _phases(df, _I) if caps.get("unbalance") else None
     if cur is not None:
         cu = op["current_unbalance_pct"]
         ub = _unbalance(cur)

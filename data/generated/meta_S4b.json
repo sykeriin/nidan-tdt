@@ -1,0 +1,15 @@
+{
+ "scenario": "S4b",
+ "name": "Oil theft",
+ "seed": 0,
+ "plant": {
+  "top_oil_rise_mult": 0.9647,
+  "hot_spot_fac": 1.1802
+ },
+ "twin_nominal": {
+  "top_oil_rise_K": 60.0,
+  "hot_spot_fac": 1.2
+ },
+ "i_rated_A": 1391,
+ "step_pct": 11.91
+}

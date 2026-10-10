@@ -90,7 +90,7 @@ def test_voltage_unbalance():
 
 def test_caps_gate_and_missing_channels():
     trend, _ = make_mock("S3")
-    caps = mock_caps() | {"unbalance_current": False, "voltage_quality": False}
+    caps = mock_caps() | {"unbalance": False, "voltage_quality": False}
     assert electrical.detect(trend, TH, caps) == []
     no_v = trend.drop(columns=["VR", "VY", "VB"])
     types = {a.type for a in electrical.detect(no_v, TH, mock_caps())}

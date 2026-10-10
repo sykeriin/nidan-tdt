@@ -1,6 +1,6 @@
 # P3 Intelligence: handoff note
 
-Status: built and tested on mock data. Branch `p3-intelligence`. Contracts (`contracts/models.py`, `contracts/canonical.py`) are **drafts, not frozen**; nothing here has been agreed with P1, P2 or P4 yet.
+Status: built, merged with `main`, and run end to end on P2's generator output (section 6a) as well as on my mock data. P3 uses the team's own `contracts/` from `main` (my earlier drafts were discarded in the merge). What is still unagreed: the optional `residual_reference` argument on `analyze()`, and the capability keys, which P3 now reads exactly as `ingest/capabilities.py` names them (`unbalance`, `ageing_rul`, `oil_level`, `voltage_quality`, `through_fault`).
 Source of truth for design: `FINAL_PRD.md` sections 8 and 12. This note says what actually exists.
 
 Tags: **[Confirmed]** tested here | **[Assumed]** our choice | **[To verify]** needs a primary source.
@@ -82,6 +82,23 @@ Trend columns follow `contracts/canonical.py` (draft) plus the twin columns from
 | Through-faults | at first event | cannot see them (event data only) |
 False alarms: 0 in every scenario. **These prove the detectors on a stand-in dataset. They say nothing about real or P2-generated data.** The honest headline: the twin adds lead time on cooling degradation and slow leaks; for overload, unbalance and theft a plain threshold does as well.
 
+## 6a. Results on P2's real generator output [Confirmed by running `tests/test_integration_generated.py`]
+Pipeline: `ingest.adapter.load` -> `twin.engine.TwinEngine().run` -> `analyze()`, with the residual reference calibrated on the Normal scenario. This is **synthetic data** (labelled `simulated`), not field data.
+
+| Scenario | Fault onset (scenarios.yaml) | First P3 alert | Raised |
+|---|---|---|---|
+| N | none | none | 0 alerts, Health 100 |
+| S1 overload | 04-24 (~13:00) | `loading_high` 04-24 12:00 | loading, hot-spot, ageing, top-oil, overcurrent (asset-origin) |
+| S2 cooling | ramp from 04-20 | `residual_drift` 04-22 09:00 (top-oil warning only on 04-27) | residual first, absolute alarms days later |
+| S3 unbalance | 04-25 00:00 | `current_unbalance` 04-25 00:00 | at onset |
+| S4a leak | 04-21 06:00 | `oil_leak` 04-21 22:45 | leak, then `oil_low` 04-23 |
+| S4b theft | 04-25 02:15 | `oil_theft` 04-25 02:30 | at the step |
+| S5 through-faults | 04-27 | `through_fault` 04-27 10:12, `through_fault_stress` 14:47 | event table only |
+Lead time against a plain-threshold baseline has been computed on my mock (section 6) but **not yet on this generator output**.
+
+**Bug found by this run and fixed:** on S1 the sensor-fault detector raised 6 `jump_sensor` alerts and relabelled 2 real hot-spot alerts as sensor faults. The winding hot spot has a ~4 min time constant, so it legitimately rises more than 5 C per 15 min when the load steps, and the adapter's naive `JUMP_*` data-quality flags ignore load. Fix: a temperature step is now excused when it is at least 5 C and the twin predicts at least half of it in the same direction (`JUMP_TWIN_EXPLAINS = 0.5`, a decision, not from the spec). A flag on a sample with no real measured step is never excused. Result: zero sensor-origin alerts on all seven clean generated scenarios.
+**Integration bug also fixed:** my code read capability keys `unbalance_current` and `aging_rul`; the adapter emits `unbalance` and `ageing_rul`. With the real adapter output the unbalance detector and the ageing sub-score would have been silently disabled.
+
 ## 7. Known limitations and open decisions
 1. **Oil detector on the real Kaggle data.** `OLI` there is bimodal (about 44% of samples at 100, about 49% below 85, quantiles 37-42 at the low end) with 75 drops of 8+ points and 59 rises. Before the fix the detector raised 107 `oil_theft` alerts. Of the 75 drops, 33 lasted at least 1 h and **all 33 recovered within 24 h**; oil does not refill itself, so these are gauge or thermal behaviour. Fixed: a theft step must persist for `THEFT_PERSIST_H` (1 h) and not recover for `THEFT_RECOVERY_H` (24 h). Result on Kaggle: 0 `oil_theft`. **Still raised: 31 `oil_low` and 9 `oil_leak`.** `oil_low` is technically correct against the 85% limit (the reported level is below it about half the time), but the channel itself looks unreliable, so do not present those as findings. A theft alert now appears 1 h after the step and is withdrawn if the level returns within 24 h (a streaming consumer will see it come and go). [Confirmed by running]
 2. **Stuck-sensor rule over-fires on quantised data:** 93 alerts on Kaggle (1 C resolution, slow lag). Untuned.
@@ -95,7 +112,7 @@ False alarms: 0 in every scenario. **These prove the detectors on a stand-in dat
 10. The thresholds file is the PRD section 9 defaults, all [Assumed].
 
 ## 7a. Concerns (advisor notes, please read before relying on these results)
-1. **Every performance number is from a stand-in dataset I wrote.** The mock thermal model is a simplified first-order model with a deliberate 3% parameter mismatch. Real transformers will behave differently. Treat the lead-time table as a unit test, not evidence.
+1. **Every performance number is from synthetic data** (my mock, or P2's generator). The generator is far more realistic than my mock, but it is still our own model of a transformer with injected faults. Real transformers will behave differently. Treat the tables as regression tests, not evidence of field performance.
 2. **The twin adds lead time on only two of six faults.** Cooling degradation and the slow oil leak. For overload, unbalance and theft a plain threshold alarms at the same moment. Do not overclaim "AI detects faults earlier".
 3. **Some detectors were tuned after inspecting the real Kaggle data.** The oil theft persistence rule, the sensor-fault load-step excuse and the range limits were adjusted once glitches were seen. Passing that data afterwards is not an independent test. Evaluate on a second unit or a held-out period before quoting a result.
 4. **The theft rule can miss a real theft followed by a refill within 24 h,** and it makes a theft alert appear 1 h late and disappear if the level recovers (visible to streaming consumers). That trade-off is a design decision made on one unit's data.
@@ -105,9 +122,9 @@ False alarms: 0 in every scenario. **These prove the detectors on a stand-in dat
 8. **Several recommendation rows have no basis in the PRD** (voltage alerts) and some standards references are secondary-source only (tan-delta as a CEA recommendation, IS 1180 limits). They are marked "to verify" in the text. Do not print numeric limits on a slide until the standard text has been read.
 9. **`StreamAnalyzer` re-runs the whole analysis on every row** (O(n^2) over a stream). Fine for a 30-day replay at demo speed; it will not scale to live data without incremental detectors.
 10. **Nothing here has been reviewed by a domain expert.** The 30-minute review in the PRD open items (item 10) is still outstanding and is the largest remaining risk.
-11. **Contracts are drafts nobody else has agreed to.** `analyze()` has an extra optional argument. Integration work from other roles may require changes here.
+11. **`analyze()` has an extra optional argument** (`residual_reference`) that the other roles have not agreed to. P3 now follows the team's `contracts/` and capability keys, so any rename there will silently disable a detector rather than fail loudly; keep `tests/test_integration_generated.py` in the suite to catch that.
 
 ## 8. What P1 and P2 must provide
-- **P2:** twin columns named as in section 3; a Normal run for `residual.calibrate`; the asset block replacing `thresholds["reference"]`. Soften scenario S1: with placeholder losses the PRD's 1.15-1.35 pu overload drives the hot spot to ~150 C and the ageing rate to ~550x, which a domain judge would find implausible.
+- **P2:** done so far: twin columns match section 3, and S1 was already softened to 1.10-1.25 pu. Still open: `thresholds["reference"]` duplicates `config/asset.yaml` (1391 A, 415 V today); read it from there. A Normal run is needed in any pipeline to call `residual.calibrate`.
 - **P1:** cleaned canonical data with `dq_flags`; `tests/kaggle_loader.py` is a stand-in until the adapter exists.
 - **All four:** agree `contracts/*` before anything depends on it. The optional `residual_reference` argument is a signature extension that needs agreement.
