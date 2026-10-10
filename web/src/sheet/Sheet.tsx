@@ -113,9 +113,7 @@ export function TwinState({ row, otiSuspect }: { row: Record<string, Cell> | nul
     <Schedule title="Twin state" code="Schedule 2" rows={[
       t("Load factor K", "load_pu", "pu", 2), est("Losses", "losses_total_W", "W", 0), est("Heat to air", "heat_dissipated_W", "W", 0),
       est("Bottom oil", "bottom_oil_C", "°C"), t("Top-oil", "twin_oil_C", "°C"), t("Hot-spot", "twin_hs_C", "°C"),
-      { ...t("Measured − twin", "residual_oil_C", "K", 1, "residual"), trust: resTrust }, t("Ageing, expected", "aging_rate", "× normal", 2),
-      t("Ageing, actual", "aging_rate_actual", "× normal", 2), t("Life used, actual", "days_aged_actual_cum", "days", 2),
-      t("Fidelity, 24 h RMS", "fidelity_rmse_C", "K", 2),
+      { ...t("Measured − twin", "residual_oil_C", "K", 1, "residual"), trust: resTrust }, t("Fidelity, 24 h RMS", "fidelity_rmse_C", "K", 2),
     ]}>
       <div className="health">
         <div className="health-head">

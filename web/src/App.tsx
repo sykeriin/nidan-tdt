@@ -9,6 +9,9 @@ import { ThermalDiagram } from "./sheet/ThermalDiagram";
 import { LagTraces } from "./sheet/LagTraces";
 import { LayerList } from "./sheet/LayerList";
 import { Detail, detailLetter } from "./sheet/Detail";
+import { HeatBalance } from "./sheet/HeatBalance";
+import { ImportData } from "./sheet/ImportData";
+import { LifeClock } from "./twin/LifeClock";
 import { ALL_ON, type Layers } from "./twin/layers";
 import { player, usePlayerIndex, type Frames } from "./player/player";
 
@@ -78,6 +81,7 @@ export default function App() {
               ))}
             </select>
           </label>
+          <ImportData onLoaded={(id) => { setPinned([]); setDataset(id); }} />
           <SectionToggle cut={cut} onCut={setCut} />
         </header>
         <aside className="margin-left">
@@ -91,6 +95,7 @@ export default function App() {
             layers={layers} ratedW={ratedW} reserveRight={pinned.length && frames ? DETAIL_W : 0}
             bubbles={frames ? Object.fromEntries(pinned.map((id) => [id, detailLetter(pinned, id)])) : undefined} />
           {frames && layers.thermometer && <ThermalDiagram meterOnly={meterOnly} otiSuspect={otiSuspect} />}
+          {frames && layers.heatflow && !pinned.length && <HeatBalance />}
           {frames && <Detail dataset={dataset} pinned={pinned} onClose={() => setPinned([])} />}
           {frames && <HeatScale meterOnly={meterOnly} otiSuspect={otiSuspect} />}
           {meterOnly && <p className="field-note">Meter-only data: no oil-temperature sensor. Temperatures are estimated by the twin.</p>}
@@ -98,7 +103,10 @@ export default function App() {
           <p className="field-hint">Hover a part to read it. Click to pin. Drag to turn. Space plays, arrows step.</p>
           {error && <p className="field-error" role="alert">{error}</p>}
         </section>
-        <aside className="margin-right"><TwinState row={row} otiSuspect={otiSuspect} /></aside>
+        <aside className="margin-right">
+          <TwinState row={row} otiSuspect={otiSuspect} />
+          {frames && layers.lifeclock && <LifeClock meterOnly={meterOnly} />}
+        </aside>
         <footer className="strip-bottom">
           <Timeline frames={frames} alerts={alerts} events={events} meterOnly={meterOnly} />
           <TitleBlock run={run.data} time={frames && i >= 0 ? frames.iso[i] : null}

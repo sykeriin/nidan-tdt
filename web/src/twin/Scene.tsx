@@ -8,7 +8,6 @@ import { AnchorTracker, CalloutLayer, type Anchors, type CalloutData } from "./C
 import { ThermalDriver, ThermalMarkers, TwinGhost } from "./Thermal";
 import { OilFlow } from "./OilFlow";
 import { HeatFlow } from "./HeatFlow";
-import { LifeClock } from "./LifeClock";
 import { ALL_ON, type Layers } from "./layers";
 import type { PartId } from "./parts";
 
@@ -82,9 +81,8 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
           {layers.temperature && <ThermalDriver otiSuspect={otiSuspect} />}
           {layers.ghost && <TwinGhost otiSuspect={otiSuspect} />}
           <ThermalMarkers meterOnly={meterOnly} otiSuspect={otiSuspect} />
-          {layers.oilflow && <OilFlow cut={cut} otiSuspect={otiSuspect} />}
+          {layers.oilflow && <OilFlow cut={cut || active.has("tank")} otiSuspect={otiSuspect} />}
           {layers.heatflow && <HeatFlow ratedW={ratedW} />}
-          {layers.lifeclock && <LifeClock meterOnly={meterOnly} />}
         </>}
         <AnchorTracker ids={shown} onChange={setAnchors} />
         <OrbitControls target={[0.1, 1.1, 0]} enableDamping dampingFactor={0.12} minZoom={60} maxZoom={600}

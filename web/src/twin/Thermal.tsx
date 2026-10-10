@@ -85,6 +85,8 @@ export function ThermalMarkers({ meterOnly, otiSuspect }: { meterOnly: boolean; 
     if (key === last.current || !hs.current || !tag.current) return; // Html children mount after the first frames
     last.current = key;
     if (hs.current) {
+      // phase R sits at the left of the model: its tag opens to the right, away from the section thermometer
+      hs.current.className = `hs-marker${ph === "R" ? " flip" : ""}`;
       hs.current.innerHTML =
         `<span class="mk-label">hot-spot, phase ${ph}</span>` +
         `<span class="mk-row"><b class="${v.hsSource === "measured" ? "m" : "t"}">${fmt(v.hotSpot)}</b> °C ` +

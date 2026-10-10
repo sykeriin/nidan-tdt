@@ -27,13 +27,26 @@ In Mirror mode every `row.*` / `twin.*` / `health.*` value below is read from F 
 | Residual tag at the oil surface | `OTI_C` vs `twin_oil_C`, `residual_oil_C`; drift line when `fidelity_alert`; becomes the "sensor suspect" tag when OTI is suspect; meter_only shows twin only | F |
 
 | Oil particles (300, instanced) | path is drawn geometry; speed ∝ `oil_flow_intensity` (est.); colour: `bottom_oil_C` at the bottom, top-oil (as the oil colour) at the top; radiator outlet colour = top → bottom blended by `radiator_effectiveness` (est.) | F |
-| Heat-flow arrows, width ∝ W | core: `losses_noload_W`; windings: `losses_load_W`; oil → radiators and radiators → air: `heat_dissipated_W` (all est.); one width scale per run from `params.P0_W + params.Pk_W` | F, P |
-| Stored heat label | `heat_stored_W` (sign → "heating up" / "cooling down") | F |
-| Life clock hands (1 turn = 1 day) | blue: `days_aged_cum` (expected); vermilion: `days_aged_actual_cum` (actual, hidden in meter_only); figure: `aging_rate_actual`, colour by `ageing_source` | F |
-| Life clock dimension lines | `days_aged_cum`, `days_aged_actual_cum` (lengths to the larger of the two) | F |
+| Heat-flow arrows, width ∝ W, label name + kW | core: `losses_noload_W`; windings: `losses_load_W`; to air: `heat_dissipated_W` (all est.); one width scale per run from `params.P0_W + params.Pk_W` | F, P |
+| Tank see-through (glass) | tank hovered or pinned (UI state); shows the oil colour and circulation inside a closed tank | — |
 | Detail bubble (lettered circle) on a pinned part | pinned state (UI) | — |
 
 Toggle: every row above belongs to a physics layer (Schedule 3, `twin/layers.ts`).
+
+## Heat balance (field, bottom right; hidden while a detail view is open)
+
+| Row | Field |
+|---|---|
+| core, windings, heat in | `losses_noload_W`, `losses_load_W`, `losses_total_W` |
+| to air, stored | `heat_dissipated_W`, `heat_stored_W` (sign → heating up / cooling down / steady) |
+
+## Life clock (right margin)
+
+| Element | Field |
+|---|---|
+| Hands (1 turn = 1 day of paper life) | blue `days_aged_cum` (expected); vermilion `days_aged_actual_cum` (actual, hidden in meter_only) |
+| Ageing rate, expected / actual | `aging_rate`, `aging_rate_actual` |
+| Life used, expected / actual | `days_aged_cum`, `days_aged_actual_cum` |
 
 ## Section thermometer (field, top left) — IEC 60076-7 thermal diagram
 
@@ -114,7 +127,7 @@ Trust badge (presentation of backend flags, `data/fields.ts`):
 | Schedule row | Field |
 |---|---|
 | Data in | `row.OTI_C, WTI_C, ATI_C, IR, IY, IB, IN, VR, VY, VB, PF, freq_Hz, OLI_pct, RH_pct` + trust badge |
-| Twin state | `twin.load_pu, losses_total_W (est.), heat_dissipated_W (est.), bottom_oil_C (est.), twin_oil_C, twin_hs_C, residual_oil_C, aging_rate, aging_rate_actual, days_aged_actual_cum, fidelity_rmse_C`; residual struck through and badged suspect when OTI is suspect |
+| Twin state | `twin.load_pu, losses_total_W (est.), heat_dissipated_W (est.), bottom_oil_C (est.), twin_oil_C, twin_hs_C, residual_oil_C, fidelity_rmse_C` (ageing and life used are on the life clock); residual struck through and badged suspect when OTI is suspect |
 | Health index | `health.score`, `health.band` (stamp colour), `health.components.*` (sub-score rows and bars) |
 
 ## Sheet
@@ -122,6 +135,7 @@ Trust badge (presentation of backend flags, `data/fields.ts`):
 | Element | Field |
 |---|---|
 | Dataset name | `D[].name` |
+| Import ("Load file") | `POST /api/datasets` (multipart `files`, `name`, `asset=estimate` when *other transformer*); D is refetched and the sheet switches to the returned `dataset_id` |
 | SIMULATED stamp | `D[].simulated` (fallback `S.simulated`) |
 | Title block: rating line | `asset.rating_kVA`, `asset.hv_voltage_V`, `asset.lv_voltage_V`, `asset.cooling` (absent fields omitted); "(estimated from data)" when `asset.nameplate_source == "estimated"` |
 | Title block: mode | `run.mode` |

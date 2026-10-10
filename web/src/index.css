@@ -483,3 +483,43 @@ button { font: inherit; color: inherit; }
 .detail-bubble circle.ring { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; }
 .detail-bubble text { font: 600 11px var(--mono); fill: var(--ink); }
 .detail-q .hist { width: 64px; }
+
+/* ---------------------------------------------------------------- decluttered layout */
+/* life clock lives in the right margin now */
+.lifeclock { position: static; margin: 0; padding: 4px 12px 10px; background: none; border: 0; border-top: 1px solid var(--ink); white-space: normal; }
+.lifeclock figcaption { margin: 6px 0 4px; }
+.lc-body { gap: 10px; }
+.lc-table { border-collapse: collapse; font-size: 11px; }
+.lc-table th { font-weight: 400; text-align: left; color: var(--ink-2); padding: 1px 6px 1px 0; }
+.lc-table td { text-align: right; padding: 1px 0 1px 8px; font-weight: 500; }
+.lc-table .t { color: var(--twin); } .lc-table .m { color: var(--measured); }
+.lc-table th.t, .lc-table th.m { text-align: right; font-size: 10px; }
+.lc-units { margin: 2px 0 0; font-size: 9.5px; color: var(--ink-3); }
+/* heat balance, field bottom right */
+.heatbal { position: absolute; right: 18px; bottom: 34px; margin: 0; pointer-events: none; z-index: 2;
+  background: rgba(242, 239, 230, 0.92); border: 1px solid var(--ink); padding: 6px 10px 6px; min-width: 190px; }
+.heatbal figcaption { font: 600 13px var(--cond); font-variant-caps: small-caps; letter-spacing: 0.05em; margin-bottom: 3px; }
+.heatbal table { border-collapse: collapse; width: 100%; font-size: 11px; }
+.heatbal th { font-weight: 400; text-align: left; color: var(--ink-2); padding: 1px 0; }
+.heatbal td { text-align: right; padding: 1px 0 1px 12px; }
+.heatbal tr.sum th, .heatbal tr.sum td { border-top: 1px solid var(--ink); color: var(--ink); font-weight: 500; }
+.heatbal p { margin: 3px 0 0; font-size: 10px; color: var(--ink-2); }
+/* heat scale: legend only; the values are in the section thermometer */
+.hs-mark em { display: none; }
+/* on-model labels: smaller, quieter */
+.flow-label { font-size: 10px; background: rgba(242, 239, 230, 0.8); }
+.hs-marker, .residual-tag { font-size: 10px; }
+/* import (top strip) */
+.import { display: flex; flex-direction: column; justify-content: center; margin-left: 18px; position: relative; }
+.import-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.import button { font: 500 12px var(--mono); color: var(--ink); background: var(--paper); border: 1px solid var(--ink);
+  border-radius: 0; padding: 3px 10px; cursor: pointer; }
+.import button:hover { background: var(--paper-deep); }
+.import button:disabled { color: var(--ink-3); cursor: progress; }
+.import label { display: flex; align-items: center; gap: 4px; color: var(--ink-2); cursor: pointer; }
+.import-msg { position: absolute; top: 100%; left: 0; margin: 2px 0 0; font-size: 10px; white-space: nowrap; z-index: 20;
+  background: var(--paper); border: 1px solid var(--rule); padding: 1px 5px; }
+.import-msg.err { color: var(--bad); border-color: var(--bad); white-space: normal; width: 320px; }
+.hs-marker.flip { right: auto; left: 34px; top: -96px; text-align: left; }
+.hs-marker.flip::after { right: auto; left: -34px; width: 34px; height: 92px;
+  background: linear-gradient(to top left, transparent calc(50% - 0.6px), var(--ink) calc(50% - 0.6px), var(--ink) calc(50% + 0.6px), transparent calc(50% + 0.6px)); }

@@ -27,6 +27,8 @@ const M = {
   skid: mat("#5C5E5A"),
 };
 type MatKey = keyof typeof M;
+// hovering or pinning the tank turns its steel to faint glass, so the oil, windings and circulation show inside
+const TANK_GLASS = mat("#9A9C96", { transparent: true, opacity: 0.12, depthWrite: false });
 // Heat materials: recoloured every frame by ThermalDriver (Thermal.tsx) from the replay clock, never by React.
 export const HEAT_MATS = {
   winding: { R: mat("#B06A3A"), Y: mat("#B06A3A"), B: mat("#B06A3A") },
@@ -79,10 +81,11 @@ function Mesh({ geo, m, p = [0, 0, 0], r = [0, 0, 0], edges = 25, hit = true, vi
   const id = useContext(PartCtx);
   const { active } = useContext(TwinContext);
   const on = id !== null && active.has(id);
+  const glass = id === "tank" && m === "tank" && on;
   return (
-    <mesh geometry={geo} material={override ?? (on ? ACTIVE[m] : M[m])} position={p} rotation={r} visible={visible}
+    <mesh geometry={geo} material={override ?? (glass ? TANK_GLASS : on ? ACTIVE[m] : M[m])} position={p} rotation={r} visible={visible}
       raycast={hit ? undefined : () => null}>
-      {edges !== false && <Edges threshold={edges} color={INK} />}
+      {edges !== false && <Edges threshold={edges} color={INK} transparent opacity={glass ? 0.35 : 1} />}
     </mesh>
   );
 }

@@ -13,7 +13,14 @@ assumptions: [`docs/assumptions.md`](docs/assumptions.md) · data provenance: [`
 uv venv --python 3.12 .venv            # or: py -3.12 -m venv .venv
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 .venv\Scripts\python -m pytest -q       # full suite, runs offline
+.venv\Scripts\python -m server         # the digital twin: UI + API on http://127.0.0.1:8000 (opens the browser)
 ```
+
+`python -m server` builds `web/` the first time (needs Node.js once), then runs offline on Python alone.
+`--build` rebuilds after frontend changes; `--host 0.0.0.0` shares it on the LAN. In the twin, **Load file** (top
+strip) imports your own CSV/Excel: the backend maps the columns, runs the twin and analytics, and the sheet switches
+to it. Tick *other transformer* when it is not Transformer-1 (the rating is then estimated from the data).
+Frontend development: `cd web; npm install; npm run dev` (Vite on :5173, proxies `/api` to :8000).
 
 | Command | Does |
 |---|---|
@@ -25,6 +32,7 @@ uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 | `python -m eval.run_eval` | Lead-time and false-alarm table → `docs/figures/lead_time.md` |
 | `python -m ingest.enrich fetch YEAR MONTH [SITE]` | Cache Open-Meteo weather (only command that needs network) |
 | `python -m dt.api rebuild [ID…]` | Precompute dashboard runs (N, S1–S5, kaggle) → `data/cache/runs/` |
+| `python -m server [--build] [--port P]` | One command: builds `web/` if needed, serves UI + API, opens the browser |
 | `uvicorn server.app:app --port 8000` | API at `/api`, docs at `/docs`, React build (`web/dist` or `DT_WEB_DIST`) at `/` — see [`docs/API.md`](docs/API.md) |
 | `python -m server.export_openapi` | OpenAPI schema → `docs/openapi.json` |
 

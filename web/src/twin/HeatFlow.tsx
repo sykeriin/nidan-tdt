@@ -39,7 +39,6 @@ export function HeatFlow({ ratedW }: { ratedW: number | null }) {
   const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#F2EFE6", transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthTest: false }), []);
   const meshes = useRef<(THREE.Mesh | null)[]>([]);
   const labels = useRef<(HTMLDivElement | null)[]>([]);
-  const last = useRef(-2);
 
   useFrame(() => {
     const i = player.index;
@@ -52,10 +51,11 @@ export function HeatFlow({ ratedW }: { ratedW: number | null }) {
         m.scale.set(a.len, Math.max(0.006, (w ?? 0) * scale), 1);
       }
     });
-    if (i === last.current || labels.current.some((el) => !el)) return; // Html mounts late
-    last.current = i;
+    // written whenever the text differs (cheap: three labels), so a late-mounting Html still gets filled
     ARROWS.forEach((a, n) => {
-      labels.current[n]!.textContent = `${a.label} ${kW(num(player.value(a.field, i)))}`;
+      const el = labels.current[n];
+      const txt = `${a.label} ${kW(num(player.value(a.field, i)))}`;
+      if (el && el.textContent !== txt) el.textContent = txt;
     });
   });
 

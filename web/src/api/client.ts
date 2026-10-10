@@ -69,3 +69,23 @@ export const useComponents = (id: string, t: string | null, enabled: boolean) =>
     queryFn: () => get<Components>(`/datasets/${id}/components`, { t: t! }),
     placeholderData: (prev) => prev,
   });
+
+export type DatasetLoaded = components["schemas"]["DatasetModel"];
+/** Upload CSV/Excel file(s); the backend maps, runs the twin + analytics and registers the dataset. */
+export async function uploadDataset(files: File[], estimateRating: boolean): Promise<DatasetLoaded> {
+  const body = new FormData();
+  files.forEach((f) => body.append("files", f));
+  body.append("name", files.map((f) => f.name).join(", "));
+  if (estimateRating) body.append("asset", "estimate");
+  let res: Response;
+  try {
+    res = await fetch("/api/datasets", { method: "POST", body });
+  } catch {
+    throw new ApiError(0, "The twin server isn't reachable. Start it with: python -m server");
+  }
+  if (!res.ok) {
+    const b = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, typeof b.detail === "string" ? b.detail : JSON.stringify(b.detail));
+  }
+  return res.json() as Promise<DatasetLoaded>;
+}
