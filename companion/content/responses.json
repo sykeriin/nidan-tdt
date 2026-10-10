@@ -1,0 +1,252 @@
+{
+  "_note": "Pre-written alert responses for every type in analytics.common.ALERT_MODULES. Audience: campus electrical technician. No test limits are stated (they must come from the standard / the transformer nameplate). Wording is advisory and unreviewed by a domain expert.",
+  "severity_label": {
+    "info": "Info",
+    "warning": "Warning",
+    "critical": "CRITICAL"
+  },
+  "urgency_label": {
+    "immediate": "Act now",
+    "24h": "Within 24 hours",
+    "7d": "Within 7 days",
+    "next_scheduled": "At next scheduled maintenance"
+  },
+  "actions": {
+    "ack_reply": "Acknowledged. I have seen this alert and will follow the checklist.",
+    "snooze_reply": "Snoozed for 1 hour. The alert will not notify again for this type until then. Check it before the snooze ends if you can.",
+    "escalate_template": "TRANSFORMER ALERT - {title} ({severity}) at {time}. {value_line}Dataset: {dataset}{sim}. Technician has seen it and needs an engineer to review. Details: {meaning}"
+  },
+  "types": {
+    "loading_high": {
+      "title": "High transformer loading",
+      "push": "Load is above the alert level. Check load and cooling.",
+      "meaning": "The load current is higher than the level set for this transformer. Sustained high load heats the windings and uses up insulation life faster than normal.",
+      "safe_to_wait": "A short peak is tolerable. If it stays high for hours, do not wait.",
+      "do_now": ["Read the live load at the panel and confirm it matches the app", "Shed or move non-essential load if you can", "Look at the cooling: radiators and fans clear, oil temperature gauge not climbing"],
+      "check": ["Which feeders draw the most current", "Whether this is a short peak or has lasted hours"],
+      "escalate_if": "Load stays above the alert level for another hour, or oil temperature keeps rising after you reduce load.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "overcurrent": {
+      "title": "Overcurrent",
+      "push": "Current is above the allowed level. Check load and connections.",
+      "meaning": "At least one phase is carrying more current than the alert level. This can be real overload, or a fault or imbalance elsewhere on the LV side.",
+      "safe_to_wait": "No, if it is sustained. Find out whether it is a genuine overload.",
+      "do_now": ["Read the three phase currents at the panel", "Reduce load where you safely can", "Check the LV side for any recent switching or a feeder that has tripped"],
+      "check": ["Whether all three phases are high or only one", "Terminals and lugs for heat marks or discolouration"],
+      "escalate_if": "Current stays high after load is reduced, or you see burning smell, noise or hot terminals.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "hot_spot_high": {
+      "title": "Winding hot-spot too high",
+      "push": "Estimated winding hot-spot is high. Reduce load, check cooling.",
+      "meaning": "The twin estimates the hottest point inside the winding is above the alert level. This value is calculated by the model, not measured directly, so treat it as an estimate. Heat at this point is what ages the insulation.",
+      "safe_to_wait": "No. Heat damage to insulation is cumulative and cannot be undone.",
+      "do_now": ["Reduce the load if you can", "Check radiators, fans and the oil temperature gauge on site", "Confirm the top-oil temperature reading is also high; if only the estimate is high, tell the engineer"],
+      "check": ["Radiator fins blocked or covered", "Any cooling fan not running"],
+      "escalate_if": "Hot-spot or oil temperature keeps rising after load is reduced, or cooling is visibly faulty.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "top_oil_high": {
+      "title": "Top-oil temperature high",
+      "push": "Oil temperature is above the alert level. Check cooling and load.",
+      "meaning": "The oil at the top of the tank is hotter than the alert level. Either the load is high, the cooling is not removing heat, or the ambient is unusually hot.",
+      "safe_to_wait": "Not if it keeps rising. Check the cause the same day.",
+      "do_now": ["Compare the app value with the temperature gauge on the tank", "Reduce load if you can", "Check radiators and fans"],
+      "check": ["Ambient temperature and ventilation around the unit", "Whether the load explains the rise"],
+      "escalate_if": "Temperature keeps climbing with load reduced, or the gauge and the app disagree by a large amount.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "ageing_rate_high": {
+      "title": "Insulation ageing faster than normal",
+      "push": "Insulation is ageing faster than normal. Review load and cooling.",
+      "meaning": "The model estimates the insulation is using up its life faster than it would at normal operating temperature. One short spell is minor; a sustained rate shortens the transformer's life.",
+      "safe_to_wait": "A brief spell can wait for the next working day. A repeating pattern should be fixed.",
+      "do_now": ["Note when it started and what the load was", "Reduce peak load if this repeats", "Plan a cooling system inspection"],
+      "check": ["Whether it happens at the same time every day", "Radiators and fans"],
+      "escalate_if": "It repeats daily or the rate stays high for several days.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "residual_drift": {
+      "title": "Oil is running hotter than the twin predicts",
+      "push": "Measured oil temp is above the twin's prediction. Possible cooling problem.",
+      "meaning": "The twin predicts the oil temperature from load and ambient. The real reading is persistently higher than that prediction. The usual cause is reduced cooling (blocked or fouled radiators, a failed fan, low oil), but it can also be a sensor problem.",
+      "safe_to_wait": "It builds up slowly, so a planned inspection soon is fine. Do not leave it for weeks.",
+      "do_now": ["Inspect radiators for blockage, dust or damage", "Check fans and any oil pumps run", "Check the oil level gauge"],
+      "check": ["Compare the gauge on the tank with the app reading", "Whether the load is normal while temperature is not"],
+      "escalate_if": "The gap keeps growing, the oil level is low, or the cooling looks fine but the temperature stays high.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "current_unbalance": {
+      "title": "Phase current unbalance",
+      "push": "The three phase currents are uneven. Check loads and connections.",
+      "meaning": "The load is not shared evenly across the three phases. Heavy unbalance causes extra heating and neutral current, and often means single-phase loads are badly distributed or a connection is loose.",
+      "safe_to_wait": "Usually yes for a few days, unless it is severe or a connection looks hot.",
+      "do_now": ["Read the three phase currents at the panel", "Check LV terminals and the neutral connection", "Move single-phase loads between phases where possible"],
+      "check": ["Loose or discoloured lugs", "A single feeder with an unusually large load"],
+      "escalate_if": "Unbalance is severe, the neutral is hot, or one phase has dropped to near zero.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "voltage_unbalance": {
+      "title": "Voltage unbalance",
+      "push": "Phase voltages are uneven. Check supply and tap setting.",
+      "meaning": "The phase voltages differ more than the alert level. The cause is often on the supply side or a loose connection, not the transformer itself.",
+      "safe_to_wait": "Usually a few days, unless equipment is being damaged.",
+      "do_now": ["Measure the three phase voltages at the LV terminals", "Check connections on the incoming side", "Note the tap position"],
+      "check": ["Whether the unbalance is also on the supply side", "Any single-phase fault or blown fuse upstream"],
+      "escalate_if": "Unbalance is large or connected equipment is tripping or running badly.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "voltage_high": {
+      "title": "Voltage high",
+      "push": "Voltage is above the allowed level. Check supply and tap setting.",
+      "meaning": "The voltage is above the alert level. It may come from the supply, an unsuitable tap position, or light load on the grid.",
+      "safe_to_wait": "A few days is usually fine. High voltage over a long time stresses insulation and connected equipment.",
+      "do_now": ["Measure the voltage at the LV terminals", "Check the tap changer position", "Tell the utility if the supply is high"],
+      "check": ["Whether it is high at all times or only at night or light load"],
+      "escalate_if": "Voltage is well above the limit or sensitive equipment is being affected.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "voltage_low": {
+      "title": "Voltage low",
+      "push": "Voltage is below the allowed level. Check supply and tap setting.",
+      "meaning": "The voltage is below the alert level. Causes include a weak supply, heavy load, or a tap position that does not suit the incoming voltage.",
+      "safe_to_wait": "A few days is usually fine, but low voltage makes motors draw more current.",
+      "do_now": ["Measure the voltage at the LV terminals", "Check the tap changer position", "Check for heavy motor loads starting up"],
+      "check": ["Whether it dips only at peak load"],
+      "escalate_if": "Voltage stays low, or equipment trips on undervoltage.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "oil_low": {
+      "title": "Oil level low",
+      "push": "Oil level is below the alert level. Inspect for leaks.",
+      "meaning": "The oil level reading is lower than the alert level. Oil cools and insulates the windings; too little exposes them.",
+      "safe_to_wait": "No. Check it the same day.",
+      "do_now": ["Read the oil level gauge on the tank", "Look for oil on the ground, tank, gaskets and bushings", "Do not top up oil yourself unless your procedure says so"],
+      "check": ["Whether the gauge agrees with the app", "Fresh oil stains"],
+      "escalate_if": "The gauge confirms low oil or you find a leak.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "immediate", "warning": "24h", "info": "24h"}
+    },
+    "oil_leak": {
+      "title": "Possible oil leak",
+      "push": "Oil level is falling steadily. Inspect tank and gaskets.",
+      "meaning": "The oil level is dropping slowly and steadily, which is how a leak looks. A slow leak can go unnoticed until the level is dangerously low.",
+      "safe_to_wait": "No. Inspect within a day.",
+      "do_now": ["Walk around the tank and check gaskets, valves, bushings and welds for oil", "Read the oil level gauge", "Check the ground beneath the unit"],
+      "check": ["Whether the app trend and the gauge agree", "Any recent maintenance that may explain a drop"],
+      "escalate_if": "You find oil, or the gauge confirms the drop.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "immediate", "warning": "24h", "info": "24h"}
+    },
+    "oil_theft": {
+      "title": "Sudden oil level drop",
+      "push": "Oil level dropped suddenly. Inspect the site now.",
+      "meaning": "The oil level fell by a large step in a short time and did not recover. A fast drop like this is more consistent with oil being drained than with a slow leak. It can also be a sensor fault or maintenance work, so confirm on site before drawing conclusions.",
+      "safe_to_wait": "No. Go and look now.",
+      "do_now": ["Go to the unit and read the oil level gauge", "Look for drain valve opened, cut seals, spilled oil or signs of tampering", "Check whether any maintenance or sampling was done today", "Do not touch the unit if it looks unsafe"],
+      "check": ["Whether the drain valve and sampling points are intact", "Whether the gauge agrees with the app"],
+      "escalate_if": "The gauge confirms a real drop or you see tampering. Inform security and your supervisor.",
+      "who": "Electrical technician and security",
+      "urgency": {"critical": "immediate", "warning": "immediate", "info": "24h"}
+    },
+    "through_fault": {
+      "title": "Through-fault recorded",
+      "push": "A fault current passed through the transformer. Log it.",
+      "meaning": "A short-circuit current flowed through the transformer and was cleared by protection elsewhere. The transformer itself was not the fault location, but each event adds mechanical stress to the windings.",
+      "safe_to_wait": "Yes for one event. Record it and review at the next maintenance.",
+      "do_now": ["Log the date, time and size of the event", "Check what tripped downstream and why", "Look at the tank for any visible damage or oil leaking"],
+      "check": ["Protection relay records", "Whether the transformer is still behaving normally"],
+      "escalate_if": "Several events have happened in a short time, or you see any damage, noise or oil leak.",
+      "who": "Electrical technician",
+      "urgency": {"critical": "7d", "warning": "next_scheduled", "info": "next_scheduled"}
+    },
+    "through_fault_stress": {
+      "title": "Fault stress building up",
+      "push": "Cumulative fault stress has crossed the alert level. Plan impedance test.",
+      "meaning": "Repeated through-faults add up. The accumulated stress is now above the alert level, which means the windings may have been mechanically strained. A short-circuit impedance measurement can show whether they have moved.",
+      "safe_to_wait": "Plan the test within a week. Avoid avoidable heavy loading until then.",
+      "do_now": ["Tell the engineer and ask for a short-circuit impedance (%X) test", "List the recent fault events", "Check for any unusual noise"],
+      "check": ["The number and dates of through-fault events", "Whether the cause of the faults has been fixed"],
+      "escalate_if": "Always raise with the engineer: this needs a test, not just a look.",
+      "who": "Engineer",
+      "urgency": {"critical": "7d", "warning": "7d", "info": "next_scheduled"}
+    },
+    "jump_sensor": {
+      "title": "Sensor reading jumped",
+      "push": "A sensor value jumped in a way the transformer could not. Check the sensor.",
+      "meaning": "A reading changed by an amount the transformer physically cannot, so the more likely cause is the sensor or its wiring, not the transformer. This points to the device, not the asset.",
+      "safe_to_wait": "Yes for the transformer. Check the sensor in the next day or two.",
+      "do_now": ["Compare the app value with the local gauge or meter", "Check the sensor cable and connector", "Note which channel it is"],
+      "check": ["Loose connector or damaged cable", "Whether other channels look normal"],
+      "escalate_if": "The local gauge disagrees with the app for the same reading, or the jumps keep repeating.",
+      "who": "Instrument technician",
+      "urgency": {"critical": "24h", "warning": "24h", "info": "7d"}
+    },
+    "range_sensor": {
+      "title": "Sensor value out of range",
+      "push": "A sensor reads outside its possible range. Check the sensor.",
+      "meaning": "A reading is outside the range this quantity can have. The sensor, its scaling or its wiring is the likely problem. Check the device, not the transformer.",
+      "safe_to_wait": "For the transformer yes, but the channel cannot be trusted until fixed.",
+      "do_now": ["Compare with the local gauge or meter", "Check the sensor wiring and configuration", "Mark this channel as untrusted until checked"],
+      "check": ["Sensor calibration or scaling setting", "Cable damage"],
+      "escalate_if": "The sensor cannot be fixed on site or several channels show the same.",
+      "who": "Instrument technician",
+      "urgency": {"critical": "24h", "warning": "24h", "info": "7d"}
+    },
+    "stuck_sensor": {
+      "title": "Sensor stuck",
+      "push": "A sensor value is not changing. It may be frozen.",
+      "meaning": "A reading has stayed exactly the same for longer than it normally would while other readings move. The sensor or its data link may be frozen. Check the device, not the transformer.",
+      "safe_to_wait": "For the transformer yes. Check the sensor within a day or two.",
+      "do_now": ["Look at the local gauge and compare with the app", "Check the sensor power and data cable", "Restart the logger or gateway if your procedure allows"],
+      "check": ["Whether the gauge value is moving", "Whether only one channel is frozen"],
+      "escalate_if": "The sensor stays frozen after a restart or the gauge also looks stuck.",
+      "who": "Instrument technician",
+      "urgency": {"critical": "24h", "warning": "24h", "info": "7d"}
+    },
+    "dead_channel": {
+      "title": "No data from a channel",
+      "push": "A sensor channel is giving no data. Check the sensor and link.",
+      "meaning": "A channel has stopped sending valid values. This is a data problem: sensor, cable, gateway or power. While it is dead the app cannot warn about that quantity.",
+      "safe_to_wait": "The transformer is not at risk from this alert alone, but you are blind on that channel. Fix it soon.",
+      "do_now": ["Check which channel is dead", "Check the sensor power, cable and gateway", "Read the local gauge by hand until it is fixed"],
+      "check": ["Network or gateway connection", "Whether other channels are also missing"],
+      "escalate_if": "Several channels are dead, or the main temperature or current channels are lost.",
+      "who": "Instrument technician",
+      "urgency": {"critical": "24h", "warning": "24h", "info": "7d"}
+    },
+    "drift_sensor": {
+      "title": "Sensor drifting",
+      "push": "A sensor is drifting in a way the transformer could not cause.",
+      "meaning": "A reading is moving slowly in a direction that the transformer could not cause on its own, for example oil level rising without a refill. A drifting sensor is the likely cause. Check the device, not the transformer.",
+      "safe_to_wait": "Yes for the transformer. Plan a sensor check or recalibration within a week.",
+      "do_now": ["Compare with the local gauge", "Note how far it has drifted", "Plan recalibration or replacement"],
+      "check": ["Sensor age and last calibration", "Whether a refill or maintenance explains it"],
+      "escalate_if": "The gauge also differs from earlier readings in an unexplained way.",
+      "who": "Instrument technician",
+      "urgency": {"critical": "24h", "warning": "7d", "info": "7d"}
+    },
+    "implausible_sensor": {
+      "title": "Reading is physically implausible",
+      "push": "A reading contradicts the transformer's physics. Check the sensor.",
+      "meaning": "The twin's physics says this reading cannot be true given the other readings, for example a temperature rising faster than the load could cause. A sensor fault is the likely explanation. Check the device first.",
+      "safe_to_wait": "Check within a day. If the gauge agrees with the app, treat it as real and escalate.",
+      "do_now": ["Compare with the local gauge", "Check the sensor and cable", "If the gauge agrees with the app, treat it as a real event"],
+      "check": ["Which reading looks wrong", "Other channels at the same time"],
+      "escalate_if": "The local gauge confirms the unusual value.",
+      "who": "Instrument technician",
+      "urgency": {"critical": "24h", "warning": "24h", "info": "7d"}
+    }
+  }
+}

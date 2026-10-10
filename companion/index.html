@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>Transformer Alerts</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Transformer-1 alerts</h1>
+    <div id="status" class="muted">Not monitoring</div>
+  </div>
+  <div id="health" class="pill hidden"></div>
+</header>
+
+<nav>
+  <button data-tab="feed" class="active">Alerts <span id="badge" class="badge hidden">0</span></button>
+  <button data-tab="library">All 21 types</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+
+<main>
+  <section id="tab-feed">
+    <div class="row">
+      <button id="toggle" class="primary">Start monitoring</button>
+      <button id="clear">Clear</button>
+    </div>
+    <div id="notice" class="notice hidden"></div>
+    <ul id="feed" class="cards"></ul>
+    <p id="empty" class="muted">No alerts yet. Start monitoring, or use <b>All 21 types</b> to preview each notification.</p>
+  </section>
+
+  <section id="tab-library" class="hidden">
+    <p class="muted">Every alert the backend can raise, with its pre-written response. <b>Send test</b> fires a notification labelled TEST.</p>
+    <ul id="library" class="cards"></ul>
+  </section>
+
+  <section id="tab-settings" class="hidden">
+    <label>Backend URL
+      <input id="backend" type="url" placeholder="http://localhost:8000">
+    </label>
+    <label>Dataset
+      <select id="dataset"></select>
+      <button id="reload-ds" type="button">Reload list</button>
+    </label>
+    <label>Replay speed (data seconds per real second)
+      <input id="speed" type="number" min="1" value="3600">
+    </label>
+    <label>Notify for
+      <select id="minsev">
+        <option value="info">All alerts</option>
+        <option value="warning">Warning and critical</option>
+        <option value="critical">Critical only</option>
+      </select>
+    </label>
+    <label class="check"><input id="mutesensor" type="checkbox"> Sensor / data alerts: show in the list but do not push</label>
+    <div class="row">
+      <button id="perm" class="primary">Allow notifications</button>
+      <span id="permstate" class="muted"></span>
+    </div>
+    <p class="muted small">Notifications only arrive while this app is open (a background tab is fine). True background push needs a push server, which is not built. On a phone, installing the app and notifications need HTTPS; plain http works on this computer only.</p>
+  </section>
+</main>
+
+<div id="sheet" class="sheet hidden" role="dialog" aria-modal="true">
+  <div class="sheet-body">
+    <button id="close-sheet" class="close" aria-label="Close">&times;</button>
+    <div id="sheet-content"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
