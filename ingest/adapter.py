@@ -147,7 +147,8 @@ def load(paths, schema=None, asset="config/asset.yaml", source: str | None = Non
             rep["warnings"].append(f"Rating unknown: estimated I_rated {a.get('i_rated_A')} A "
                                    f"({a.get('rating_kVA')} kVA) from data [Assumed - estimated from data]")
     trend = validate.validate(trend, iv, a.get("i_rated_A"))
-    wx = enrich.load_weather() if weather is None else weather
+    wx = enrich.load_weather(site=sch.get("site", enrich.DEFAULT_SITE)) if weather is None else weather
+    rep["weather_site"] = sch.get("site", enrich.DEFAULT_SITE)
     trend, enrich_log = enrich.fill_ambient(trend, wx)
     trend["__dq_ATI_MISMATCH"] = enrich.ati_mismatch(trend, wx)
     trend = derive.add_loading(trend, a.get("i_rated_A"))

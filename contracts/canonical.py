@@ -23,7 +23,8 @@ EVENT_TYPES = {"through_fault", "trip", "tamper", "alarm", "other"}
 
 SOURCES = {"generated_sim", "kaggle_real", "organizer", "replay", "live"}
 
-DQ_CODES = {"DUP_IDENT", "DUP_CONFLICT", "GAP", "JUMP_OTI", "JUMP_WTI", "ATI_MISMATCH", "MERGE_CONFLICT"}
+DQ_CODES = {"DUP_IDENT", "DUP_CONFLICT", "GAP", "JUMP_OTI", "JUMP_WTI", "ATI_MISMATCH", "MERGE_CONFLICT",
+            "IMPLAUSIBLE_RISE"}  # IMPLAUSIBLE_RISE: twin/plausibility.py
 DQ_PREFIXES = ("RANGE_", "STUCK_", "NEG_", "IMPUTED_", "DERIVED_", "ASSUMED_")
 
 # Physical ranges for RANGE_<COL> (spec §2.8, configurable here)

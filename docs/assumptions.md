@@ -43,8 +43,7 @@ above 5 °C. [Assumed] Code: `ingest/validate.py`.
 
 **A7. Date range 2019-07-01 → 2020-03-24 (Asia/Kolkata).** [Assumed — see data/PROVENANCE.md §1.6]
 - Before: not energised (zero current on all June rows, OTI = ATI, energy counter frozen).
-- After: load regime change from 2020-03-25 (evening peak −33 %), only 20 days and after a 14-day gap. It would
-  bias the last third of the data, which was the test split.
+- After: load regime change from 2020-03-25 (evening peak −33 %), only 20 days and after a 14-day gap.
 - Logging gaps inside the range are kept and flagged `GAP`. The energy counter proves it is one asset throughout.
 
 **A8. Kaggle `WTI` is a 0/1 flag, not a winding temperature.** [Confirmed by inspection]
@@ -54,6 +53,13 @@ above 5 °C. [Assumed] Code: `ingest/validate.py`.
 **A9. Kaggle timestamps are local time (Asia/Kolkata).** [Assumed] Supported by the 18–19 h evening load peak.
 
 **A10. Kaggle rating estimated from data: 214.7 A ≈ 155 kVA** (p99 I_mean / 0.8, spec §2.7). [Assumed — estimated]
+
+**A12. No twin is fitted to the Kaggle unit; a physics plausibility check replaces it** (PRD §7.4). [Assumed — design decision]
+- Band parameters: low = 30 K rated rise, R = 10, no surcharge; high = 60 K, R = 4, +10 K surcharge; x = 0.8;
+  tolerance 2 K; channel suspect if > 50 % of evaluable rows fall outside. The 30 K low edge leans on IS 1180's
+  35 K top-oil limit [To verify against the standard text].
+
+**A13. Kaggle location: Hyderabad.** [Assumed] ATI fits Hyderabad weather (daily corr 0.63) far better than Bengaluru (0.27).
 
 ## Weather
 

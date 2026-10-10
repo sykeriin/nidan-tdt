@@ -16,35 +16,39 @@ from contracts.canonical import TZ
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "weather"
-SITE = {"name": "bengaluru", "latitude": 12.9716, "longitude": 77.5946}  # Bengaluru city [Assumed site point]
+SITES = {
+    "bengaluru": {"latitude": 12.9716, "longitude": 77.5946},   # Transformer-1, Bengaluru city [Assumed site point]
+    "hyderabad": {"latitude": 17.3850, "longitude": 78.4867},   # Kaggle unit [Assumed location]
+}
+DEFAULT_SITE = "bengaluru"
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 FALLBACK_AMBIENT_C = 27.0  # [Assumed] only when no ATI, no cache coverage, no climatology
 
 
 # ---------- weather cache ----------
-def cache_path(year: int, month: int, cache_dir=CACHE) -> Path:
-    return Path(cache_dir) / f"{SITE['name']}_{year:04d}-{month:02d}.json"
+def cache_path(year: int, month: int, site: str = DEFAULT_SITE, cache_dir=CACHE) -> Path:
+    return Path(cache_dir) / f"{site}_{year:04d}-{month:02d}.json"
 
 
-def fetch_month(year: int, month: int, cache_dir=CACHE) -> Path:
+def fetch_month(year: int, month: int, site: str = DEFAULT_SITE, cache_dir=CACHE) -> Path:
     import requests  # network only here
     start = pd.Timestamp(year=year, month=month, day=1)
     end = start + pd.offsets.MonthEnd(0)
     r = requests.get(ARCHIVE_URL, timeout=60, params={
-        "latitude": SITE["latitude"], "longitude": SITE["longitude"],
+        "latitude": SITES[site]["latitude"], "longitude": SITES[site]["longitude"],
         "start_date": start.date().isoformat(), "end_date": end.date().isoformat(),
         "hourly": "temperature_2m,relative_humidity_2m", "timezone": TZ})
     r.raise_for_status()
-    p = cache_path(year, month, cache_dir)
+    p = cache_path(year, month, site, cache_dir)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(r.text, encoding="utf-8")
     return p
 
 
-def load_weather(cache_dir=CACHE) -> pd.DataFrame:
-    """All cached months as hourly frame [timestamp, temp_C, rh_pct] (tz-aware). Empty if no cache."""
+def load_weather(cache_dir=CACHE, site: str = DEFAULT_SITE) -> pd.DataFrame:
+    """All cached months for a site as hourly frame [timestamp, temp_C, rh_pct] (tz-aware). Empty if no cache."""
     frames = []
-    for p in sorted(Path(cache_dir).glob(f"{SITE['name']}_*.json")):
+    for p in sorted(Path(cache_dir).glob(f"{site}_*.json")):
         h = json.loads(p.read_text(encoding="utf-8"))["hourly"]
         frames.append(pd.DataFrame({
             "timestamp": pd.to_datetime(h["time"]).tz_localize(TZ),
@@ -157,7 +161,7 @@ def resolve_asset(asset, trend: pd.DataFrame | None = None) -> dict:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 4 and sys.argv[1] == "fetch":
-        print(fetch_month(int(sys.argv[2]), int(sys.argv[3])))
+    if len(sys.argv) in (4, 5) and sys.argv[1] == "fetch":
+        print(fetch_month(int(sys.argv[2]), int(sys.argv[3]), *sys.argv[4:]))
     else:
-        print("usage: python -m ingest.enrich fetch YEAR MONTH")
+        print("usage: python -m ingest.enrich fetch YEAR MONTH [SITE]")

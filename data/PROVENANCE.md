@@ -11,7 +11,7 @@ Raw files are never modified. Cleaning lives in `ingest/` + `config/schema/kaggl
 - **Source:** kaggle.com/datasets/sreshta140/ai-transformer-monitoring [Confirmed]
 - **Acquired:** 2026-10-10 (file timestamps inside `dt-data.zip`; entered the repo in commit `ca9f862`,
   extracted in `be66cb2`). The original Kaggle download date and dataset version were not recorded. **[Open]**
-- **Use:** Real Field Data page, adapter fixture F2, sensor-vs-asset demo, fitted twin. **Never** used to
+- **Use:** Real Field Data page, adapter fixture F2, sensor-vs-asset demo, physics plausibility check (PRD §7.4). **Never** used to
   calibrate Transformer-1. Device alarm flags are display-only, never ML features/targets.
 
 ### 1.1 Files (raw, unmodified)
@@ -102,8 +102,8 @@ Units check: meter KVA ÷ Σ(V·I)/1000 = 0.99 (median) and Σ VAL = KVA → cur
 - **Regime change C — from 2020-03-25:** evening (17–20 h) median current falls from 107 A to 72 A and p95 from
   114 A to 79 A, against ~equal median. The date coincides with India's national lockdown. [Reported context]
 - Seasonal, not a break: load highest Aug–Sep, lowest Dec–Feb; L-N voltage rises from ~233 V to ~246 V in November.
-- Thermal: **OTI − ambient is small** (median 2 K, p99 10 K) for a unit loaded at ~34 % median. Expect a
-  fitted twin with a small top-oil rise; the OTI sensor may sit away from the true top-oil. **[Open]**
+- Thermal: **OTI − ambient is small** (median 2 K, p99 10 K) for a unit loaded at ~34 % median. This fails the
+  physics plausibility check (§1.8): the OTI channel can't be reading top-oil.
 
 ### 1.5 Estimated rating (no nameplate)
 
@@ -120,7 +120,7 @@ Spec rule (§2.7): I_rated = p99(I_mean) / 0.8.
 **Date range: 2019-07-01 00:00 → 2020-03-24 23:59 (Asia/Kolkata).**
 - Start: drop June 2019 (not energised; no current on any row).
 - End: drop 2020-03-25 onwards (load regime change C, only 20 days, after a 14-day gap). It would bias the
-  last third of the data, which is the fitted twin's test split (PRD §7.4).
+  9-month record with a second load regime.
 - Keep the logging gaps inside the range. They are flagged `GAP`, and the twin restarts from steady state after
   a long gap (PRD §7). Splitting into segments would throw away most of the OTI glitches we need for the
   sensor-fault demo (Jul–Sep).
@@ -166,12 +166,14 @@ merge on timestamp → range filter → derive → validate → enrich ambient �
 | STUCK_OTI | 770 | OTI flat ≥ 8 samples while load moves > 10 %. Partly 1 °C sensor resolution on a lightly loaded unit |
 | STUCK_OLI | 8,731 | OLI saturated at 100 % |
 | STUCK_IY / STUCK_IB | 14 / 14 | |
-| IMPUTED_AMB | 589 | amb_C interpolated from neighbouring ATI (≤ 2 h) |
-| ASSUMED_AMBIENT | 5 | no ATI nearby; cache hour-of-day climatology (April Bengaluru — weak for 2019) |
+| IMPUTED_AMB | 594 | amb_C from Open-Meteo Hyderabad where ATI is missing/invalid |
+| IMPUTED_RH | 17,104 | RH from Open-Meteo Hyderabad (no RH sensor) |
+| ATI_MISMATCH | 57 | ATI vs Open-Meteo > 8 °C for > 6 h (§1.8) |
+| IMPLAUSIBLE_RISE | 13,618 | OTI − ambient outside the IEC band (§1.8) |
 | DERIVED_loading_pct | 16,134 | loading = I_mean / estimated I_rated |
 
-- Rows with ≥ 1 *quality* flag (not DERIVED/IMPUTED/ASSUMED): 9,630. Excluding STUCK_OLI: **1,345**. Rows with no quality flag: 7,474.
-- No NEG flags (no negative currents or kVA). The `ATI_MISMATCH` check can't run: there's no weather cache for 2019–20.
+- Rows with ≥ 1 *quality* flag (not DERIVED/IMPUTED/ASSUMED), before the plausibility flags: 9,630; excluding STUCK_OLI: **1,345**.
+- No NEG flags (no negative currents or kVA).
 - Missing channels from the merge: 970 rows without currents/voltages, 584 without OTI/ATI/OLI.
 
 **Mapping.** IL1/2/3 → IR/IY/IB · VL1/2/3 → VR/VY/VB · VL12/23/31 → VRY/VYB/VBR · INUT → IN · KVA → S_kVA ·
@@ -184,6 +186,22 @@ No WTI temperature, no event log (through-fault off), no RH (breathing off), no 
 **Auto-map check (no schema):** the adapter maps the same files the same way without the YAML, and rejects WTI
 as a temperature because its values are binary.
 
+### 1.8 Physics plausibility check (`twin/plausibility.py`, PRD §7.4)
+
+Run on the cleaned file at the estimated 214.7 A rating. Plot: `docs/figures/kaggle_plausibility.png`.
+
+| Channel | Verdict | Evidence |
+|---|---|---|
+| **OTI_C** | **suspect** | Measured OTI − ATI median **2.0 K** at median load 0.34 pu. IEC 60076-7 band at the same load: low 9.1 K · nominal 20.9 K · high 27.5 K. **13,618 of 15,628** evaluable rows (87 %) are > 2 K below the low edge; 0 above. Against Open-Meteo air temperature instead of ATI, the median rise is 4.2 K and 73 % of rows are still below. Core losses alone hold ≥ 4.4 K at zero load (low band). A larger nameplate doesn't rescue it: at 5× the rating the low band still predicts 4.6 K. |
+| **ATI_C** | **plausible** | vs Open-Meteo Hyderabad: bias +2.27 °C, MAE 3.49 °C, correlation 0.74 (15-min) / 0.63 (daily). Peak at the same hour (lag 0), which supports IST timestamps. Diurnal swing is 13 K vs 7 K for air, so the sensor runs ~5 K hot at noon (sun/enclosure). `ATI_MISMATCH` on 57 rows. |
+
+- **Location:** Hyderabad is **[Assumed]**. Evidence: ATI correlates with Hyderabad weather at 0.63 (daily means)
+  against 0.27 for Bengaluru over the same dates (Bengaluru fetched to scratch for this comparison, not cached).
+- Evaluable rows exclude RANGE_OTI_C / RANGE_ATI_C / JUMP_OTI / STUCK_OTI (already sensor faults) and rows without load.
+- Flags written to `kaggle.parquet`: `IMPLAUSIBLE_RISE` 13,618 rows, `ATI_MISMATCH` 57 rows.
+- With the Hyderabad cache in place, the 594 rows without ATI get ambient from Open-Meteo (`IMPUTED_AMB`) instead of
+  interpolation/climatology, and RH comes from the cache (`IMPUTED_RH`). There are no `ASSUMED_AMBIENT` rows any more.
+
 ---
 
 ## 2. Open-Meteo — Bengaluru hourly temperature and RH
@@ -191,6 +209,8 @@ as a temperature because its values are binary.
 - Archive API `archive-api.open-meteo.com/v1/archive`, request point 12.9716 N, 77.5946 E; the API snapped it
   to 12.970 N, 77.564 E, elevation 910 m. `timezone=Asia/Kolkata`.
 - April 2026: 720 hourly rows, 0 nulls, temperature 19.9–36.9 °C, RH 14–92 %.
+- Hyderabad (Kaggle unit, [Assumed location]): 17.385 N, 78.487 E, Jul 2019 – Mar 2020, cached as
+  `data/cache/weather/hyderabad_YYYY-MM.json` (fetched 2026-10-10).
 - Cache: `data/cache/weather/bengaluru_2026-04.json` (fetched 2026-10-10 with `python -m ingest.enrich fetch 2026 4`).
   It is byte-identical in values to `data/raw/weather/bengaluru_2026-04_raw.json` (max |Δ| = 0).
 - Everything downstream reads the cache only; tests run with the network blocked.

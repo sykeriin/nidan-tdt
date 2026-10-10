@@ -4,6 +4,8 @@ name: kaggle
 source: kaggle_real
 simulated: false
 asset: estimate
+site: hyderabad              # weather for ambient fill + ATI_MISMATCH. [Assumed location]: ATI fits Hyderabad
+                             # (daily corr 0.63) far better than Bengaluru (0.27); see data/PROVENANCE.md
 timestamp: {column: DeviceTimeStamp, dayfirst: false}   # ISO 8601 in the files; tz assumed Asia/Kolkata
 range:
   start: "2019-07-01 00:00"    # before: not energised (zero current, OTI = ATI)
