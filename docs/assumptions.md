@@ -61,6 +61,19 @@ above 5 °C. [Assumed] Code: `ingest/validate.py`.
 
 **A13. Kaggle location: Hyderabad.** [Assumed] ATI fits Hyderabad weather (daily corr 0.63) far better than Bengaluru (0.27).
 
+## Twin engine
+
+**A14. Actual ageing uses measured top-oil + the twin's winding gradient** (IEC 60076-7 practice), per row, only where
+the OTI channel has passed the plausibility check so far (causal: ≥ 96 evaluable rows, ≤ 50 % outside the band), the
+row has no sensor-fault flag (RANGE/JUMP/STUCK OTI or ATI) and its rise is **not below** the physics band. Otherwise the
+twin hot-spot is used. A rise *above* the band is kept on measured: it may be a real asset fault (S2 cooling runs
+hotter than any healthy design), and falling back there would hide the fault's cost. [Assumed]
+Both are reported: expected (twin, healthy cooling) and actual; RUL uses actual. On Normal, actual is ~11 % below
+expected because the generated plant is deliberately slightly cooler than the nominal twin.
+
+**A15. RUL display capped at "> 40 years"**; the raw value (numeric guard 1000 y) stays in reports. Primary figures on the
+dashboard are life consumed in the period (days, expected vs actual) and the ageing rate. [Assumed]
+
 ## Weather
 
 **A11. Site point for Transformer-1 weather: Bengaluru city (12.97 N, 77.59 E)**, Open-Meteo archive, cached

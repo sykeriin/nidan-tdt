@@ -5,5 +5,7 @@ fidelity_min_samples: 8        # fewer residuals in the window -> no RMSE yet [A
 fidelity_alert_C: 3.0          # rolling RMSE above this -> "model drift - check cooling / recalibrate" [Assumed; tuned on Normal]
 reference_life_h: 180000       # IEC 60076-7 normal paper, ~20.55 y [To verify]
 rul_window_days: 7             # recent ageing rate window (PRD §8.9)
-rul_cap_years: 100             # display cap: "not limited by thermal ageing" beyond this [Assumed]
+rul_cap_years: 1000            # numeric guard only; the raw value is kept in reports [Assumed]
+rul_display_cap_years: 40      # dashboards show "> 40 years" beyond this [Assumed]
+plausibility_warmup_rows: 96   # evaluable rows before measured OTI may drive ageing (1 day at 15 min) [Assumed]
 risk_years: {high: 2, medium: 5}   # RUL_low below these -> High / Medium risk [Assumed]

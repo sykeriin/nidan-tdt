@@ -1,6 +1,6 @@
 """Remaining useful life from thermal ageing (FINAL_PRD.md §8.9). A range, never a date.
 
-consumed = assumed service years (at ageing rate 1) + equivalent days aged in the data
+consumed = assumed service years (at ageing rate 1) + ACTUAL equivalent days aged in the data
 RUL      = (reference life − consumed) / recent ageing rate, recent = last 7 days
 range    = remaining / highest daily rate  …  remaining / lowest daily rate in that window
 Thermal ageing only: no moisture, PD or DGA. Under normal load the rate is ≪ 1, so RUL is long — that is correct.
@@ -12,11 +12,12 @@ from contracts.models import RUL
 
 
 def estimate(twin: pd.DataFrame, years_in_service: float, cfg: dict) -> RUL | None:
-    t = twin.dropna(subset=["aging_rate"])
+    t = (twin[["timestamp", "aging_rate_actual", "dt_min"]].dropna(subset=["aging_rate_actual"])
+         .rename(columns={"aging_rate_actual": "aging_rate"}))
     if t.empty:
         return None
     ref_days = cfg["reference_life_h"] / 24
-    consumed = years_in_service * 365.25 + float(twin["days_aged_cum"].dropna().iloc[-1])
+    consumed = years_in_service * 365.25 + float(twin["days_aged_actual_cum"].dropna().iloc[-1])
     remaining = max(ref_days - consumed, 0.0)
     end = t["timestamp"].iloc[-1]
     w = t[t["timestamp"] > end - pd.Timedelta(days=cfg["rul_window_days"])]
@@ -35,3 +36,13 @@ def estimate(twin: pd.DataFrame, years_in_service: float, cfg: dict) -> RUL | No
     risk = "High" if lo < cfg["risk_years"]["high"] else "Med" if lo < cfg["risk_years"]["medium"] else "Low"
     return RUL(years_low=round(lo, 2), years_high=round(hi, 2), risk=risk,
                consumed_days=round(consumed, 2), recent_rate=round(recent, 4))
+
+
+def display(r: RUL | None, cfg: dict) -> str:
+    """Dashboard text. Primary figures are life consumed and ageing rate; RUL is capped for display only."""
+    if r is None:
+        return "RUL: not available"
+    cap = cfg["rul_display_cap_years"]
+    f = lambda y: f"> {cap:g}" if y >= cap else f"{y:.1f}"  # noqa: E731
+    lo, hi = f(r.years_low), f(r.years_high)
+    return f"RUL {lo} years" if lo == hi else f"RUL {lo} – {hi} years"

@@ -6,6 +6,14 @@
 Per timestep (§7.2): twin_oil_C, twin_hs_C, aging_rate, days_aged_cum, residual_oil_C (= OTI − twin, NaN in
 meter-only), fidelity_rmse_C (rolling 24 h), load_pu; plus twin_restart, fidelity_alert and the physics
 plausibility band (rise_low_K / rise_high_K, implausible_rise; PRD §7.4).
+
+Two ageing figures (IEC 60076-7 practice: hot-spot = measured top-oil + winding gradient when top-oil is trustworthy):
+  expected (aging_rate, days_aged_cum): twin hot-spot = healthy cooling.
+  actual (aging_rate_actual, days_aged_actual_cum): measured OTI + twin gradient (twin_hs - twin_oil), per row, only
+  where the OTI channel has passed the plausibility check so far (causal, after a warm-up), the row has no sensor-fault
+  flag and is not below the physics band (a rise above it may be a real asset fault, e.g. cooling, so it is kept);
+  otherwise the twin hot-spot (see ageing_source).
+The gap actual - expected is the life a fault cost. RUL uses actual ageing.
 Twin parameters are nominal (asset.yaml + library defaults); the generator's plant is deliberately different.
 """
 from collections import deque
@@ -22,7 +30,8 @@ from twin import ageing, plausibility, rul, thermal
 ROOT = Path(__file__).resolve().parent.parent
 DRIFT_MESSAGE = "model drift — check cooling / recalibrate"
 OUT_COLS = ["twin_oil_C", "twin_hs_C", "aging_rate", "days_aged_cum", "residual_oil_C", "fidelity_rmse_C",
-            "load_pu", "twin_restart", "fidelity_alert", "dt_min", "rise_low_K", "rise_high_K", "implausible_rise"]
+            "load_pu", "twin_restart", "fidelity_alert", "dt_min", "rise_low_K", "rise_high_K", "implausible_rise",
+            "hs_ageing_C", "ageing_source", "aging_rate_actual", "days_aged_actual_cum"]
 
 
 def load_config(path=ROOT / "config" / "twin.yaml") -> dict:
@@ -32,6 +41,14 @@ def load_config(path=ROOT / "config" / "twin.yaml") -> dict:
 def _band_transformer(i_rated, p):
     return thermal.make_transformer(i_rated, 1000.0 * p["R"], 1000.0, top_oil_temp_rise=p["top_oil_temp_rise"],
                                     amb_temp_surcharge=p["amb_temp_surcharge"])
+
+
+def life_consumed(res: pd.DataFrame) -> dict:
+    """Equivalent days of insulation life used over the period: expected (healthy twin) vs actual (measured)."""
+    exp = float(res["days_aged_cum"].iloc[-1]) if len(res) else 0.0
+    act = float(res["days_aged_actual_cum"].iloc[-1]) if len(res) else 0.0
+    return {"expected": round(exp, 3), "actual": round(act, 3), "actual_minus_expected": round(act - exp, 3),
+            "measured_share": round(float((res["ageing_source"] == "measured").mean()), 3) if len(res) else 0.0}
 
 
 def _bad_temp(flags: str) -> bool:
@@ -96,6 +113,16 @@ class TwinEngine:
         ok = ~np.isnan(rise) & ~np.isnan(out["rise_low_K"]) & ~flags.map(_bad_temp).to_numpy()
         tol = plausibility.TOL_K
         out["implausible_rise"] = ok & ((rise < out["rise_low_K"] - tol) | (rise > out["rise_high_K"] + tol))
+        n_ev, n_bad = np.cumsum(ok), np.cumsum(out["implausible_rise"])
+        channel_ok = (n_ev >= self.cfg["plausibility_warmup_rows"]) & (n_bad <= plausibility.SUSPECT_FRACTION * n_ev)
+        use = ok & ~(rise < out["rise_low_K"] - tol) & channel_ok   # below band = impossible = sensor; above = maybe asset fault
+        out["hs_ageing_C"] = np.where(use, oti + out["twin_hs_C"] - out["twin_oil_C"], out["twin_hs_C"])
+        out["ageing_source"] = np.where(use, "measured", np.where(valid, "twin", ""))
+        out["aging_rate_actual"] = np.full(n, np.nan)
+        if len(vi):
+            out["aging_rate_actual"][vi] = ageing.rate(out["hs_ageing_C"][vi], self.insulation)
+        out["days_aged_actual_cum"] = np.cumsum(
+            np.where(valid, np.nan_to_num(out["aging_rate_actual"]) * np.nan_to_num(out["dt_min"]) / 1440, 0.0))
         res = pd.concat([t, pd.DataFrame(out)], axis=1)
         res.attrs.update(self._summary(res, mode, ok))
         return res
@@ -106,7 +133,8 @@ class TwinEngine:
         verdict = ("not checked" if not n_ev else "suspect" if frac > plausibility.SUSPECT_FRACTION else "plausible")
         r = rul.estimate(res, self.asset.get("years_in_service", 0), self.cfg)
         drift = bool(res["fidelity_alert"].any())
-        return {"mode": mode, "rul": r, "plausibility": {"OTI_C": verdict, "implausible_fraction": frac,
+        return {"mode": mode, "rul": r, "rul_display": rul.display(r, self.cfg),
+                "life_consumed_days": life_consumed(res), "plausibility": {"OTI_C": verdict, "implausible_fraction": frac,
                                                           "evaluable_rows": n_ev},
                 "fidelity_rmse_C_last": float(res["fidelity_rmse_C"].dropna().iloc[-1]) if res["fidelity_rmse_C"].notna().any() else None,
                 "drift_message": DRIFT_MESSAGE if drift else None,
@@ -118,6 +146,7 @@ class TwinEngine:
         self._band_st = {k: thermal.Stepper(tr) for k, tr in self.bands.items()}
         self._last_valid_ts = None
         self._cum = 0.0
+        self._cum_act = 0.0
         self._sq = deque()           # (ts, residual²) inside the fidelity window
         self._hist = []              # rows for RUL
         self._ev = [0, 0]            # evaluable, implausible (plausibility verdict)
@@ -131,7 +160,7 @@ class TwinEngine:
         oti = np.nan if oti is None or mode == "meter_only" else float(oti)
         mode = mode or ("full" if not np.isnan(oti) else "meter_only")
         tw = {c: np.nan for c in OUT_COLS}
-        tw.update(twin_restart=False, fidelity_alert=False, implausible_rise=False)
+        tw.update(twin_restart=False, fidelity_alert=False, implausible_rise=False, ageing_source="")
         if not (np.isnan(amps) or np.isnan(amb)):
             gap = None if self._last_valid_ts is None else ts - self._last_valid_ts
             if gap is None or gap > pd.Timedelta(hours=self.cfg["restart_gap_h"]):
@@ -153,7 +182,17 @@ class TwinEngine:
                 tw["implausible_rise"] = bool(rise < tw["rise_low_K"] - tol or rise > tw["rise_high_K"] + tol)
                 self._ev[0] += 1
                 self._ev[1] += tw["implausible_rise"]
+                channel_ok = (self._ev[0] >= self.cfg["plausibility_warmup_rows"]
+                              and self._ev[1] <= plausibility.SUSPECT_FRACTION * self._ev[0])
+                use = channel_ok and not rise < tw["rise_low_K"] - tol   # only below-band rows fall back
+            else:
+                use = False
+            tw["hs_ageing_C"] = oti + hs - oil if use else hs
+            tw["ageing_source"] = "measured" if use else "twin"
+            tw["aging_rate_actual"] = float(ageing.rate(tw["hs_ageing_C"], self.insulation)[0])
+            self._cum_act += tw["aging_rate_actual"] * dt / 1440
         tw["days_aged_cum"] = self._cum
+        tw["days_aged_actual_cum"] = self._cum_act
         tw["load_pu"] = amps / self.i_rated
         tw["residual_oil_C"] = oti - tw["twin_oil_C"]
         win = pd.Timedelta(hours=self.cfg["fidelity_window_h"])
@@ -166,8 +205,8 @@ class TwinEngine:
         tw["fidelity_alert"] = bool(np.nan_to_num(tw["fidelity_rmse_C"]) > self.cfg["fidelity_alert_C"])
         if tw["fidelity_alert"]:
             tw["drift_message"] = DRIFT_MESSAGE
-        self._hist.append({"timestamp": ts, "aging_rate": tw["aging_rate"], "dt_min": tw["dt_min"],
-                           "days_aged_cum": tw["days_aged_cum"]})
+        self._hist.append({"timestamp": ts, "aging_rate_actual": tw["aging_rate_actual"], "dt_min": tw["dt_min"],
+                           "days_aged_actual_cum": tw["days_aged_actual_cum"]})
         return TwinState(timestamp=ts, row=row, twin=tw, mode=mode)
 
     def current_rul(self):

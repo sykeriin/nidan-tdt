@@ -169,6 +169,7 @@ Input load = `I_mean` (A). Thin wrapper `twin/thermal.py` so the library can be 
 
 ### 7.2 Outputs per timestep
 `twin_oil_C`, `twin_hs_C`, `aging_rate`, `days_aged_cum`, `residual_oil_C` (= OTI − twin, NaN in meter-only), `fidelity_rmse_C` (rolling 24 h), `load_pu`.
+Also (implemented): `aging_rate_actual` / `days_aged_actual_cum` from measured OTI + twin gradient where OTI is trusted (`ageing_source`), so a cooling fault shows as life consumed (S2: 1.82 d actual vs 1.36 d expected in the month); `rise_low_K`/`rise_high_K`/`implausible_rise` (§7.4); `twin_restart`; `fidelity_alert`. RUL uses actual ageing; display capped at "> 40 years" (docs/assumptions.md A14–A15).
 
 Fidelity above threshold → dashboard: **"model drift — check cooling / recalibrate."** (CIGRE JWG A2/D2.65 "reality gap" framing.)
 

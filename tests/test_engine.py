@@ -7,10 +7,10 @@ from transformer_thermal_model.transformer import PaperInsulationType
 
 from twin import ageing
 from twin.engine import OUT_COLS, TwinEngine, load_config
-from twin.plot import load_generated
+from twin.plot import ROOT, load_generated
 
 NUM = ["twin_oil_C", "twin_hs_C", "aging_rate", "days_aged_cum", "residual_oil_C", "fidelity_rmse_C",
-       "load_pu", "dt_min", "rise_low_K", "rise_high_K"]
+       "load_pu", "dt_min", "rise_low_K", "rise_high_K", "hs_ageing_C", "aging_rate_actual", "days_aged_actual_cum"]
 CFG = load_config()
 
 
@@ -30,6 +30,7 @@ def assert_same(batch, streamed):
                                    equal_nan=True, err_msg=c)
     for c in ("twin_restart", "fidelity_alert", "implausible_rise"):
         assert (streamed[c].to_numpy(bool) == batch[c].to_numpy(bool)).all(), c
+    assert (streamed["ageing_source"].to_numpy() == batch["ageing_source"].to_numpy()).all()
 
 
 def test_run_equals_step(runs):
@@ -83,10 +84,38 @@ def test_cumulative_ageing_matches_library(runs):
 
 def test_rul_range_drops_under_overload(runs):
     n, s1 = runs["N"].attrs["rul"], runs["S1"].attrs["rul"]
-    assert n.years_low == CFG["rul_cap_years"]                 # normal load: not limited by thermal ageing
+    assert n.years_low > CFG["rul_display_cap_years"]               # normal load: not limited by thermal ageing
+    assert runs["N"].attrs["rul_display"] == f"RUL > {CFG['rul_display_cap_years']:g} years"   # display capped
     assert s1.years_low < n.years_low and s1.recent_rate > n.recent_rate
-    assert s1.years_low <= s1.years_high
-    assert n.consumed_days == pytest.approx(3 * 365.25 + runs["N"]["days_aged_cum"].iloc[-1], abs=0.01)
+    assert s1.years_low < CFG["rul_display_cap_years"] <= s1.years_high   # range shown, raw values kept
+    assert n.consumed_days == pytest.approx(3 * 365.25 + runs["N"]["days_aged_actual_cum"].iloc[-1], abs=0.01)
+
+
+def test_actual_vs_expected_ageing(runs):
+    n, s2 = runs["N"], runs["S2"]
+    ln, l2 = n.attrs["life_consumed_days"], s2.attrs["life_consumed_days"]
+    assert ln["actual"] == pytest.approx(ln["expected"], rel=0.15)          # Normal: match within plant mismatch/noise
+    assert l2["actual"] > l2["expected"] + 0.3                               # S2: cooling fault costs life
+    onset = s2.loc[s2["gt_fault"] == 1, "timestamp"].min()
+    after = s2["timestamp"] >= onset
+    gain = (s2["days_aged_actual_cum"] - s2["days_aged_cum"])
+    assert gain[after].iloc[-1] - gain[~after].iloc[-1] > 0.3                # the gap opens after onset
+    assert s2.loc[after & (s2["ageing_source"] == "measured"), "aging_rate_actual"].mean() > \
+        s2.loc[after & (s2["ageing_source"] == "measured"), "aging_rate"].mean()
+    # S2's rise climbs above the healthy-design band: those rows stay on measured, not on the twin
+    assert (s2.loc[after, "ageing_source"] == "measured").mean() > 0.95
+
+
+def test_kaggle_plateaus_fall_back_to_twin():
+    k = pd.read_parquet(ROOT / "data" / "clean" / "kaggle.parquet")
+    asset = {"i_rated_A": 214.7, "load_loss_W": 2300.0, "no_load_loss_W": 350.0,   # placeholder losses [Assumed]
+             "years_in_service": 3}
+    r = TwinEngine(asset).run(k)
+    plateau = r["OTI_C"] > 150
+    assert plateau.sum() > 0 and not (r.loc[plateau, "ageing_source"] == "measured").any()  # twin, or blank if no load
+    assert (r["ageing_source"] == "measured").sum() == 0                     # channel never passes: twin throughout
+    np.testing.assert_allclose(r["days_aged_actual_cum"], r["days_aged_cum"])
+    assert r.attrs["plausibility"]["OTI_C"] == "suspect"
 
 
 def test_meter_only_mode(runs):

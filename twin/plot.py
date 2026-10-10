@@ -42,11 +42,13 @@ def plot(sid: str) -> Path:
     ax[1].axhline(0, color="k", lw=0.5)
     ax[1].set_ylabel("K")
     ax[1].legend(ncol=3, fontsize=8, loc="upper left")
-    ax[2].semilogy(x, r["aging_rate"], color="#762a83", lw=0.7, label="ageing rate (twin hot-spot, rel. to 98 °C)")
+    ax[2].semilogy(x, r["aging_rate"], color="#999", lw=0.6, label="ageing rate, expected (twin, healthy cooling)")
+    ax[2].semilogy(x, r["aging_rate_actual"], color="#762a83", lw=0.7, label="ageing rate, actual (measured OTI + gradient)")
     ax[2].axhline(1, color="#762a83", ls=":", lw=0.8)
     ax[2].set_ylabel("relative ageing rate")
     a2 = ax[2].twinx()
-    a2.plot(x, r["days_aged_cum"], color="#1b7837", lw=1.2, label="equivalent days aged (cumulative)")
+    a2.plot(x, r["days_aged_cum"], color="#1b7837", lw=1.0, ls="--", label="life consumed, expected (days)")
+    a2.plot(x, r["days_aged_actual_cum"], color="#1b7837", lw=1.5, label="life consumed, actual (days)")
     a2.set_ylabel("days aged")
     h1, l1 = ax[2].get_legend_handles_labels()
     h2, l2 = a2.get_legend_handles_labels()
@@ -68,11 +70,12 @@ def plot(sid: str) -> Path:
     for a in ax:
         a.grid(alpha=0.25)
         a.margins(x=0)
-    cap = load_config()["rul_cap_years"]
-    fmt = lambda y: f">{cap:g}" if y >= cap else f"{y:g}"  # noqa: E731
-    fig.suptitle(f"SIMULATED · Transformer-1 · scenario {sid}: measured (plant) vs twin (nominal) · "
-                 f"RUL {fmt(ru.years_low) if ru.years_low == ru.years_high else fmt(ru.years_low) + '–' + fmt(ru.years_high)} y ({ru.risk} risk) · "
-                 f"OTI plausibility: {r.attrs['plausibility']['OTI_C']}", fontsize=11)
+    lc = r.attrs["life_consumed_days"]
+    fig.suptitle(f"SIMULATED · Transformer-1 · scenario {sid}: measured (plant) vs twin (nominal)\n"
+                 f"life consumed this month: actual {lc['actual']:.2f} d vs expected {lc['expected']:.2f} d "
+                 f"({lc['actual_minus_expected']:+.2f} d) · peak ageing rate {r['aging_rate_actual'].max():.2f} · "
+                 f"{r.attrs['rul_display']} ({ru.risk} risk) · OTI plausibility: {r.attrs['plausibility']['OTI_C']}",
+                 fontsize=11)
     fig.tight_layout()
     out = ROOT / "docs" / "figures" / f"twin_{sid}.png"
     fig.savefig(out, dpi=110)
