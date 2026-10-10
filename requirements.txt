@@ -4,7 +4,6 @@ numpy
 pandas
 pyyaml
 scikit-learn
-streamlit
 plotly
 matplotlib
 openpyxl

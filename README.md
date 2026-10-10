@@ -4,7 +4,7 @@ PowerNext-AI 2026 (CPRI × MIT Bengaluru), Track 02. A software twin of **Transf
 MAHE Bengaluru campus). It ingests any operating dataset, runs an IEC 60076-7 thermal and ageing model alongside the
 measured data, and watches the gap: alerts, Health Index, ageing/RUL and maintenance advice.
 
-Design: [`docs/FINAL_PRD.md`](docs/FINAL_PRD.md) · ingestion: [`docs/DATA_INGESTION_SPEC.md`](docs/DATA_INGESTION_SPEC.md) ·
+How it works: [`docs/BACKEND_FLOW.md`](docs/BACKEND_FLOW.md) · design: [`docs/FINAL_PRD.md`](docs/FINAL_PRD.md) · ingestion: [`docs/DATA_INGESTION_SPEC.md`](docs/DATA_INGESTION_SPEC.md) ·
 assumptions: [`docs/assumptions.md`](docs/assumptions.md) · data provenance: [`data/PROVENANCE.md`](data/PROVENANCE.md)
 
 ## Run it
