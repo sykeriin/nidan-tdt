@@ -31,7 +31,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from analytics.common import make_alert, runs, step_hours, strip_quarantined
+from analytics.common import make_alert, merge_by_time, runs, step_hours, strip_quarantined
 from contracts.models import Alert
 
 # ---- values quoted from the spec (DATA_INGESTION_SPEC.md section 2.8, FINAL_PRD section 8.6) ----
@@ -41,6 +41,12 @@ WTI_RANGE_C = (-10.0, 200.0)  # NOT in spec: a real severe overload can drive th
 VOLT_RANGE_V = (100.0, 300.0)  # spec 2.8: phase-neutral voltage < 100 or > 300 V
 STUCK_MIN_SAMPLES = 8  # spec 2.8: unchanged >= 8 samples ...
 STUCK_LOAD_CHANGE = 0.10  # ... while load changes > 10 %
+# NOT in spec. A temperature channel is only stuck if the twin says it should have moved by more than the sensor's
+# resolution meanwhile (Kaggle OTI reads whole degrees near ambient: "flat" for 2 h is normal there).
+STUCK_TWIN_MIN_C = 2.0
+STUCK_MERGE_H = 24.0      # stuck episodes on one channel closer than this are one stuck period
+STUCK_TEMP_MIN_H = 6.0    # temperatures: flat for >= 2 oil time constants (spec's 8 samples = 2 h is too short for
+                          # a 1 C-resolution sensor on a slow 180 min oil signal) [Assumed]
 # ---- named defaults NOT in the spec (listed under "Needs decision" in the hand-off) ----
 JUMP_MAX_GAP_STEPS = 4  # do not evaluate a step across a gap longer than this many sampling intervals
 JUMP_LOAD_STEP = 0.25  # a temperature step that coincides with a relative load step above this is the load, not the sensor
@@ -209,7 +215,7 @@ def _jump(b: _Builder, offline: np.ndarray, h: float) -> None:
         explained = _twin_explained(b.df, ch)
         if explained is not None:  # the twin predicts this step from the load: physical, not a sensor fault
             ok &= ~explained
-        limit = JUMP_C_PER_15MIN * dt_h / 0.25
+        limit = JUMP_C_PER_15MIN * np.maximum(dt_h, 0.25) / 0.25  # never below 5 C: 1-min bursts of a 1 C-resolution sensor are not jumps (assumptions A5)
         mask = np.zeros(len(x), dtype=bool)
         mask[ok] = (d[ok] > limit[ok]) & (d2[ok] > limit[ok])
         for s, e in _merge(runs(mask), JUMP_MERGE_ROWS):
@@ -249,6 +255,7 @@ def _stuck(b: _Builder, offline: np.ndarray, deen: np.ndarray, dead: set[str]) -
     load = _load(b.df)
     if load is None:
         return  # "while load changes" cannot be evaluated without a load channel
+    h = step_hours(b.df)
     for ch in STUCK_CHANNELS:
         if ch in dead:
             continue
@@ -256,22 +263,35 @@ def _stuck(b: _Builder, offline: np.ndarray, deen: np.ndarray, dead: set[str]) -
         if v is None:
             continue
         x = v.to_numpy()
+        tw = _num(b.df, TWIN_OF.get(ch, ""))
+        min_n = STUCK_MIN_SAMPLES if ch not in TEMP_CHANNELS else max(STUCK_MIN_SAMPLES, int(round(STUCK_TEMP_MIN_H / h)))
         skip = offline | deen if ch in VOLT_CHANNELS else offline
         same = np.zeros(len(x), dtype=bool)  # same[i]: x[i] == x[i-1], both valid
         same[1:] = (x[1:] == x[:-1]) & ~np.isnan(x[1:]) & ~skip[1:] & ~skip[:-1]
+        hit = np.zeros(len(x), dtype=bool)
+        detail: dict[int, tuple[int, float]] = {}
         for s, e in runs(same):
             first, last = s - 1, e  # samples first..last all carry the same value
-            if last - first + 1 < STUCK_MIN_SAMPLES:
+            if last - first + 1 < min_n:
                 continue
             seg = load[first : last + 1]
             seg = seg[~np.isnan(seg)]
             if len(seg) < 2 or np.mean(seg) == 0:
                 continue
             change = float((seg.max() - seg.min()) / abs(np.mean(seg)))
+            if tw is not None:  # physics: would the true temperature have moved more than the resolution?
+                tseg = tw.iloc[first : last + 1].dropna()
+                if len(tseg) < 2 or float(tseg.max() - tseg.min()) < STUCK_TWIN_MIN_C:
+                    continue
             if change > STUCK_LOAD_CHANGE:
-                b.add("stuck_sensor", ch, first, last, float(x[first]), STUCK_LOAD_CHANGE,
-                      f"{ch} stayed at {x[first]:.2f} for {last - first + 1} samples while load changed "
-                      f"{change * 100:.0f} % (limit: >= {STUCK_MIN_SAMPLES} samples and > {STUCK_LOAD_CHANGE * 100:.0f} %).")
+                hit[first : last + 1] = True
+                detail[first] = (last - first + 1, change)
+        for first, last in runs(merge_by_time(hit, b.ts, STUCK_MERGE_H)):
+            n, change = detail.get(first, (last - first + 1, float("nan")))
+            b.add("stuck_sensor", ch, first, last, float(x[first]), STUCK_LOAD_CHANGE,
+                  f"{ch} stayed flat (first at {x[first]:.2f} for {n} samples) while load changed "
+                  f"{change * 100:.0f} %; stuck periods within {STUCK_MERGE_H:g} h merged "
+                  f"(limit: >= {min_n} samples and > {STUCK_LOAD_CHANGE * 100:.0f} % load change).")
 
 
 def _dead(b: _Builder, offline: np.ndarray, h: float) -> set[str]:
@@ -312,6 +332,17 @@ def _dq(b: _Builder) -> None:
             if type_ and ch:
                 found.setdefault((type_, ch), np.zeros(len(df), dtype=bool))[i] = True
     for (type_, ch), mask in sorted(found.items()):
+        if type_ == "stuck_sensor":
+            if ch in TEMP_CHANNELS:  # same minimum duration as _stuck for temperatures
+                n_min = max(STUCK_MIN_SAMPLES, int(round(STUCK_TEMP_MIN_H / step_hours(df))))
+                mask = np.isin(np.arange(len(mask)), [i for s0, e0 in runs(mask) if e0 - s0 + 1 >= n_min
+                                                      for i in range(s0, e0 + 1)])
+            tw = _num(df, TWIN_OF.get(ch, ""))
+            if tw is not None:  # same physics test as _stuck for the adapter's STUCK flags
+                moved = tw.rolling(STUCK_MIN_SAMPLES, min_periods=2).agg(lambda w: w.max() - w.min())
+                moved = moved[::-1].rolling(STUCK_MIN_SAMPLES, min_periods=1).max()[::-1]
+                mask = mask & (moved.to_numpy() >= STUCK_TWIN_MIN_C)
+            mask = merge_by_time(mask, b.ts, STUCK_MERGE_H)
         if type_ == "jump_sensor":  # the adapter's JUMP flag knows nothing about load: drop steps the twin explains
             explained = _twin_explained(df, ch)
             if explained is not None:

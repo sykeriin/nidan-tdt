@@ -1,9 +1,13 @@
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-// Dev: the React app on :5173 proxies /api to the FastAPI server on :8000.
-// Build: `npm run build` writes dist/, which FastAPI serves at / (one command, offline).
+// Dev: the FastAPI server (uvicorn server.app:app --port 8000) answers /api.
+// Production: `npm run build` writes web/dist, which the same FastAPI app serves at /.
 export default defineConfig({
   plugins: [react()],
-  server: { proxy: { '/api': 'http://localhost:8000' } },
-})
+  server: {
+    port: 5173,
+    proxy: { "/api": "http://127.0.0.1:8000" },
+  },
+  build: { outDir: "dist", chunkSizeWarningLimit: 1600 },
+});

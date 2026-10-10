@@ -7,7 +7,7 @@ SIMULATED: generated campus data for Transformer-1 (sim/generator.py, seed 0), m
 | N | none (Normal) | none | False | none | none | none | none | none | none | none |
 | S1 | overload | 2026-04-24 11:30 | True | 2026-04-24 12:00 | loading_high | loading_alarm | 2026-04-24 12:00 | 0.00 | -0.50 | rule |
 | S2 | cooling_degradation | 2026-04-20 00:00 | True | 2026-04-22 09:00 | residual_drift | top_oil_warning | 2026-04-27 15:00 | 126.00 | -57.00 | residual |
-| S3 | unbalance | 2026-04-25 00:00 | True | 2026-04-25 00:00 | current_unbalance | unbalance_warning | 2026-04-25 00:00 | 0.00 | 0.00 | rule |
+| S3 | unbalance | 2026-04-25 00:00 | True | 2026-04-25 00:30 | current_unbalance | unbalance_warning | 2026-04-25 00:00 | -0.50 | -0.50 | rule |
 | S4a | oil_leak | 2026-04-21 06:00 | True | 2026-04-21 22:45 | oil_leak | oil_level_low | 2026-04-23 22:00 | 47.25 | -16.75 | rule |
 | S4b | oil_theft | 2026-04-25 02:15 | True | 2026-04-25 02:30 | oil_low | oil_level_low | 2026-04-25 02:30 | 0.00 | -0.25 | rule |
 | S5 | through_fault | 2026-04-27 10:12 | True | 2026-04-27 10:12 | through_fault | none | none | none | 0.00 | rule |

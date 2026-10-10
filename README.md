@@ -19,7 +19,14 @@ assumptions: [`docs/assumptions.md`](docs/assumptions.md) · data provenance: [`
 uv venv --python 3.12 .venv            # or: py -3.12 -m venv .venv
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 .venv\Scripts\python -m pytest -q       # full suite, runs offline
+.venv\Scripts\python -m server         # the digital twin: UI + API on http://127.0.0.1:8000 (opens the browser)
 ```
+
+`python -m server` builds `web/` the first time (needs Node.js once), then runs offline on Python alone.
+`--build` rebuilds after frontend changes; `--host 0.0.0.0` shares it on the LAN. In the twin, **Load file** (top
+strip) imports your own CSV/Excel: the backend maps the columns, runs the twin and analytics, and the sheet switches
+to it. Tick *other transformer* when it is not Transformer-1 (the rating is then estimated from the data).
+Frontend development: `cd web; npm install; npm run dev` (Vite on :5173, proxies `/api` to :8000).
 
 | Command | Does |
 |---|---|
@@ -31,6 +38,7 @@ uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 | `python -m eval.run_eval` | Lead-time and false-alarm table → `docs/figures/lead_time.md` |
 | `python -m ingest.enrich fetch YEAR MONTH [SITE]` | Cache Open-Meteo weather (only command that needs network) |
 | `python -m dt.api rebuild [ID…]` | Precompute dashboard runs (N, S1–S5, kaggle) → `data/cache/runs/` |
+| `python -m server [--build] [--port P]` | One command: builds `web/` if needed, serves UI + API, opens the browser |
 | `uvicorn server.app:app --port 8000` | API at `/api`, docs at `/docs`, React build (`web/dist` or `DT_WEB_DIST`) at `/` — see [`docs/API.md`](docs/API.md) |
 | `python -m server.export_openapi` | OpenAPI schema → `docs/openapi.json` |
 | `python -m eval.selftest [--quick]` | Validation suite → `data/validation.json` and `docs/TEST_REPORT.md` (every validation number comes from here) |
@@ -93,9 +101,7 @@ heat-map twin, a flight-recorder replay dock, a guided demo and a printable repo
 breathing-stress index · optional channels (vibration, bushing, harmonic spectrum) · moisture / PD / DGA analysis · Tier 2
 ingestion (JSON/Parquet/ZIP, long/historian format, multi-asset) · multi-transformer fleet views.
 
-**Known open issues:** the Kaggle unbalance detector chatters and the stuck-sensor rule over-fires on 1 °C data (P3) ·
-Kaggle
-download date not recorded (`data/PROVENANCE.md`) · licence of committing the Kaggle files to be decided · IS 1180 /
-IEC 60076-7 limits marked [To verify].
+**Known open issues:** Kaggle download date not recorded (`data/PROVENANCE.md`) · licence of committing the Kaggle files to
+be decided (`docs/P3_HANDOFF.md`) · IS 1180 / IEC 60076-7 limits marked [To verify].
 
 Everything generated is labelled **SIMULATED**; the Kaggle unit is a different, unrated transformer.

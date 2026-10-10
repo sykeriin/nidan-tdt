@@ -9,3 +9,4 @@ rul_cap_years: 1000            # numeric guard only; the raw value is kept in re
 rul_display_cap_years: 40      # dashboards show "> 40 years" beyond this [Assumed]
 plausibility_warmup_rows: 96   # evaluable rows before measured OTI may drive ageing (1 day at 15 min) [Assumed]
 risk_years: {high: 2, medium: 5}   # RUL_low below these -> High / Medium risk [Assumed]
+bottom_oil_ratio: 0.5          # bottom-oil rise / top-oil rise in the thermal diagram (ONAN typical) [Assumed; IEC 60076-7 thermal diagram]

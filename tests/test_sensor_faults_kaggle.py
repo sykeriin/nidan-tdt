@@ -20,7 +20,7 @@ LEAKY = {"alarm_oti_a", "alarm_oti_t", "alarm_mog_a", "alarm_wti", "alarm_OTI_A"
 @pytest.fixture(scope="module")
 def real():
     df, caps = kaggle()
-    th = load_thresholds(asset={"i_rated_A": 214.7, "lv_voltage_V": 417.5})
+    th = load_thresholds(asset={"i_rated_A": 214.7, "lv_voltage_V": 417.5, "nameplate_source": "estimated"})
     res = pipeline.analyze(df, df.iloc[:0], caps, th)
     return df, caps, res
 
@@ -84,3 +84,22 @@ def test_report_counts(real):
     assert sensor
     assert set(asset) <= {"loading_high", "overcurrent", "current_unbalance", "voltage_unbalance", "voltage_high",
                           "voltage_low", "hot_spot_high", "ageing_rate_high", "top_oil_high"}
+
+
+def test_real_data_is_not_flooded(real):
+    """Tuned on the real unit: one alert per condition, not one per noisy sample."""
+    _, _, res = real
+    n = collections.Counter(a.type for a in res.alerts)
+    assert n["current_unbalance"] <= 10          # chronic unbalance (median 25 %): was 2,042 alerts
+    assert n["stuck_sensor"] <= 30               # saturated oil gauge, merged per data segment: was 390
+    assert n["jump_sensor"] <= 30                # real >= 5 C steps only (1-min ticks of a 1 C sensor are not jumps)
+    assert all(abs(a.value) >= 5 for a in res.alerts if a.type == "jump_sensor")
+    assert len(res.alerts) < 200
+
+
+def test_rating_dependent_alerts_are_indicative_with_estimated_rating(real):
+    _, _, res = real
+    rated = [a for a in res.alerts if a.type in pipeline.RATING_DEPENDENT and a.origin == "asset"]
+    assert rated and all(a.severity == "info" and "indicative only" in a.explanation for a in rated)
+    assert not res.health.capped or any(a.severity == "critical" and a.type not in pipeline.RATING_DEPENDENT
+                                        for a in res.alerts)

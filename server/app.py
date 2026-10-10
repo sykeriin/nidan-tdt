@@ -252,6 +252,55 @@ def replay(dataset_id: str,
     return StreamingResponse(lines(), media_type="application/x-ndjson")
 
 
+@app.get("/api/datasets/{dataset_id}/frames", response_model=S.FramesModel, responses=ERRORS, tags=["run"])
+def frames(dataset_id: str,
+           fields: Annotated[str | None, Query(description="comma-separated column names; omit = all")] = None,
+           start: Annotated[datetime | None, Query()] = None,
+           end: Annotated[datetime | None, Query()] = None,
+           every: Annotated[int, Query(ge=1, le=1000)] = 1):
+    """api.frames() — every sample, aligned on one time axis, for replay and full-resolution charts."""
+    _known(dataset_id)
+    df = api.frames(dataset_id, fields=[f.strip() for f in fields.split(",") if f.strip()] if fields else None,
+                    start=_local(start), end=_local(end), every=every)
+    return {"dataset_id": dataset_id, "rows": len(df), "timestamp": plain(df["timestamp"]),
+            "columns": {c: plain(df[c].round(4) if df[c].dtype.kind == "f" else df[c])
+                        for c in df.columns if c != "timestamp"}}
+
+
+@app.get("/api/datasets/{dataset_id}/thermal-profile", response_model=S.ThermalProfileModel, responses=ERRORS,
+         tags=["run"])
+def thermal_profile(dataset_id: str, t: Annotated[datetime, Query(description="ISO 8601; naive = Asia/Kolkata")]):
+    """api.thermal_profile() — bottom/top oil, winding, hot-spot, losses, heat flow, oil flow, radiator effectiveness."""
+    _known(dataset_id)
+    return plain(api.thermal_profile(dataset_id, _local(t)))
+
+
+@app.get("/api/datasets/{dataset_id}/components", response_model=S.ComponentsModel, responses=ERRORS, tags=["run"])
+def components(dataset_id: str, t: Annotated[datetime, Query(description="ISO 8601; naive = Asia/Kolkata")]):
+    """api.components() — per-part quantities, governing equations with live values, findings and tests."""
+    _known(dataset_id)
+    return plain(api.components(dataset_id, _local(t)))
+
+
+@app.get("/api/whatif", response_model=S.WhatIfModel, response_model_by_alias=True, responses=ERRORS, tags=["simulate"])
+def whatif(load_pu: Annotated[float, Query(ge=0, le=2)], ambient_C: Annotated[float, Query(ge=-10, le=60)],
+           cooling: Annotated[float, Query(ge=0.05, le=1.5, description="1 = radiators as designed")] = 1.0,
+           dataset_id: Annotated[str | None, Query(description="use this dataset's asset")] = None,
+           t: Annotated[datetime | None, Query(description="start the approach from the twin state at t")] = None):
+    """api.whatif() — steady state, ageing, time to steady state and the approach curve."""
+    if dataset_id is not None:
+        _known(dataset_id)
+    return plain(api.whatif(load_pu, ambient_C, cooling, dataset_id=dataset_id, t=_local(t)))
+
+
+@app.get("/api/datasets/{dataset_id}/findings", response_model=S.FindingsModel, response_model_by_alias=True,
+         responses=ERRORS, tags=["run"])
+def findings(dataset_id: str, t: Annotated[datetime | None, Query(description="findings up to t; omit = whole run")] = None):
+    """api.findings() — findings on parts grouped by CPRI cause, recommendations, through-fault stress."""
+    _known(dataset_id)
+    return plain(api.findings(dataset_id, _local(t)))
+
+
 @app.get("/api/self-test", response_model=S.TableModel, tags=["self-test"])
 def self_test():
     """api.self_test() — CPRI Excel format: reference vs software, diff, % diff, pass (<= 1 %), trip checks."""
@@ -354,7 +403,7 @@ def physics_ageing_models():
     return plain(api.physics_ageing_models())
 
 
-@app.post("/api/datasets/{dataset_id}/whatif", response_model=S.WhatIfModel, responses=ERRORS, tags=["physics"])
+@app.post("/api/datasets/{dataset_id}/whatif", response_model=S.PhysicsWhatIfModel, responses=ERRORS, tags=["physics"])
 def physics_whatif(dataset_id: str, body: S.WhatIfIn):
     """api.physics_whatif() — the dataset's own load and weather replayed under changed load, ambient and cooling."""
     _known(dataset_id)

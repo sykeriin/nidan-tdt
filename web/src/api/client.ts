@@ -1,224 +1,111 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { API_BASE } from '../config'
-import type { components } from './schema'
+// Typed access to the FastAPI backend (types generated from docs/openapi.json: `npm run gen:api`).
+// The frontend never computes engineering values: every number shown comes from these responses.
+import { useQuery } from "@tanstack/react-query";
+import type { components } from "./schema";
 
-type S = components['schemas']
-export type Run = S['RunModel']
-export type DatasetInfo = S['DatasetInfoModel']
-export type Alert = S['AlertModel']
-export type Recommendation = S['RecommendationModel']
-export type Health = S['HealthModel']
-export type Table = S['TableModel']
-export type Series = S['SeriesModel']
-export type InspectResult = S['InspectResultModel']
-export type LoadedDataset = S['DatasetModel']
-export type Preset = S['PresetModel']
-export type ResolvedProfile = S['ProfileModel']
-export type Chain = S['ChainModel']
-export type StepResponse = S['StepResponseModel']
-export type WhatIf = S['WhatIfModel']
+export type StateAt = components["schemas"]["StateAtModel"];
+export type Run = components["schemas"]["RunModel"];
+export type DatasetInfo = components["schemas"]["DatasetInfoModel"];
+export type Alert = components["schemas"]["AlertModel"];
 
 export class ApiError extends Error {
-  status: number
+  status: number;
   constructor(status: number, message: string) {
-    super(message)
-    this.status = status
+    super(message);
+    this.status = status;
   }
 }
 
-/** Every failure becomes an ApiError whose message is the backend's readable `detail`. */
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  let res: Response
+async function get<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+  const qs = params
+    ? "?" + new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined) as [string, string][])
+    : "";
+  let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, init)
+    res = await fetch(`/api${path}${qs}`);
   } catch {
-    throw new ApiError(0, 'Backend offline: start the server (uvicorn server.app:app --port 8000).')
+    throw new ApiError(0, "The twin server isn't reachable. Start it with: uvicorn server.app:app --port 8000");
   }
   if (!res.ok) {
-    let detail = `${res.status} ${res.statusText}`
-    try {
-      const body = await res.json()
-      if (typeof body?.detail === 'string') detail = body.detail
-    } catch {
-      /* not JSON: keep the status line */
-    }
-    throw new ApiError(res.status, detail)
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
   }
-  return res.json() as Promise<T>
+  return res.json() as Promise<T>;
 }
 
-export const useBackend = () =>
+export const api = {
+  datasets: () => get<DatasetInfo[]>("/datasets"),
+  // max_points small: here we only need the run's summary, asset and capabilities, not its charts.
+  runSummary: (id: string) => get<Run>(`/datasets/${id}/run`, { max_points: 10 }),
+  stateAt: (id: string, t: string) => get<StateAt>(`/datasets/${id}/state`, { t }),
+};
+
+export const useDatasets = () => useQuery({ queryKey: ["datasets"], queryFn: api.datasets, staleTime: Infinity });
+export const useRunSummary = (id: string) =>
+  useQuery({ queryKey: ["run-summary", id], queryFn: () => api.runSummary(id), staleTime: Infinity });
+export const useStateAt = (id: string, t: string) =>
+  useQuery({ queryKey: ["state", id, t], queryFn: () => api.stateAt(id, t), staleTime: Infinity });
+
+export type FramesResponse = components["schemas"]["FramesModel"];
+export const getFrames = (id: string) => get<FramesResponse>(`/datasets/${id}/frames`);
+export const useFramesQuery = (id: string, enabled = true) =>
+  useQuery({ queryKey: ["frames", id], queryFn: () => getFrames(id), staleTime: Infinity, enabled });
+
+export type ThermalProfile = components["schemas"]["ThermalProfileModel"];
+export type Components = components["schemas"]["ComponentsModel"];
+export type PartView = components["schemas"]["PartModel"];
+export type Equation = components["schemas"]["EquationModel"];
+
+// Model constants (P0, Pk, τ, …) do not change within a run: fetched once, at the first sample.
+export const useThermalParams = (id: string, t0: string | null) =>
   useQuery({
-    queryKey: ['health'],
-    queryFn: () => request<{ status: string; web_build: boolean }>('/health'),
-    refetchInterval: 15000,
-    retry: false,
-  })
-
-export const useDatasets = () =>
-  useQuery({ queryKey: ['datasets'], queryFn: () => request<DatasetInfo[]>('/datasets') })
-
-export const useRun = (id: string | null) =>
+    queryKey: ["thermal-params", id], enabled: !!t0, staleTime: Infinity,
+    queryFn: () => get<ThermalProfile>(`/datasets/${id}/thermal-profile`, { t: t0! }).then((r) => r.params),
+  });
+// Per-part equations at the replay cursor; only while a part is pinned. Keeps the last answer while the next loads.
+export const useComponents = (id: string, t: string | null, enabled: boolean) =>
   useQuery({
-    queryKey: ['run', id],
-    queryFn: () => request<Run>(`/datasets/${encodeURIComponent(id!)}/run?max_points=2000`),
-    enabled: !!id,
-    staleTime: Infinity,
-  })
+    queryKey: ["components", id, t], enabled: enabled && !!t, staleTime: Infinity,
+    queryFn: () => get<Components>(`/datasets/${id}/components`, { t: t! }),
+    placeholderData: (prev) => prev,
+  });
 
-export const useSelfTest = () =>
-  useQuery({ queryKey: ['self-test'], queryFn: () => request<Table>('/self-test') })
-
-export const reportHref = (id: string, fmt: 'html' | 'csv' | 'json', download = false) =>
-  `${API_BASE}/datasets/${encodeURIComponent(id)}/report?fmt=${fmt}${download ? '&download=true' : ''}`
-
-export async function inspectFiles(files: File[]): Promise<InspectResult> {
-  const form = new FormData()
-  files.forEach((f) => form.append('files', f))
-  return request<InspectResult>('/inspect', { method: 'POST', body: form })
+export type DatasetLoaded = components["schemas"]["DatasetModel"];
+/** Upload CSV/Excel file(s); the backend maps, runs the twin + analytics and registers the dataset. */
+export async function uploadDataset(files: File[], estimateRating: boolean): Promise<DatasetLoaded> {
+  const body = new FormData();
+  files.forEach((f) => body.append("files", f));
+  body.append("name", files.map((f) => f.name).join(", "));
+  if (estimateRating) body.append("asset", "estimate");
+  let res: Response;
+  try {
+    res = await fetch("/api/datasets", { method: "POST", body });
+  } catch {
+    throw new ApiError(0, "The twin server isn't reachable. Start it with: python -m server");
+  }
+  if (!res.ok) {
+    const b = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, typeof b.detail === "string" ? b.detail : JSON.stringify(b.detail));
+  }
+  return res.json() as Promise<DatasetLoaded>;
 }
 
-export interface LoadArgs {
-  files: File[]
-  name?: string
-  mapping?: Record<string, { to: string; unit?: string }>
-  asset?: 'estimate' | Record<string, number>
-  interval?: string
-}
-
-export function useLoadDataset() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (a: LoadArgs) => {
-      const form = new FormData()
-      a.files.forEach((f) => form.append('files', f))
-      if (a.name) form.append('name', a.name)
-      if (a.mapping) form.append('mapping', JSON.stringify(a.mapping))
-      if (a.asset) form.append('asset', a.asset === 'estimate' ? 'estimate' : JSON.stringify(a.asset))
-      if (a.interval) form.append('interval', a.interval)
-      return request<LoadedDataset>('/datasets', { method: 'POST', body: form })
-    },
-    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: ['datasets'] }), qc.invalidateQueries({ queryKey: ['run'] })]),
-  })
-}
-
-// ---------------------------------------------------------------- generic transformer profile and physics
-export interface ProfileBody {
-  values: Record<string, unknown>
-  tags?: Record<string, string>
-}
-
-const post = <T,>(path: string, body: unknown) =>
-  request<T>(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-
-export const usePresets = () =>
-  useQuery({ queryKey: ['presets'], queryFn: () => request<Preset[]>('/presets'), staleTime: Infinity })
-
-/** The complete, tagged profile the twin will use for what was typed (rated current, loss split, IEC defaults). */
-export const useResolvedProfile = (body: ProfileBody | null) =>
+export type WhatIf = components["schemas"]["WhatIfModel"];
+export type Findings = components["schemas"]["FindingsModel"];
+export type Finding = components["schemas"]["FindingModel"];
+export interface WhatIfInput { load: number; ambient: number; cooling: number }
+// Simulate: one steady-state answer per slider position (the approach starts from the twin state at `t`).
+export const useWhatIf = (inp: WhatIfInput | null, dataset: string, t: string | null) =>
   useQuery({
-    queryKey: ['profile', body],
-    queryFn: () => post<ResolvedProfile>('/profile', body),
-    enabled: !!body,
-    retry: false,
-    placeholderData: keepPreviousData,
-  })
-
-export const useChain = (profile: ProfileBody | null, loadPu: number, ambientC: number) =>
+    queryKey: ["whatif", dataset, t, inp?.load, inp?.ambient, inp?.cooling], enabled: !!inp, staleTime: Infinity,
+    queryFn: () => get<WhatIf>("/whatif", { load_pu: inp!.load, ambient_C: inp!.ambient, cooling: inp!.cooling,
+      dataset_id: dataset, t: t ?? undefined }),
+    placeholderData: (prev) => prev,
+  });
+// Diagnose: findings up to the replay cursor.
+export const useFindings = (dataset: string, t: string | null, enabled: boolean) =>
   useQuery({
-    queryKey: ['chain', profile, loadPu, ambientC],
-    queryFn: () => post<Chain>('/physics/chain', { ...profile, load_pu: loadPu, ambient_C: ambientC }),
-    enabled: !!profile,
-    retry: false,
-    placeholderData: keepPreviousData,
-  })
-
-export const useStepResponse = (profile: ProfileBody | null, fromPu: number, toPu: number, ambientC: number, minutes: number) =>
-  useQuery({
-    queryKey: ['step', profile, fromPu, toPu, ambientC, minutes],
-    queryFn: () => post<StepResponse>('/physics/step', { ...profile, from_pu: fromPu, to_pu: toPu, ambient_C: ambientC, minutes }),
-    enabled: !!profile,
-    retry: false,
-    placeholderData: keepPreviousData,
-  })
-
-export const useWhatIf = (datasetId: string | null, loadMult: number, ambientOffsetC: number, riseMult: number, enabled: boolean, model: 'iec' | 'detailed' = 'iec', kFactor = 1) =>
-  useQuery({
-    queryKey: ['whatif', datasetId, loadMult, ambientOffsetC, riseMult, model, kFactor],
-    queryFn: () =>
-      post<WhatIf>(`/datasets/${encodeURIComponent(datasetId!)}/whatif`, { load_mult: loadMult, ambient_offset_C: ambientOffsetC, rise_mult: riseMult, model, k_factor: kFactor }),
-    enabled: !!datasetId && enabled,
-    retry: false,
-    placeholderData: keepPreviousData,
-  })
-
-export interface IngestResult { dataset_id: string; session: string; rows_total: number; mode: string; last_timestamp: string | null }
-
-/** Send readings the way a device or gateway would; the session appears as the dataset u-live-<session>. */
-export const ingestReadings = (session: string, rows: Record<string, unknown>[], asset?: Record<string, unknown>) =>
-  post<IngestResult>('/ingest', { session, rows, asset })
-
-export const fetchReplayRows = async (datasetId: string, start: string, limit: number): Promise<Record<string, unknown>[]> => {
-  const res = await fetch(`${API_BASE}/datasets/${encodeURIComponent(datasetId)}/replay?start=${encodeURIComponent(start)}&limit=${limit}`)
-  if (!res.ok) throw new ApiError(res.status, 'Could not read the sample feed.')
-  const lines = (await res.text()).split('\n').filter(Boolean)
-  return lines.map((l) => JSON.parse(l).row as Record<string, unknown>)
-}
-
-export function useSimulate() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (a: ProfileBody & { scenario: string; name?: string; plant?: 'iec' | 'detailed' }) => post<LoadedDataset>('/simulate', a),
-    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: ['datasets'] }), qc.invalidateQueries({ queryKey: ['run'] })]),
-  })
-}
-
-// ---------------------------------------------------------------- the moment, and the outlook
-import type { AgeingModels, Brief, DetailedCompare, Outlook } from './types'
-
-const BUCKET_15_MIN = 15 * 60_000
-const BUCKET_HOUR = 60 * 60_000
-
-/** Status sentence, ranked diagnosis, work order and headroom at replay time `ms` (cached per 15-minute bucket). */
-export const useBrief = (datasetId: string | null, ms: number | null, enabled = true) => {
-  const bucket = ms == null ? null : Math.floor(ms / BUCKET_15_MIN) * BUCKET_15_MIN
-  return useQuery({
-    queryKey: ['brief', datasetId, bucket],
-    queryFn: () => request<Brief>(`/datasets/${encodeURIComponent(datasetId!)}/brief?t=${encodeURIComponent(new Date(bucket!).toISOString())}`),
-    enabled: !!datasetId && bucket != null && enabled,
-    placeholderData: keepPreviousData,
-    staleTime: Infinity,
-    retry: false,
-  })
-}
-
-/** Monte Carlo remaining life, 30-day risk and 24 h forecast from time `ms` (cached per hour). */
-export const useOutlook = (datasetId: string | null, ms: number | null, enabled = true) => {
-  const bucket = ms == null ? null : Math.floor(ms / BUCKET_HOUR) * BUCKET_HOUR
-  return useQuery({
-    queryKey: ['outlook', datasetId, bucket],
-    queryFn: () => request<Outlook>(`/datasets/${encodeURIComponent(datasetId!)}/outlook?t=${encodeURIComponent(new Date(bucket!).toISOString())}`),
-    enabled: !!datasetId && bucket != null && enabled,
-    placeholderData: keepPreviousData,
-    staleTime: Infinity,
-    retry: false,
-  })
-}
-
-export const useDetailed = (
-  profile: ProfileBody | null,
-  p: { fromPu: number; toPu: number; ambientC: number; minutes: number; kFactor: number; useMass: boolean },
-) =>
-  useQuery({
-    queryKey: ['detailed', profile, p],
-    queryFn: () =>
-      post<DetailedCompare>('/physics/detailed', {
-        ...profile, from_pu: p.fromPu, to_pu: p.toPu, ambient_C: p.ambientC, minutes: p.minutes, k_factor: p.kFactor, use_mass_capacity: p.useMass,
-      }),
-    enabled: !!profile,
-    retry: false,
-    placeholderData: keepPreviousData,
-  })
-
-export const useAgeingModels = () =>
-  useQuery({ queryKey: ['ageing-models'], queryFn: () => request<AgeingModels>('/physics/ageing-models'), staleTime: Infinity })
+    queryKey: ["findings", dataset, t], enabled, staleTime: Infinity,
+    queryFn: () => get<Findings>(`/datasets/${dataset}/findings`, { t: t ?? undefined }),
+    placeholderData: (prev) => prev,
+  });

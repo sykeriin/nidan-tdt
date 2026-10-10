@@ -207,6 +207,77 @@ It serves the precomputed run. That is exact: replay → `step()` → `StreamAna
 {"timestamp": "2026-04-01T00:15:00+05:30", "…": "…"}
 ```
 
+### `frames(...)` / `GET /api/datasets/{id}/frames?fields=&start=&end=&every=`
+
+The whole run as columns, for client-side replay (the dashboard loads it once and scrubs locally).
+- Columns are the trend columns of the run (`row` + `twin` fields) plus the health series prefixed `health_`
+  (`health_score`, `health_band`, `health_thermal`, …).
+- `fields` (comma-separated) picks a subset; an unknown name is a 400.
+- `start` / `end` are ISO timestamps (naive means Asia/Kolkata); `every` keeps every n-th row (≥ 1).
+- Snapshot datasets have no time axis: 400, use `snapshot` instead.
+
+```
+{"dataset_id": "S2", "rows": 2880, "timestamp": ["2026-04-01T00:00:00+05:30", "…"],
+ "columns": {"OTI_C": [41.2, "…"], "twin_oil_C": [40.8, "…"], "health_score": [100, "…"]}}
+```
+
+### `thermal_profile(dataset_id, t)` / `GET /api/datasets/{id}/thermal-profile?t=`
+
+The IEC 60076-7 thermal diagram and heat flow at the last sample at or before `t` (`twin/profile.py`). Each value is
+`{value, unit, estimated, source}`; `source` is `measured`, `twin` or `model` (a model constant). Measured-based values
+are null in meter_only mode or where measured OTI does not drive ageing (untrusted channel).
+
+| Value | Meaning | est. |
+|---|---|---|
+| `bottom_oil_C` | θa + β·(θo − θa), β = `bottom_oil_ratio` in config/twin.yaml (A28) | yes |
+| `top_oil_C`, `top_oil_measured_C` | twin top-oil; measured OTI | |
+| `avg_winding_C` | (θo + θb)/2 + gr·K^y | yes |
+| `hot_spot_C`, `hot_spot_measured_C` | twin; measured OTI + twin gradient | |
+| `winding_gradient_K`, `hot_spot_factor` | θh − θo (twin, dynamic); H | |
+| `top_oil_ss_C`, `hot_spot_ss_C` | steady state at this load and ambient | |
+| `losses_noload_W`, `losses_load_W`, `losses_total_W` | P0; Pk·K²; sum (placeholder nameplate losses) | yes |
+| `heat_dissipated_W`, `heat_stored_W` | (P0 + Pk)·(Δθo/Δθor)^(1/x); losses − dissipated | yes |
+| `oil_flow_intensity` | ONAN thermosiphon ∝ Q^(1−x), 1 at 1.4 pu (A29) | yes |
+| `radiator_effectiveness` | (Δθo,twin/Δθo,measured)^(1/x), 6 h median; null without trusted OTI (A30) | yes |
+| `tau_oil_min`, `tau_winding_min` | 180, 4 (library) | |
+| `ageing_rate`, `ageing_rate_actual`, `life_used_days`, `life_used_actual_days` | as in the run | |
+
+`params` carries the model constants: `P0_W, Pk_W, R, d_theta_or_K, x, y, gr_K, H, tau_oil_min, tau_winding_min,
+I_rated_A, beta_bottom`. `frames` carries the same profile columns for every sample.
+
+### `components(dataset_id, t)` / `GET /api/datasets/{id}/components?t=`
+
+Per-part view for the 3D callouts and detail panels (`dt/components.py`; part ids match `web/src/twin/parts.ts`).
+`parts[id]` = `{quantities[], equations[], alerts[], tests[], verdict}`:
+- quantity: `{key, label, value, unit, kind (measured|twin|residual|info), estimated, digits}`
+- equation: `{name, symbolic, substituted, result{symbol, value, unit, digits}, terms[{symbol, value, unit, meaning,
+  estimated, digits}], note, estimated}`. `substituted` is the equation with live values, e.g.
+  `V = 2^((102.3 − 98)/6) = 1.64 × normal ageing`; null when an input is missing.
+- alerts: active in the last 24 h, mapped to parts by type (asset findings) or by channel (sensor faults).
+- `verdict` (oti only): `inside`, `above` (hotter than a healthy unit: cooling fault or sensor) or `suspect`.
+
+### `whatif(load_pu, ambient_C, cooling, dataset_id, t)` / `GET /api/whatif?load_pu=&ambient_C=&cooling=&dataset_id=&t=`
+
+Steady state of the twin at a load (0–2 pu), ambient (−10–60 °C) and cooling effectiveness (0.05–1.5; 1 = radiators as
+designed). `dataset_id` picks that dataset's asset (rating, losses); with `t` the approach starts from the twin's state
+there, else from cold (ambient). About 10 ms.
+
+Returns the thermal-profile fields at steady state (`top_oil_C`, `hot_spot_C`, `bottom_oil_C`, `avg_winding_C`,
+`winding_gradient_K`, losses, `heat_dissipated_W` = losses, `heat_stored_W` = 0, `oil_flow_intensity`,
+`radiator_effectiveness` = cooling, `tau_*`), `current_A`, `ageing_rate` and, for comparison, `ageing_rate_nominal_cooling`
+/ `hot_spot_nominal_cooling_C` (same load and ambient with full cooling), `time_to_steady_min` (top-oil and gradient
+within 1 K), `curve {t_min[], top_oil_C[], hot_spot_C[]}` (IEC 60076-7 exponential approach), `start`, `params` and
+`estimated` (the field names that rest on estimates). Reduced cooling scales the top-oil rise by cooling^(−x) (A32).
+
+### `findings(dataset_id, t)` / `GET /api/datasets/{id}/findings?t=`
+
+Findings up to `t` (omit = whole run): one per alert type, origin and part set (the latest, with `count`, `first`,
+`last`), ordered by CPRI cause (`Overloading`, `Insulation`, `Short circuit`, then `Supply and connections`, `Oil`,
+`Sensors and data`), asset findings before sensor findings. Each carries `parts` (ids of `web/src/twin/parts.ts`),
+`severity`, `indicative` (A27), `explanation` and `recommendation {action, test, urgency, standard_ref}`.
+`stress`: through-fault state up to `t` (`events`, `qualifying` vs `moderate_limit`, `severe_seen`, `triggered`,
+`cum_i2t_pu2s`, `last_event`) for the %X-test gauge.
+
 ### `self_test()` / `GET /api/self-test`
 
 This is the self-test panel in CPRI's Excel format (`docs/reference/Draft Data for Condition Monitoring.xlsx`).
