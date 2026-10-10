@@ -71,7 +71,8 @@ Units check: meter KVA ÷ Σ(V·I)/1000 = 0.99 (median) and Σ VAL = KVA → cur
 ### 1.4 Specific checks
 
 **(1) OTI/WTI jumps > 5 °C per 15 min.** Rule used: |ΔOTI| scaled to max(Δt, 15 min), not across gaps.
-- OTI: **47** jumps in the whole file, **43** in the chosen range (Jul 12, Aug 25, Sep 6). The 1-minute
+- OTI: **47** jumps in the whole file before cleaning; in the cleaned range **35** (Jul 8, Aug 22, Sep 5) after
+  steps within 3 h of a > 25 % load change are excused as physics (assumptions A17). The 1-minute
   sampling bursts in June/July give 212 "jumps" if you scale a 1 °C step over 1 min to 15 min, but those are
   sensor resolution, not jumps. The rule above avoids that.
 - Glitch types: plateaus at **236–250 °C** on 8 afternoons (2019-07-16, 08-09, 08-16, 08-17, 08-18, 08-19,
@@ -158,7 +159,7 @@ merge on timestamp → range filter → derive → validate → enrich ambient �
 | DUP_CONFLICT | 348 | conflicting duplicates, median kept |
 | DUP_IDENT | 124 | identical duplicates, one kept |
 | GAP | 57 | spacing > 3 × interval before this row |
-| JUMP_OTI | 43 | OTI change > 5 °C / 15 min |
+| JUMP_OTI | 35 | OTI change > 5 °C / 15 min, not explained by a load step (A17) |
 | RANGE_OTI_C | 59 | 47 at 236–250 °C, 12 at 0 °C (dropout) |
 | RANGE_ATI_C | 10 | ATI 0 °C dropouts |
 | RANGE_VR / VY / VB | 2 / 9 / 4 | L-N voltage < 100 V (meter offline) |
@@ -169,7 +170,7 @@ merge on timestamp → range filter → derive → validate → enrich ambient �
 | IMPUTED_AMB | 594 | amb_C from Open-Meteo Hyderabad where ATI is missing/invalid |
 | IMPUTED_RH | 17,104 | RH from Open-Meteo Hyderabad (no RH sensor) |
 | ATI_MISMATCH | 57 | ATI vs Open-Meteo > 8 °C for > 6 h (§1.8) |
-| IMPLAUSIBLE_RISE | 13,618 | OTI − ambient outside the IEC band (§1.8) |
+| IMPLAUSIBLE_RISE | 13,623 | OTI − ambient outside the IEC band (§1.8) |
 | DERIVED_loading_pct | 16,134 | loading = I_mean / estimated I_rated |
 
 - Rows with ≥ 1 *quality* flag (not DERIVED/IMPUTED/ASSUMED), before the plausibility flags: 9,630; excluding STUCK_OLI: **1,345**.
@@ -192,13 +193,13 @@ Run on the cleaned file at the estimated 214.7 A rating. Plot: `docs/figures/kag
 
 | Channel | Verdict | Evidence |
 |---|---|---|
-| **OTI_C** | **suspect** | Measured OTI − ATI median **2.0 K** at median load 0.34 pu. IEC 60076-7 band at the same load: low 9.1 K · nominal 20.9 K · high 27.5 K. **13,618 of 15,628** evaluable rows (87 %) are > 2 K below the low edge; 0 above. Against Open-Meteo air temperature instead of ATI, the median rise is 4.2 K and 73 % of rows are still below. Core losses alone hold ≥ 4.4 K at zero load (low band). A larger nameplate doesn't rescue it: at 5× the rating the low band still predicts 4.6 K. |
+| **OTI_C** | **suspect** | Measured OTI − ATI median **2.0 K** at median load 0.34 pu. IEC 60076-7 band at the same load: low 9.1 K · nominal 20.9 K · high 27.5 K. **13,623 of 15,635** evaluable rows (87 %) are > 2 K below the low edge; 0 above. Against Open-Meteo air temperature instead of ATI, the median rise is 4.2 K and 73 % of rows are still below. Core losses alone hold ≥ 4.4 K at zero load (low band). A larger nameplate doesn't rescue it: at 5× the rating the low band still predicts 4.6 K. |
 | **ATI_C** | **plausible** | vs Open-Meteo Hyderabad: bias +2.27 °C, MAE 3.49 °C, correlation 0.74 (15-min) / 0.63 (daily). Peak at the same hour (lag 0), which supports IST timestamps. Diurnal swing is 13 K vs 7 K for air, so the sensor runs ~5 K hot at noon (sun/enclosure). `ATI_MISMATCH` on 57 rows. |
 
 - **Location:** Hyderabad is **[Assumed]**. Evidence: ATI correlates with Hyderabad weather at 0.63 (daily means)
   against 0.27 for Bengaluru over the same dates (Bengaluru fetched to scratch for this comparison, not cached).
 - Evaluable rows exclude RANGE_OTI_C / RANGE_ATI_C / JUMP_OTI / STUCK_OTI (already sensor faults) and rows without load.
-- Flags written to `kaggle.parquet`: `IMPLAUSIBLE_RISE` 13,618 rows, `ATI_MISMATCH` 57 rows.
+- Flags written to `kaggle.parquet`: `IMPLAUSIBLE_RISE` 13,623 rows, `ATI_MISMATCH` 57 rows.
 - With the Hyderabad cache in place, the 594 rows without ATI get ambient from Open-Meteo (`IMPUTED_AMB`) instead of
   interpolation/climatology, and RH comes from the cache (`IMPUTED_RH`). There are no `ASSUMED_AMBIENT` rows any more.
 

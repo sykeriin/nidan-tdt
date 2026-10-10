@@ -8,6 +8,9 @@ TEMPS = ("OTI_C", "WTI_C", "ATI_C")
 STUCK_COLS = ("OTI_C", "WTI_C", "OLI_pct", "IR", "IY", "IB", "VR", "VY", "VB")
 NEG_COLS = ("IR", "IY", "IB", "IN", "S_kVA")
 JUMP_LIMIT_C = 5.0        # per 15 min
+JUMP_LOAD_WINDOW = "3h"    # oil time constant
+JUMP_LOAD_STEP = 0.25       # relative load change in that window that excuses a temperature step
+JUMP_LOAD_EXCUSE_MAX_C = 60.0  # never excuse a step bigger than the whole rated top-oil rise
 STUCK_SAMPLES = 8
 STUCK_LOAD_CHANGE = 0.10
 
@@ -46,10 +49,20 @@ def validate(df: pd.DataFrame, interval: pd.Timedelta, i_rated: float | None = N
 
     # jumps: change over max(dt, 15 min) scaled to 15 min; not across gaps
     win = dt.where(dt > pd.Timedelta("15min"), pd.Timedelta("15min"))
+    # A big load step makes real temperatures move fast (winding in minutes; top-oil toward a far-away target), so a
+    # step within one oil time constant of a > 25 % load change is physics, unless it exceeds the whole rated rise.
+    load_moved = pd.Series(False, index=df.index)
+    if "I_mean" in df and df["I_mean"].notna().any():
+        L = pd.Series(df["I_mean"].to_numpy(float), index=pd.DatetimeIndex(df["timestamp"]))
+        r = L.rolling(JUMP_LOAD_WINDOW).agg(["max", "min"])
+        load_moved = pd.Series(((r["max"] - r["min"]) / r["max"].where(r["max"] > 0) > JUMP_LOAD_STEP).to_numpy(),
+                               index=df.index)
     for col, code in (("OTI_C", "JUMP_OTI"), ("WTI_C", "JUMP_WTI")):
         if col in df and df[col].notna().any():
-            rate = df[col].diff().abs() / (win / pd.Timedelta("15min"))
-            _or(df, code, (rate > JUMP_LIMIT_C) & ~gap)
+            step = df[col].diff().abs()
+            rate = step / (win / pd.Timedelta("15min"))
+            excused = load_moved & (step <= JUMP_LOAD_EXCUSE_MAX_C)
+            _or(df, code, (rate > JUMP_LIMIT_C) & ~gap & ~excused)
 
     # stuck: unchanged for >= 8 samples while load changes > 10 %
     if "I_mean" in df:

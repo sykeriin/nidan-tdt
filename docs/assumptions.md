@@ -80,6 +80,39 @@ time removed (fixture F15r), thermal lag makes the residual spread wide (±7 K, 
 — use `interval=` for such files. Missing ambient in snapshot mode = median of the file's valid ATI, else 27 °C,
 flagged ASSUMED_AMBIENT. Duplicate measurement pairs are flagged but both records kept (they have distinct IDs). [Assumed]
 
+## Analytics integration (p3-intelligence merged into main)
+
+**A17. A temperature step that a load step explains is physics, not a sensor jump.** [Assumed] At ingestion, JUMP_OTI /
+JUMP_WTI are not raised when the load moved > 25 % within the preceding 3 h (one oil time constant), unless the step
+exceeds the whole rated rise (60 K). In the analytics jump check, a step the twin also makes (same channel) is excused.
+Why: in S1 the winding hot-spot genuinely rises 8 °C in 15 min (4 min winding constant) and top-oil ~5 °C/15 min at a
+0.42 → 1.18 pu step; both were being reported as sensor faults and relabelled real overload alarms. Kaggle's 245 °C
+plateaus remain flagged (> 60 K, and RANGE).
+
+**A18. Untrustworthy channels are hidden from asset detectors, not from the sensor layer.** [Assumed] A top-oil channel
+that fails the plausibility check (caps `residual_fidelity` False) and an oil-level channel that drifts (rises ≥ 10 points
+over 21 days with no refill step) or is stuck on > 50 % of rows are dropped before the asset detectors run; the sensor
+layer still sees them and raises `implausible_sensor` / `drift_sensor` / `stuck_sensor`. The residual detector is off
+when `residual_fidelity` is False. Result on Kaggle: no residual alerts, no oil alerts, no top-oil alarm from measured OTI.
+
+**A19. Alerts computed from the twin's estimate are never relabelled as sensor faults** (a flagged measured channel
+didn't produce them). On Kaggle one `top_oil_high` remains, twin-estimated at the *estimated* rating with placeholder
+losses: indicative only.
+
+**A20. One slow leak = one alert:** leak episodes closer than 48 h are merged (the oil level follows the daily
+temperature cycle, so the 24 h decline dips under the clear level at night). [Assumed]
+
+**A21. Residual threshold re-tuned on the real Normal scenario: kept at mean + 4σ, persistent 2 h** (load-normalised).
+Sweep (calibrated on seed 0, tested on unseen seeds 1–3 with different plant parameters): 3σ and 3.5σ/≤2 h give false
+alarms on Normal; 4σ/2 h gives 0 false alarms on N seeds 1–3 and on S1, and detects S2 after 57 / 40 / 28.5 / 56 h
+(seeds 0–3). 3.5σ/4 h is also quiet but sits at the edge for little gain. [Assumed]
+
+**A22. Ageing in health and the ageing-rate alarm use actual ageing** (`aging_rate_actual`) when present, so the cost of
+a cooling fault counts. S2's top-oil / hot-spot / ageing alerts are consequences of the fault and count as true positives.
+
+**A23. Snapshot records get a per-record Health Index at their operating point** (`analytics.pipeline.analyze_snapshot`,
+same curves/weights, each record scored alone), ranked worst first. Time-based detectors don't apply.
+
 ## Weather
 
 **A11. Site point for Transformer-1 weather: Bengaluru city (12.97 N, 77.59 E)**, Open-Meteo archive, cached

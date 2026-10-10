@@ -1,0 +1,23 @@
+# Operating thresholds for Transformer-1. Source: FINAL_PRD.md section 9.
+# Every value is [Assumed] unless noted. All are configurable. Owner: P3.
+operating:
+  loading_pu:            {warning: 0.9, alarm: 1.0}          # [Assumed]
+  overcurrent_pu:        {alarm: 1.2}                        # [Assumed]
+  top_oil_c:             {warning: 85, critical: 95}         # [Assumed; To verify vs IEC 60076-7 DT limits]
+  hot_spot_c:            {warning: 98, critical: 120}        # [Assumed; 98 C = ageing rate 1; 120 C To verify]
+  current_unbalance_pct: {warning: 10, alarm: 20}            # [Assumed]
+  voltage_unbalance_pct: {alarm: 2}                          # [Assumed]
+  voltage_pu:            {high: 1.06, low: 0.94}             # [To verify vs Indian supply regulations]
+  oil_level_pct:         {low: 85}                           # [Assumed]
+  theft:                 {step_points: 8, window_h: 1}       # [Assumed] step with no thermal cause
+  residual:              {sigma_mult: 4, persist_h: 2}       # [Assumed] threshold = mean + 4 sigma of Normal residual
+  through_fault:         {moderate_pu: 3, severe_pu: 8, moderate_count: 3}  # [Assumed]
+  hysteresis_clear_fraction: 0.95                            # [Assumed] clear at 95% of trip level
+
+# Reference values (i_rated_a, v_ln_nominal_v) come from config/asset.yaml: see analytics.common.load_thresholds.
+
+# Bench values: used ONLY by the self-test panel, never as operating alarms. [Confirmed from Excel]
+bench:
+  overcurrent_trip_a: 50
+  temperature_trip_c: 60
+  accuracy_pass_pct: 1

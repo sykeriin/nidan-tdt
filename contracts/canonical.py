@@ -78,3 +78,24 @@ def validate(trend: pd.DataFrame, events: pd.DataFrame | None = None) -> list[st
         if "event_type" in events.columns and not set(events["event_type"]) <= EVENT_TYPES:
             p.append("unknown event_type")
     return p
+
+
+# ---- analytics contract (merged from p3-intelligence; main's capability vocabulary) ----
+# Added by the twin engine (PRD 7.2 + twin/engine.py). Analytics read these.
+TWIN_COLUMNS = [
+    "twin_oil_C", "twin_hs_C", "aging_rate", "days_aged_cum",
+    "residual_oil_C",          # OTI_C - twin_oil_C, NaN in meter-only mode
+    "fidelity_rmse_C",         # rolling 24 h
+    "load_pu",
+    "aging_rate_actual", "days_aged_actual_cum", "ageing_source", "hs_ageing_C",
+    "rise_low_K", "rise_high_K", "implausible_rise", "twin_restart", "fidelity_alert", "dt_min",
+]
+
+# Columns whose names start with these prefixes must NEVER reach detectors (ground truth, device alarm flags).
+QUARANTINE_PREFIXES = ("gt_", "alarm_")
+
+# Capability matrix keys (ingest/capabilities.py). Analytics gate on these names.
+CAPABILITY_KEYS = [
+    "thermal_twin", "residual_fidelity", "wti_check", "unbalance", "voltage_quality", "neutral_measured",
+    "oil_leak_theft", "through_fault", "breathing_index", "ageing_rul", "lead_time_eval",
+]

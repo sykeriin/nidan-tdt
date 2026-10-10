@@ -1,0 +1,8 @@
+scenario,fault,gt_onset,detected,first_alert_ts,first_alert_type,baseline_rule,baseline_ts,lead_vs_baseline_h,lead_vs_onset_h,detector
+N,none (Normal),,False,,,,,,,
+S1,overload,2026-04-24 11:30:00+05:30,True,2026-04-24 12:00:00+05:30,loading_high,loading_alarm,2026-04-24 12:00:00+05:30,0.0,-0.5,rule
+S2,cooling_degradation,2026-04-20 00:00:00+05:30,True,2026-04-22 09:00:00+05:30,residual_drift,top_oil_warning,2026-04-27 15:00:00+05:30,126.0,-57.0,residual
+S3,unbalance,2026-04-25 00:00:00+05:30,True,2026-04-25 00:00:00+05:30,current_unbalance,unbalance_warning,2026-04-25 00:00:00+05:30,0.0,0.0,rule
+S4a,oil_leak,2026-04-21 06:00:00+05:30,True,2026-04-21 22:45:00+05:30,oil_leak,oil_level_low,2026-04-23 22:00:00+05:30,47.25,-16.75,rule
+S4b,oil_theft,2026-04-25 02:15:00+05:30,True,2026-04-25 02:30:00+05:30,oil_low,oil_level_low,2026-04-25 02:30:00+05:30,0.0,-0.25,rule
+S5,through_fault,2026-04-27 10:12:31+05:30,True,2026-04-27 10:12:31+05:30,through_fault,,,,0.0,rule

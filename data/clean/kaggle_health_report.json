@@ -109,7 +109,7 @@
   "GAP": 57,
   "IMPUTED_AMB": 594,
   "IMPUTED_RH": 17104,
-  "JUMP_OTI": 43,
+  "JUMP_OTI": 35,
   "RANGE_ATI_C": 10,
   "RANGE_OTI_C": 59,
   "RANGE_VB": 4,
@@ -170,9 +170,9 @@
    }
   },
   "rise": {
-   "evaluable_rows": 15628,
-   "implausible_rows": 13618,
-   "below_band": 13618,
+   "evaluable_rows": 15635,
+   "implausible_rows": 13623,
+   "below_band": 13623,
    "above_band": 0,
    "implausible_fraction": 0.871,
    "observed_rise_median_K": 2.0,
@@ -202,7 +202,7 @@
   }
  },
  "flag_counts_final": {
-  "IMPLAUSIBLE_RISE": 13618,
+  "IMPLAUSIBLE_RISE": 13623,
   "ATI_MISMATCH": 57
  },
  "asset": {
