@@ -14,22 +14,31 @@ import android.net.Uri;
 import org.json.JSONObject;
 
 final class Notifier {
-    static final String CH_CRIT = "critical_v1", CH_WARN = "warning_v1", CH_INFO = "info_v1", CH_MON = "monitor_v1";
+    static final String CH_CRIT_DND = "critical_dnd_v1", CH_CRIT_STD = "critical_std_v1", CH_WARN = "warning_v1", CH_INFO = "info_v1", CH_MON = "monitor_v1";
 
     private static int rank(String sev) { return "critical".equals(sev) ? 2 : "warning".equals(sev) ? 1 : 0; }
 
     static void ensureChannels(Context c) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
-        NotificationChannel crit = new NotificationChannel(CH_CRIT, "Critical alerts", NotificationManager.IMPORTANCE_HIGH);
-        crit.setDescription("Needs action now. Loud, and can break through Do Not Disturb if you allow it.");
-        crit.enableVibration(true);
-        crit.setVibrationPattern(new long[]{0, 400, 200, 400, 200, 600});
-        crit.setBypassDnd(true);
+        nm.deleteNotificationChannel("critical_v1");
+        // Android only honours setBypassDnd when the app already has DND access at creation time, so keep two channels
+        // and pick the right one when posting.
+        boolean dnd = nm.isNotificationPolicyAccessGranted();
         Uri alarm = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         if (alarm == null) alarm = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-        crit.setSound(alarm, new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
-        nm.createNotificationChannel(crit);
+        AudioAttributes aa = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+        for (String id : new String[]{CH_CRIT_STD, CH_CRIT_DND}) {
+            boolean bypass = CH_CRIT_DND.equals(id);
+            if (bypass && !dnd) continue;
+            NotificationChannel crit = new NotificationChannel(id, "Critical alerts", NotificationManager.IMPORTANCE_HIGH);
+            crit.setDescription("Needs action now. Loud alarm sound and vibration.");
+            crit.enableVibration(true);
+            crit.setVibrationPattern(new long[]{0, 400, 200, 400, 200, 600});
+            crit.setSound(alarm, aa);
+            if (bypass) crit.setBypassDnd(true);
+            nm.createNotificationChannel(crit);
+        }
 
         NotificationChannel warn = new NotificationChannel(CH_WARN, "Warnings", NotificationManager.IMPORTANCE_DEFAULT);
         warn.setDescription("Needs attention soon.");
@@ -69,7 +78,7 @@ final class Notifier {
         JSONObject r = Content.resp(type);
         String title = (test ? "TEST · " : "") + r.optString("title");
         String sub = Content.sevLabel(sev) + (a.optBoolean("simulated") ? " · simulated data" : "");
-        String channel = "critical".equals(sev) ? CH_CRIT : "warning".equals(sev) ? CH_WARN : CH_INFO;
+        String channel = "critical".equals(sev) ? (c.getSystemService(NotificationManager.class).isNotificationPolicyAccessGranted() ? CH_CRIT_DND : CH_CRIT_STD) : "warning".equals(sev) ? CH_WARN : CH_INFO;
         int color = "critical".equals(sev) ? Color.parseColor("#DC2626") : "warning".equals(sev) ? Color.parseColor("#D97706") : Color.parseColor("#0284C7");
 
         Notification n = new Notification.Builder(c, channel).setSmallIcon(R.drawable.ic_bolt).setColor(color)

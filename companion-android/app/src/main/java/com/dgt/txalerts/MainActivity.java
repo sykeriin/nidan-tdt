@@ -175,6 +175,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        Notifier.ensureChannels(this);
         Store.onChange = this::refresh;
         refresh();
     }
