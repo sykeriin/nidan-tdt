@@ -1,0 +1,4 @@
+<network-security-config>
+    <!-- the backend is plain http on a private (Tailscale / LAN) address -->
+    <base-config cleartextTrafficPermitted="true"/>
+</network-security-config>
