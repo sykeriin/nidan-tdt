@@ -33,6 +33,10 @@ ALERT_MODULES: dict[str, str] = {
     "oil_theft": "oil",
     "through_fault": "short_circuit",
     "through_fault_stress": "short_circuit",
+    "jump_sensor": "data",
+    "range_sensor": "data",
+    "stuck_sensor": "data",
+    "dead_channel": "data",
 }
 
 
