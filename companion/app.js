@@ -13,7 +13,7 @@ let CONTENT = null, swReg = null, abort = null, running = false;
 let alerts = store.get("alerts", []);          // newest first; {a: backend alert, ds, test, acked}
 const seen = new Set(alerts.map(x => x.a.id));
 const snoozed = store.get("snoozed", {});      // type -> epoch ms
-const cfg = Object.assign({backend: "http://localhost:8000", dataset: "S2", speed: 3600, minsev: "info", mutesensor: false}, store.get("cfg", {}));
+const cfg = Object.assign({backend: "http://localhost:8000", dataset: "S2", speed: 100000, minsev: "info", mutesensor: false}, store.get("cfg", {}));
 
 // ---------------------------------------------------------------- content
 const resp = type => CONTENT.types[type] || {
@@ -199,7 +199,7 @@ function bind() {
   $("close-sheet").onclick = () => $("sheet").classList.add("hidden");
   $("sheet").onclick = ev => { if (ev.target === $("sheet")) $("sheet").classList.add("hidden"); };
   $("backend").value = cfg.backend; $("speed").value = cfg.speed; $("minsev").value = cfg.minsev; $("mutesensor").checked = cfg.mutesensor;
-  const save = () => { cfg.backend = $("backend").value.trim() || cfg.backend; cfg.speed = Math.max(1, +$("speed").value || 3600);
+  const save = () => { cfg.backend = $("backend").value.trim() || cfg.backend; cfg.speed = Math.max(1, +$("speed").value || 100000);
     cfg.minsev = $("minsev").value; cfg.mutesensor = $("mutesensor").checked; cfg.dataset = $("dataset").value || cfg.dataset; store.set("cfg", cfg); };
   ["backend", "speed", "minsev", "mutesensor", "dataset"].forEach(id => $(id).onchange = () => { save(); if (id === "backend") loadDatasets(); });
   $("reload-ds").onclick = () => { save(); loadDatasets(); };
