@@ -20,6 +20,11 @@ LEAK_DECLINE_POINTS = 3.0
 LEAK_WINDOW_H = 24.0
 # Oil temperature move over the theft window that would explain a level change thermally.
 THERMAL_CAUSE_DELTA_C = 5.0
+# Not in thresholds.yaml. Oil does not refill itself, so a step is only theft if the level stays down for
+# THEFT_PERSIST_H and does not come back (within half the step) for THEFT_RECOVERY_H. On the real Kaggle unit
+# all 33 drops that lasted >= 1 h recovered within 24 h, i.e. gauge/thermal behaviour, not oil loss.
+THEFT_PERSIST_H = 1.0
+THEFT_RECOVERY_H = 24.0
 NIGHT_START_H, NIGHT_END_H = 22, 6
 
 
@@ -65,7 +70,16 @@ def detect(df: pd.DataFrame, thresholds: dict) -> list[Alert]:
     drop = lvl.rolling(w + 1, min_periods=2).max() - lvl
     step_runs = runs((drop >= step_pts).to_numpy())
     temp = _temperature(df)
+    persist = max(1, int(round(THEFT_PERSIST_H / h)))
+    recover = max(persist + 1, int(round(THEFT_RECOVERY_H / h)))
+    tol = step_pts / 2.0
     for start, _ in step_runs:
+        pre = lvl.iloc[start] + drop.iloc[start]  # level just before the step
+        after = lvl.iloc[start + 1 : start + 1 + recover]
+        if len(after) < persist or not (after.iloc[:persist] <= pre - tol).all():
+            continue  # transient dip, or too little data after the step to confirm it
+        if (after.iloc[persist:] >= pre - tol).any():
+            continue  # the level came back: not oil loss
         if temp is not None:
             moved = abs(temp.iloc[start] - temp.iloc[max(start - w, 0)])
             if not moved < THERMAL_CAUSE_DELTA_C:

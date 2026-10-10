@@ -11,7 +11,7 @@ Tags: **[Confirmed]** tested here | **[Assumed]** our choice | **[To verify]** n
 ```powershell
 py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install pandas numpy scikit-learn pyyaml pytest
-.venv\Scripts\python.exe -m pytest -q          # 151 passed (6 Kaggle tests skip if the data folder is missing)
+.venv\Scripts\python.exe -m pytest -q          # 157 passed (7 Kaggle tests skip if the data folder is missing)
 .venv\Scripts\python.exe -m eval.run_eval      # lead-time + false-alarm table on MOCK data
 ```
 Kaggle tests read `DT_KAGGLE_DIR` (default `C:\Apps\Power\dt-twin\data\raw\kaggle`) and skip when it is absent. The Kaggle files are third-party ("copyright-authors") and must never be committed.
@@ -83,7 +83,7 @@ Trend columns follow `contracts/canonical.py` (draft) plus the twin columns from
 False alarms: 0 in every scenario. **These prove the detectors on a stand-in dataset. They say nothing about real or P2-generated data.** The honest headline: the twin adds lead time on cooling degradation and slow leaks; for overload, unbalance and theft a plain threshold does as well.
 
 ## 7. Known limitations and open decisions
-1. **Oil detector fails on the real Kaggle data.** `OLI` there is bimodal (about 7,700 samples at 100, the rest around 37-60) with frequent one-sample dips. The oil detector raised 107 `oil_theft`, 31 `oil_low` and 9 `oil_leak` alerts. These look like gauge behaviour, not events. It must not be shown as a finding on that data until fixed (for example require the step to persist for several samples). [Confirmed by running]
+1. **Oil detector on the real Kaggle data.** `OLI` there is bimodal (about 44% of samples at 100, about 49% below 85, quantiles 37-42 at the low end) with 75 drops of 8+ points and 59 rises. Before the fix the detector raised 107 `oil_theft` alerts. Of the 75 drops, 33 lasted at least 1 h and **all 33 recovered within 24 h**; oil does not refill itself, so these are gauge or thermal behaviour. Fixed: a theft step must persist for `THEFT_PERSIST_H` (1 h) and not recover for `THEFT_RECOVERY_H` (24 h). Result on Kaggle: 0 `oil_theft`. **Still raised: 31 `oil_low` and 9 `oil_leak`.** `oil_low` is technically correct against the 85% limit (the reported level is below it about half the time), but the channel itself looks unreliable, so do not present those as findings. A theft alert now appears 1 h after the step and is withdrawn if the level returns within 24 h (a streaming consumer will see it come and go). [Confirmed by running]
 2. **Stuck-sensor rule over-fires on quantised data:** 93 alerts on Kaggle (1 C resolution, slow lag). Untuned.
 3. **Voltage sags on Kaggle are flagged as sensor faults** (range < 100 V) but look like real supply events. The spec's 100 V rule can mislabel a supply fault as a device fault.
 4. **Kaggle through-fault, residual, electrical** detectors do not run on it (no twin, no caps).
