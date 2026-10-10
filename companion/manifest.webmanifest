@@ -1,0 +1,11 @@
+{
+  "name": "Transformer Alerts",
+  "short_name": "TX Alerts",
+  "description": "Companion app for the Transformer-1 digital twin: anomaly notifications with pre-written responses.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+}

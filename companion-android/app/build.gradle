@@ -1,0 +1,22 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.dgt.txalerts'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.dgt.txalerts'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets {
+        // one source of truth for the response text, shared with the web companion
+        main { assets.srcDirs = ['src/main/assets', '../../companion/content'] }
+    }
+}
