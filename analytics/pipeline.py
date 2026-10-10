@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from analytics import electrical, health, oil, recommend, residual, rules, through_fault
+from analytics import electrical, health, oil, recommend, residual, rules, sensor_faults, through_fault
 from analytics.common import strip_quarantined
 from contracts.canonical import QUARANTINE_PREFIXES
 from contracts.models import AnalysisResult, TwinState
@@ -41,12 +41,19 @@ def analyze(
 ) -> AnalysisResult:
     df = _clean(df_twin)
     ev = _clean(events) if events is not None else pd.DataFrame()
+    sensor_eps = sensor_faults.episodes(df, thresholds, caps)
     alerts = [
-        *rules.detect(df, thresholds),
-        *residual.detect(df, thresholds, reference=residual_reference),
-        *electrical.detect(df, thresholds, caps),
-        *oil.detect(df, thresholds),
+        *sensor_faults.relabel(
+            [
+                *rules.detect(df, thresholds),
+                *residual.detect(df, thresholds, reference=residual_reference),
+                *electrical.detect(df, thresholds, caps),
+                *oil.detect(df, thresholds),
+            ],
+            sensor_eps,  # asset alerts caused by a flagged sensor sample become origin="sensor" (not deleted)
+        ),
         *through_fault.detect(ev, thresholds),
+        *sensor_faults.alerts_of(sensor_eps),
     ]
     alerts.sort(key=lambda a: a.timestamp)
     hi = health.compute(df, alerts, caps, thresholds)
