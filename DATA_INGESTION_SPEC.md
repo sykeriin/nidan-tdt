@@ -187,8 +187,9 @@ Current input to the twin must be **amps on the LV side** (library requirement �
 | `DUP_IDENT`, `DUP_CONFLICT` | 2.3 |
 | `GAP` | spacing > 3× interval |
 | `RANGE_<COL>` | outside physical range (e.g., OTI < −10 or > 150 °C; V L-N < 100 or > 300) |
-| `JUMP_OTI`, `JUMP_WTI` | rate > 5 °C per 15 min (scaled to interval) |
-| `STUCK_<COL>` | unchanged ≥ 8 samples while load changes > 10% |
+| `JUMP_OTI`, `JUMP_WTI` | change > 5 °C over max(Δt, 15 min), not across a `GAP` (1-minute bursts are sensor resolution, not jumps; docs/assumptions.md A5) |
+| `STUCK_<COL>` | unchanged ≥ 8 samples while load changes > 10%. Load-dependent channels only (OTI, WTI, OLI, currents, voltages); **not ATI**, which is checked by `ATI_MISMATCH` (assumptions A4) |
+| `RANGE_<COL>` (temps) | also exact 0.0 when the channel median > 5 °C (dropout; assumptions A6) |
 | `ATI_MISMATCH` | ATI vs Open-Meteo differs > 8 °C for > 6 h |
 | `NEG_<COL>` | negative current/power where impossible |
 | `IMPUTED_*`, `DERIVED_*`, `ASSUMED_*` | provenance of filled values |
@@ -293,24 +294,27 @@ python -m ingest.adapter load path/to/file.xlsx --save-schema config/schema/fina
 
 ## 5. Robustness test matrix (P1 builds fixtures, `pytest` runs them)
 
-All fixtures are generated from the Normal scenario so expected outputs are known.
+All synthetic fixtures are generated from the Normal scenario (F4 from S5), so expected outputs are known.
+Build with `python -m sim.fixtures` → `data/fixtures/`. Tests: `tests/test_adapter.py`.
 
-| # | Fixture | Tests |
-|---|---|---|
-| F1 | Canonical CSV (our own) | Baseline round-trip |
-| F2 | Kaggle real files (5 CSVs, `DeviceTimeStamp`, VL1/IL1, OTI…) | Multi-file merge, dupes, real flags |
-| F3 | L1/L2/L3 naming, **°F temps**, epoch-ms timestamps | Synonyms, temp + epoch conversion |
-| F4 | **Excel, 3 sheets** (trend, events, nameplate), DD/MM/YYYY | Sheet roles, Indian dates, events, nameplate |
-| F5 | **Long historian format** (`ts, tag, value`) | Pivot |
-| F6 | **Line-line voltages only, kA currents** | Unit + L-L→L-N |
-| F7 | **Loading % only + ambient**, no temps | Derive amps; meter-only mode |
-| F8 | **kVA only**, no ambient | Derive amps; Open-Meteo enrichment |
-| F9 | Total current only, semicolon CSV, latin-1, 3 metadata rows on top | Sniffing; unbalance disabled |
-| F10 | A/B/C naming with `ib` ambiguity | Phase scheme resolution |
-| F11 | Contains `fault_label` column | Quarantined to `gt_*`, not used by detectors |
-| F12 | Two transformers in one file | Asset selection |
-| F13 | 1-second data with spikes | Resample + `*_max` → events |
-| F14 | Hourly data with 2-day gap | Coarse warning, GAP, twin restart |
+**Built (Tier 1, all pass):**
+
+| # | Fixture | File | Tests | Expected mode |
+|---|---|---|---|---|
+| F1 | Canonical CSV (our own) | `F1_canonical.csv` | Baseline round-trip | full |
+| F2 | Kaggle real files (5 CSVs, `DeviceTimeStamp`, VL1/IL1, OTI…) | `data/raw/kaggle/*.csv` | Multi-file merge, dupes, real flags, binary WTI rejected as temperature, rating estimated | full |
+| F3 | L1/L2/L3 naming, **°F temps**, **DD/MM/YYYY** dates | `F3_l1l2l3_fahrenheit_ddmm.csv` | Synonyms, °F → °C, day-first parsing | full |
+| F4 | **Excel, 2 sheets** (Trend, Events), DD/MM/YYYY, peak current in A | `F4_excel_trend_events.xlsx` | Sheet roles, Indian dates, events → `peak_pu` | full |
+| F6 | **Line-line voltages only, kA currents** | `F6_line_line_kA.csv` | kA → A, L-L → L-N | full |
+| F8 | **kVA only**, no temperatures, no ambient | `F8_kva_only.csv` | Derive amps from kVA at nameplate V; Open-Meteo ambient; unbalance off | meter_only |
+
+Also tested: `map_row()` == batch on F3, `inspect()` proposals, A/B/C vs R/Y/B `ib` resolution, header unit hints,
+loading with the network blocked.
+
+**Not built yet (Tier 2):** F5 long historian format · F7 loading % only · F9 total current, semicolon, latin-1,
+metadata rows · F10 full A/B/C file · F11 `fault_label` quarantine · F12 two transformers · F13 1-second data with
+spikes · F14 hourly data with 2-day gap. F3 originally specified epoch-ms timestamps; the built F3 uses DD/MM/YYYY
+instead (epoch parsing exists but has no fixture).
 
 **Pass criteria:** every fixture loads without exception; capability matrix matches expected; twin `I_mean` within 1% of the known truth; mode correct.
 

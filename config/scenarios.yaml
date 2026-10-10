@@ -1,0 +1,44 @@
+# Generated campus data (FINAL_PRD.md §5). All magnitudes [Assumed]; tune visually.
+# Day numbers are calendar days of the window month (day 1 = 2026-04-01). Faults go into the PLANT only.
+
+window: {start: "2026-04-01 00:00", days: 30, freq: 15min}     # 2880 rows, Asia/Kolkata
+
+load:                                   # per-unit of I_rated; converted to amps before the library
+  night_pu: 0.25
+  weekday_peak_pu: [0.55, 0.70]         # drawn per day; 0.75 tops pushed Normal hot-spot past 98 C
+  weekend_peak_pu: [0.38, 0.45]
+  day_hours: [8, 18]
+  evening_bump_pu: 0.05                 # 19-23 h hostels
+  ambient_coupling_pu_per_C: 0.004      # cooling load above 28 C
+  noise_pu: 0.02                        # AR(1)
+  phase_imbalance: 0.02                 # static +-2 % per phase
+  phase_noise: 0.005
+
+plant:                                  # "measured" transformer, deliberately != twin nominal
+  top_oil_rise_mult: [0.96, 1.04]
+  hot_spot_fac: [1.15, 1.25]            # twin nominal 1.2
+  noise_temp_C: 0.4
+  noise_vi_frac: 0.003
+  oil_level_base_pct: 97.0
+  oil_level_per_C: 0.08                 # thermal expansion, % per C of top-oil above 50 C
+
+scenarios:
+  N:  {name: Normal}
+  S1:                                   # 1.10-1.25 pu (softened from PRD 1.15-1.35 pu x 6-10 h, which gave a 171 C hot-spot)
+    name: Overload                      # target: hot-spot crosses 98 C every day, briefly ~120 C (docs/assumptions.md)
+    centre_h: 13
+    plan:
+      - {day: 24, level_pu: 1.10, hours: 3.0}
+      - {day: 25, level_pu: 1.18, hours: 2.0}
+      - {day: 26, level_pu: 1.25, hours: 1.5}
+  S2: {name: Cooling degradation, start_day: 20, ramp_days: 7, rise_mult: 1.25}
+  S3: {name: Unbalance, start_day: 25, up_phase: IR, up_frac: [0.12, 0.18], down_phase: IY, down_frac: 0.08}
+  S4a: {name: Oil leak, start_day: 21, start_h: 6, days: 5, drop_pct: 22}
+  S4b: {name: Oil theft, day: 25, hour: 2.25, step_pct: [10, 15], samples: 2}
+  S5:
+    name: Through-faults
+    day: 27
+    events:                             # event table only; 15-min trend cannot see them
+      - {time: "10:12:31", peak_pu: 6.0, duration_ms: 300, phase: Y}
+      - {time: "14:47:05", peak_pu: 10.0, duration_ms: 500, phase: 3ph}
+      - {time: "16:30:12", peak_pu: 3.5, duration_ms: 250, phase: R}

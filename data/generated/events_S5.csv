@@ -1,0 +1,4 @@
+timestamp,event_type,phase,peak_pu,duration_ms,i2t_pu2s,source,simulated
+2026-04-27 10:12:31+05:30,through_fault,Y,6.0,300,10.8,generated_sim,True
+2026-04-27 14:47:05+05:30,through_fault,3ph,10.0,500,50.0,generated_sim,True
+2026-04-27 16:30:12+05:30,through_fault,R,3.5,250,3.0625,generated_sim,True

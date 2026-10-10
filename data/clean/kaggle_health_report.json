@@ -1,0 +1,152 @@
+{
+ "tables": [
+  {
+   "name": "CurrentVoltage.csv",
+   "role": "trend",
+   "rows_read": 19352,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  },
+  {
+   "name": "Overview.csv",
+   "role": "trend",
+   "rows_read": 20316,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  },
+  {
+   "name": "Power.csv",
+   "role": "trend",
+   "rows_read": 19309,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  },
+  {
+   "name": "PowerFactor.csv",
+   "role": "trend",
+   "rows_read": 19308,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  },
+  {
+   "name": "TotalPower.csv",
+   "role": "trend",
+   "rows_read": 19248,
+   "encoding": "utf-8-sig",
+   "delimiter": ",",
+   "skipped_rows": 0
+  }
+ ],
+ "dedupe": {
+  "CurrentVoltage.csv": {
+   "rows_in": 19352,
+   "dup_groups": 437,
+   "dup_rows": 874,
+   "conflict_groups": 405,
+   "identical_groups": 32,
+   "rows_out": 18915
+  },
+  "Overview.csv": {
+   "rows_in": 20316,
+   "dup_groups": 931,
+   "dup_rows": 1871,
+   "conflict_groups": 363,
+   "identical_groups": 568,
+   "rows_out": 19376
+  },
+  "Power.csv": {
+   "rows_in": 19309,
+   "dup_groups": 438,
+   "dup_rows": 876,
+   "conflict_groups": 9,
+   "identical_groups": 429,
+   "rows_out": 18871
+  },
+  "PowerFactor.csv": {
+   "rows_in": 19308,
+   "dup_groups": 431,
+   "dup_rows": 862,
+   "conflict_groups": 430,
+   "identical_groups": 1,
+   "rows_out": 18877
+  },
+  "TotalPower.csv": {
+   "rows_in": 19248,
+   "dup_groups": 406,
+   "dup_rows": 812,
+   "conflict_groups": 13,
+   "identical_groups": 393,
+   "rows_out": 18842
+  }
+ },
+ "merge": {
+  "tables": 5,
+  "rows_per_table": [
+   18915,
+   19376,
+   18871,
+   18877,
+   18842
+  ],
+  "rows_after_merge": 20024,
+  "rows_in_all_tables": 18324
+ },
+ "interval": "0 days 00:15:00",
+ "rows_after_cleaning": 17104,
+ "time_span": [
+  "2019-07-01 11:10:00+05:30",
+  "2020-03-24 23:45:00+05:30"
+ ],
+ "flag_counts": {
+  "ASSUMED_AMBIENT": 5,
+  "DERIVED_loading_pct": 16134,
+  "DUP_CONFLICT": 348,
+  "DUP_IDENT": 124,
+  "GAP": 57,
+  "IMPUTED_AMB": 589,
+  "JUMP_OTI": 43,
+  "RANGE_ATI_C": 10,
+  "RANGE_OTI_C": 59,
+  "RANGE_VB": 4,
+  "RANGE_VR": 2,
+  "RANGE_VY": 9,
+  "RANGE_freq_Hz": 2,
+  "STUCK_IB": 14,
+  "STUCK_IY": 14,
+  "STUCK_OLI": 8731,
+  "STUCK_OTI": 770
+ },
+ "derived": [],
+ "enrichment": [
+  "amb_C interpolated from neighbouring ATI for 589 rows",
+  "amb_C from cache hour-of-day climatology for 5 rows (ASSUMED_AMBIENT)"
+ ],
+ "capabilities": {
+  "thermal_twin": true,
+  "residual_fidelity": true,
+  "wti_check": false,
+  "unbalance": true,
+  "voltage_quality": true,
+  "neutral_measured": true,
+  "oil_leak_theft": true,
+  "through_fault": false,
+  "breathing_index": false,
+  "ageing_rul": true,
+  "lead_time_eval": false
+ },
+ "mode": "full",
+ "nameplate_source": "estimated",
+ "warnings": [
+  "Rating unknown: estimated I_rated 214.7 A (155.3 kVA) from data [Assumed - estimated from data]"
+ ],
+ "asset": {
+  "i_rated_A": 214.7,
+  "rating_kVA": 155.3,
+  "lv_voltage_V": 417.5,
+  "nameplate_source": "estimated"
+ }
+}

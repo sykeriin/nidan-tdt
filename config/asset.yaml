@@ -1,0 +1,59 @@
+# Transformer-1 nameplate (FINAL_PRD.md §3.1). No nameplate photo yet.
+# Every value carries a tag: Confirmed | Calculated | Assumed | Assumed placeholder.
+# Replace placeholders from the nameplate/datasheet and update the tag.
+
+asset_id: transformer-1
+name: Transformer-1
+site: MAHE Bengaluru campus, LT kiosk
+
+rating_kVA:
+  value: 1000
+  tag: Confirmed label
+  source: '"Transformer-1" label on the LT kiosk'
+
+lv_voltage_V:
+  value: 415
+  tag: Confirmed
+  source: DANGER 415 VOLTS plates
+
+i_rated_A:                        # library input nom_load_sec_side, in AMPS (LV side)
+  value: 1391
+  tag: Calculated
+  source: 1000 / (sqrt(3) x 0.415); consistent with 1600 A busduct
+
+hv_voltage_V:
+  value: 11000
+  tag: Assumed
+
+vector_group:
+  value: Dyn11
+  tag: Assumed
+
+cooling:
+  value: ONAN
+  tag: Assumed
+  source: radiators and conservator seen in photos
+
+load_loss_W:
+  value: 10000
+  tag: Assumed placeholder
+  source: replace from nameplate/datasheet
+
+no_load_loss_W:
+  value: 1100
+  tag: Assumed placeholder
+  source: replace from nameplate/datasheet
+
+insulation:
+  value: normal                     # non-thermally-upgraded Kraft paper
+  tag: Assumed
+
+years_in_service:
+  value: 3
+  tag: Assumed
+  source: until manufacture year known
+
+breather:
+  value: silica_gel
+  tag: Assumed
+  source: breathing type with silica gel

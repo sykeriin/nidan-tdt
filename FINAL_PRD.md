@@ -593,7 +593,11 @@ Backup video of the full demo always ready.
 | Hackathon, CPRI × MIT Bengaluru, fair-play rule 01 | powernext-ai.in | **Confirmed** |
 | Solution must work with datasets provided during hackathon | Problem PDF | Confirmed |
 | Kaggle dataset link, files, columns, MOG_A = magnetic oil gauge indicator | Kaggle page / dataset description | **Confirmed** |
-| Kaggle duplicates / conflicts / jumps | Public audit repo | Reported (verify on download) |
+| Kaggle duplicates / conflicts / jumps | Public audit repo; our inspection (data/PROVENANCE.md) | **Confirmed** (Overview 931 groups / 363 conflicting, exact match) |
+| Kaggle `WTI` is a winding temperature | Dataset description | **False — WTI is a 0/1 flag** (values 0/1 only). Mapped to `alarm_WTI`, display only. The dataset's own description is misleading; we checked |
+| Kaggle `MOG_A` marks oil-level drops / leaks | — | **False — MOG_A doesn't track OLI.** No OLI drop at any of its 5 rising edges; only set Jul 2–Aug 10 2019 while OLI 38–41 %, silent afterwards at the same level. Display-only |
+| Kaggle contains real leak / theft events | — | **No.** OLI never drops at an alarm; it drifts 40 → 100 % (Sep–Nov 2019, no refill step) and then saturates. Leak vs theft is demonstrated on generated S4a/S4b only |
+| Kaggle OTI glitches (245–250 °C plateaus) and OLI drift are sensor faults | Our inspection | Confirmed as data faults; used as real examples for the sensor-fault detector (§8.6) |
 | CPRI's three failure causes | CPRI journal abstract | **Confirmed (abstract)** |
 | IS 1180 %X limits 2% / 7.5% | CPRI Bhopal IS 1180:2014 deck | Confirmed from CPRI deck; verify vs standard |
 | ~1.3 M DT failures/yr | CEA meeting, Mercom headline | Confirmed (reported headline) |
