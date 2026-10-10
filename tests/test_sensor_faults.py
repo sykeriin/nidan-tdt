@@ -133,7 +133,8 @@ def test_dq_flags_become_alerts_without_duplicates(normal):
     d = inject(df, "spike")
     d["dq_flags"] = ""
     d.loc[1500, "dq_flags"] = "RANGE_OTI"  # same sample the physics check already catches
-    d.loc[800:802, "dq_flags"] = "STUCK_WTI;JUMP_OTI"  # not detectable from values
+    d.loc[800:831, "dq_flags"] = "STUCK_WTI"  # not detectable from values; 8 h on the morning ramp (twin moves)
+    d.loc[800:802, "dq_flags"] = "STUCK_WTI;JUMP_OTI"
     alerts = sensor_faults.detect(d, TH, CAPS)
     assert sorted((a.type, a.id.split("-")[-1]) for a in alerts) == sorted(
         [("range_sensor", "OTI_C"), ("stuck_sensor", "WTI_C"), ("jump_sensor", "OTI_C")]

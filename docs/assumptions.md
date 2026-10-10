@@ -113,6 +113,27 @@ a cooling fault counts. S2's top-oil / hot-spot / ageing alerts are consequences
 **A23. Snapshot records get a per-record Health Index at their operating point** (`analytics.pipeline.analyze_snapshot`,
 same curves/weights, each record scored alone), ranked worst first. Time-based detectors don't apply.
 
+## Real-data tuning (Kaggle) — one alert per condition
+
+**A24. Electrical alerts use a 1 h median, ignore current unbalance below 0.05 pu load, and merge episodes < 24 h
+apart.** [Assumed] The Kaggle unit's phases are chronically unbalanced (median 25 %); per-sample hysteresis made
+2,042 alerts. Now 5 (one per real episode). Cost: on generated S3 the alert comes 30 min after onset instead of at
+onset. Voltage high/low/unbalance get the same treatment (voltage low 41 → 4).
+
+**A25. A temperature channel is "stuck" only if flat for ≥ 6 h (two oil time constants) while the twin says it
+should have moved ≥ 2 °C; stuck periods on a channel < 24 h apart are merged.** [Assumed] The spec's 8 samples (2 h)
+flagged a 1 °C-resolution sensor that sits near ambient (86 OTI alerts → 0; the channel is reported as implausible
+instead). The saturated oil gauge: 302 → 18 (one per data segment).
+
+**A26. The analytics jump limit never drops below 5 °C** (same rule as A5 at ingestion). Scaling 5 °C/15 min to a
+1-minute gap gave a 0.33 °C limit, so every 1 °C tick was a "jump" (86 → 16, all real ≥ 6 °C steps).
+
+**A27. With a rating estimated from data (no nameplate), rating-dependent alerts are indicative only**: loading,
+over-current, hot-spot, top-oil and ageing-rate alerts become severity `info` with a note, so they are shown but
+never counted as findings or used for the Health Index cap. Measured conditions (unbalance, voltage) and all sensor
+faults keep their severity. Kaggle: 2,648 alerts → 133 (95 findings: 79 sensor, 16 electrical; 38 indicative);
+Health Index 40 Red → 82 Green. Generated scenarios: still 0 false alarms, lead times unchanged.
+
 ## Weather
 
 **A11. Site point for Transformer-1 weather: Bengaluru city (12.97 N, 77.59 E)**, Open-Meteo archive, cached

@@ -25,6 +25,20 @@ def _clean(frame: pd.DataFrame) -> pd.DataFrame:
     return clean
 
 
+# Alerts whose level depends on the rating (per-unit load) or on a twin driven by it. With a rating estimated from
+# the data (no nameplate) they are indicative only: severity info, never a finding, never the Health Index cap.
+RATING_DEPENDENT = {"loading_high", "overcurrent", "hot_spot_high", "top_oil_high", "ageing_rate_high"}
+ESTIMATED_NOTE = " Rating estimated from data (no nameplate): indicative only."
+
+
+def _estimated_rating(alerts: list, thresholds: dict) -> list:
+    if not thresholds.get("reference", {}).get("estimated"):
+        return alerts
+    import dataclasses
+    return [dataclasses.replace(a, severity="info", explanation=a.explanation + ESTIMATED_NOTE)
+            if a.type in RATING_DEPENDENT and a.origin == "asset" else a for a in alerts]
+
+
 def _last_fidelity(df: pd.DataFrame) -> float | None:
     if "fidelity_rmse_C" not in df.columns:
         return None
@@ -63,6 +77,7 @@ def analyze(
         *through_fault.detect(ev, thresholds),
         *sensor_faults.alerts_of(sensor_eps),
     ]
+    alerts = _estimated_rating(alerts, thresholds)
     alerts.sort(key=lambda a: a.timestamp)
     hi = health.compute(adf, alerts, caps, thresholds)
     recs = recommend.build(alerts, hi, thresholds)

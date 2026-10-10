@@ -51,7 +51,8 @@ def load_thresholds(path: str | Path | None = None, asset: str | Path | dict | N
         th = yaml.safe_load(fh)
     a = asset if isinstance(asset, dict) else _read_asset(asset or DEFAULT_ASSET_PATH)
     lv = float(a.get("lv_voltage_V", 415.0))
-    th["reference"] = {"i_rated_a": float(a["i_rated_A"]), "v_ln_nominal_v": lv / np.sqrt(3)}
+    th["reference"] = {"i_rated_a": float(a["i_rated_A"]), "v_ln_nominal_v": lv / np.sqrt(3),
+                       "estimated": a.get("nameplate_source") == "estimated"}
     return th
 
 
@@ -149,6 +150,20 @@ def persistent_mask(mask: np.ndarray, min_steps: int) -> np.ndarray:
         if end - start + 1 >= min_steps:
             out[start : end + 1] = True
     return out
+
+
+def merge_by_time(mask: np.ndarray, ts: pd.Series, gap_h: float) -> np.ndarray:
+    """Join True runs whose gap (end of one to start of the next, in time) is under gap_h hours.
+
+    A chronic condition that dips under its clear level for a while (daily cycle, noise) is one episode, not many."""
+    m = np.asarray(mask, dtype=bool).copy()
+    t = pd.to_datetime(ts).to_numpy()
+    found = runs(m)
+    limit = np.timedelta64(int(gap_h * 3600), "s")
+    for (_, prev_end), (next_start, _) in zip(found, found[1:]):
+        if t[next_start] - t[prev_end] < limit:
+            m[prev_end + 1 : next_start] = True
+    return m
 
 
 def runs(mask: np.ndarray) -> list[tuple[int, int]]:

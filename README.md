@@ -82,8 +82,7 @@ downsampling, OpenAPI in `docs/openapi.json`), self-test in CPRI's Excel format,
 **Not built yet:** the React app itself (P4) · PDF report (`report.pdf` returns 501) · Telegram alerts ·
 IsolationForest · breathing-stress index · Tier 2 ingestion (JSON/Parquet/ZIP, long/historian format, multi-asset).
 
-**Known open issues:** Kaggle unbalance detector chatters (2,042 alerts) and the stuck-sensor rule over-fires on 1 °C
-data (390) — P3 · Kaggle download date not recorded (`data/PROVENANCE.md`) · licence of committing the Kaggle files to
+**Known open issues:** Kaggle download date not recorded (`data/PROVENANCE.md`) · licence of committing the Kaggle files to
 be decided (`docs/P3_HANDOFF.md`) · IS 1180 / IEC 60076-7 limits marked [To verify].
 
 Everything generated is labelled **SIMULATED**; the Kaggle unit is a different, unrated transformer.

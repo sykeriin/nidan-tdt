@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from analytics.common import hysteresis_mask, make_alert, runs, strip_quarantined
+from analytics.common import hysteresis_mask, make_alert, merge_by_time, runs, step_hours, strip_quarantined
 from contracts.models import Alert
 
 _I = ["IR", "IY", "IB"]
@@ -45,12 +45,28 @@ def _sim(df: pd.DataFrame, i: int) -> bool:
     return bool(df["simulated"].iloc[i]) if "simulated" in df.columns else True
 
 
+# Real feeders sit near a limit for weeks (Kaggle: median current unbalance 25 %). Without smoothing and merging,
+# every dip under the clear level starts a new alert (2,042 on Kaggle). [Assumed values, tuned on Kaggle + scenarios]
+SMOOTH_H = 1.0          # rolling median before the threshold test
+EPISODE_MERGE_H = 24.0  # episodes closer than this are one condition
+MIN_LOAD_PU = 0.05      # current unbalance is meaningless at near-zero load (same value as config/health.yaml)
+
+
+def _smooth(values: pd.Series, df: pd.DataFrame) -> pd.Series:
+    steps = max(1, int(round(SMOOTH_H / step_hours(df)))) if len(df) > 1 else 1
+    return values.rolling(steps, min_periods=1).median()
+
+
 def _episodes(
-    values: pd.Series, levels: list[tuple[float, str]], clear: float, direction: str = "high"
+    values: pd.Series, levels: list[tuple[float, str]], clear: float, direction: str = "high",
+    ts: pd.Series | None = None,
 ) -> list[tuple[int, float, str]]:
     found: dict[int, tuple[float, str]] = {}
     for trip, sev in levels:
-        for start, _ in runs(hysteresis_mask(values.to_numpy(), trip, clear, direction)):
+        mask = hysteresis_mask(values.to_numpy(), trip, clear, direction)
+        if ts is not None:
+            mask = merge_by_time(mask, ts, EPISODE_MERGE_H)
+        for start, _ in runs(mask):
             found[start] = (trip, sev)
     return [(i, *found[i]) for i in sorted(found)]
 
@@ -67,12 +83,17 @@ def detect(df: pd.DataFrame, thresholds: dict, caps: dict) -> list[Alert]:
     if cur is not None:
         cu = op["current_unbalance_pct"]
         ub = _unbalance(cur)
-        for i, trip, sev in _episodes(ub, [(cu["warning"], "warning"), (cu["alarm"], "critical")], clear):
+        load = df["load_pu"] if "load_pu" in df.columns else None
+        if load is not None:
+            ub = ub.where(pd.to_numeric(load, errors="coerce") >= MIN_LOAD_PU)
+        ub = _smooth(ub, df)
+        for i, trip, sev in _episodes(ub, [(cu["warning"], "warning"), (cu["alarm"], "critical")], clear,
+                                      ts=df["timestamp"]):
             alerts.append(
                 make_alert(
                     df["timestamp"].iloc[i], "current_unbalance", sev, "rule", value=ub.iloc[i], threshold=trip,
                     explanation=(
-                        f"Phase current unbalance {ub.iloc[i]:.1f} % reached {trip:g} %. "
+                        f"Phase current unbalance {ub.iloc[i]:.1f} % (1 h median) reached {trip:g} %. "
                         "Computed from R/Y/B line currents only; no neutral-current or earthing conclusion."
                     ),
                     simulated=_sim(df, i),
@@ -81,9 +102,9 @@ def detect(df: pd.DataFrame, thresholds: dict, caps: dict) -> list[Alert]:
 
     vol = _phases(df, _V) if caps.get("voltage_quality") else None
     if vol is not None:
-        vub = _unbalance(vol)
+        vub = _smooth(_unbalance(vol), df)
         trip = op["voltage_unbalance_pct"]["alarm"]
-        for i, t, sev in _episodes(vub, [(trip, "critical")], clear):
+        for i, t, sev in _episodes(vub, [(trip, "critical")], clear, ts=df["timestamp"]):
             alerts.append(
                 make_alert(
                     df["timestamp"].iloc[i], "voltage_unbalance", sev, "rule", value=vub.iloc[i], threshold=t,
@@ -93,10 +114,10 @@ def detect(df: pd.DataFrame, thresholds: dict, caps: dict) -> list[Alert]:
             )
         vpu = vol / thresholds["reference"]["v_ln_nominal_v"]
         for type_, series, trip, direction, word in (
-            ("voltage_high", vpu.max(axis=1), op["voltage_pu"]["high"], "high", "Highest"),
-            ("voltage_low", vpu.min(axis=1), op["voltage_pu"]["low"], "low", "Lowest"),
+            ("voltage_high", _smooth(vpu.max(axis=1), df), op["voltage_pu"]["high"], "high", "Highest"),
+            ("voltage_low", _smooth(vpu.min(axis=1), df), op["voltage_pu"]["low"], "low", "Lowest"),
         ):
-            for i, t, sev in _episodes(series, [(trip, "warning")], clear, direction):
+            for i, t, sev in _episodes(series, [(trip, "warning")], clear, direction, ts=df["timestamp"]):
                 alerts.append(
                     make_alert(
                         df["timestamp"].iloc[i], type_, sev, "rule", value=series.iloc[i], threshold=t,

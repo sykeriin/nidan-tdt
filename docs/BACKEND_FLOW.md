@@ -81,6 +81,10 @@ live, and `analyze_snapshot` covers record files.
 Evaluation (`eval/`): lead time vs plain thresholds and false alarms → `docs/figures/lead_time.md`. Result: 0 false
 alarms; lead time 126 h on cooling degradation and 47 h on the slow leak.
 
+Real-data tuning (`docs/assumptions.md` A24–A27): one alert per condition, not per noisy sample. Kaggle: 2,648 alerts →
+133 (95 findings: 79 sensor faults, 16 real electrical conditions; 38 rating-dependent alerts shown as indicative
+because the rating is estimated).
+
 ## 5. Facade: `dt/api.py`
 
 This is the one place a dashboard talks to. It returns only DataFrames or `contracts/models.py` dataclasses.
@@ -154,4 +158,3 @@ Upload path: `POST /api/datasets` saves the files → `dt.api.load_file` → `ad
 - IsolationForest anomaly layer.
 - Breathing-stress index.
 - Tier 2 ingestion: JSON/Parquet/ZIP, long historian format, multi-asset files.
-- Kaggle's unbalance (2,042 alerts) and stuck-sensor (390) detectors chatter on real data and need episode merging.

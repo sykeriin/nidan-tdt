@@ -54,9 +54,10 @@ def test_unbalance_alerts_only_from_onset():
 
 
 def test_thresholds_and_hysteresis():
-    # 12 % then hovering 9.8-10.4 % (above the 9.5 clear level), then 25 % -> warning once, critical once
-    bump = [100 + 12.0, 100 + 10.4, 100 + 9.8, 100 + 10.2]
-    ir = np.array([100.0] * 2 + bump + [100.0] * 2 + [140.0] + [100.0])
+    # 12 % then hovering 9.8-10.4 % (above the 9.5 clear level), then 40 % for over an hour -> warning, critical.
+    # Excursions must last > 1 h: the detector uses a 1 h median (a one-sample spike is noise, not unbalance).
+    bump = [100 + 12.0, 100 + 12.0, 100 + 10.4, 100 + 9.8, 100 + 10.2, 100 + 10.4]
+    ir = np.array([100.0] * 2 + bump + [140.0] * 6 + [100.0] * 2)
     df = _frame(IR=ir + 0.0, IY=np.full(len(ir), 100.0), IB=np.full(len(ir), 100.0))
     df["IY"] = 2 * 100.0 - df["IR"] + 100.0 - 100.0  # keep the mean at 100 A
     df["IB"] = 100.0
@@ -74,8 +75,9 @@ def test_no_chatter_around_warning_level():
 
 
 def test_voltage_alerts():
-    v = np.array([1.0, 1.0, 1.08, 1.08, 1.0, 0.9, 0.9, 1.0]) * V
-    df = _frame(IR=np.full(8, 100.0), IY=np.full(8, 100.0), IB=np.full(8, 100.0), VR=v, VY=v, VB=v)
+    v = np.array([1.0] * 2 + [1.08] * 6 + [1.0] * 6 + [0.9] * 6 + [1.0] * 2) * V   # excursions > 1 h (1 h median)
+    n = len(v)
+    df = _frame(IR=np.full(n, 100.0), IY=np.full(n, 100.0), IB=np.full(n, 100.0), VR=v, VY=v, VB=v)
     types = [a.type for a in electrical.detect(df, TH, capabilities())]
     assert types.count("voltage_high") == 1 and types.count("voltage_low") == 1
     assert "voltage_unbalance" not in types
