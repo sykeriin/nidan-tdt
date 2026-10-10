@@ -166,3 +166,28 @@ def test_openapi_lists_every_facade_endpoint(client):
               "/api/datasets/{dataset_id}/replay", "/api/self-test", "/api/datasets/{dataset_id}/snapshot",
               "/api/datasets/{dataset_id}/report.pdf"):
         assert p in paths
+
+
+@pytest.mark.parametrize("dataset_id", IDS)
+def test_thermal_profile_and_components(client, dataset_id):
+    t = api.get_run(dataset_id).trend["timestamp"].iloc[100].isoformat()
+    j = client.get(f"/api/datasets/{dataset_id}/thermal-profile", params={"t": t}).json()
+    assert {"bottom_oil_C", "top_oil_C", "hot_spot_C", "heat_dissipated_W", "oil_flow_intensity"} <= set(j["values"])
+    assert j["values"]["bottom_oil_C"]["estimated"] is True and j["params"]["tau_oil_min"] == 180
+    c = client.get(f"/api/datasets/{dataset_id}/components", params={"t": t}).json()
+    assert "winding-Y" in c["parts"] and c["parts"]["oil"]["equations"][0]["symbolic"].startswith("θo,ss")
+    assert client.get(f"/api/datasets/{dataset_id}/components", params={"t": "1990-01-01T00:00"}).status_code == 400
+
+
+@pytest.mark.parametrize("dataset_id", IDS)
+def test_frames(client, dataset_id):
+    full = api.get_run(dataset_id).trend
+    j = client.get(f"/api/datasets/{dataset_id}/frames", params={"fields": "OTI_C,twin_oil_C,health_score,health_band"}).json()
+    assert j["rows"] == len(full) == len(j["timestamp"])                      # every sample, not downsampled
+    assert set(j["columns"]) == {"OTI_C", "twin_oil_C", "health_score", "health_band"}
+    assert all(len(v) == j["rows"] for v in j["columns"].values())
+    assert ISO.match(j["timestamp"][0])
+    part = client.get(f"/api/datasets/{dataset_id}/frames",
+                      params={"fields": "OTI_C", "start": j["timestamp"][10], "end": j["timestamp"][19], "every": 3}).json()
+    assert part["rows"] == 4 and part["timestamp"][0] == j["timestamp"][10]
+    assert client.get(f"/api/datasets/{dataset_id}/frames", params={"fields": "nope"}).status_code == 400

@@ -134,6 +134,23 @@ never counted as findings or used for the Health Index cap. Measured conditions 
 faults keep their severity. Kaggle: 2,648 alerts → 133 (95 findings: 79 sensor, 16 electrical; 38 indicative);
 Health Index 40 Red → 82 Green. Generated scenarios: still 0 false alarms, lead times unchanged.
 
+## Thermal profile (dashboard physics, twin/profile.py)
+
+**A28. Bottom-oil rise = 0.5 × top-oil rise** (ONAN typical for the IEC 60076-7 thermal diagram), so
+θb = θa + 0.5·(θo − θa). Average oil = (θo + θb)/2; average winding = average oil + gr·K^y. Shown as est. [Assumed]
+
+**A29. Oil flow intensity ∝ Q^(1−x)**: in ONAN the thermosiphon flow is Q/(c·ΔT_bottom→top) and ΔT grows as Q^x,
+so flow grows as Q^(1−x). Normalised to 1 at 1.4 pu (top of the what-if range), clipped to 0–1. Visual only. [Assumed]
+
+**A30. Radiator effectiveness k = (Δθo,twin/Δθo,measured)^(1/x)**: the share of nominal cooling that explains the
+measured rise at the same losses, 6 h rolling median, only where measured OTI drives ageing (A14) and the twin rise is
+≥ 5 K. Normal ≈ 1.04 (the generated plant is slightly cooler than the nominal twin); S2 falls to ≈ 0.82 after the
+cooling fault. A quasi-steady estimate: it lags real changes by about τo. [Assumed]
+
+**A31. Heat to air = (P0 + Pk)·(Δθo/Δθor)^(1/x)**, the inverse of the steady-state top-oil law using the twin's present
+rise; stored heat = losses − heat to air. It is exact at steady state (tested) and a first-order estimate in
+transients. Losses use the placeholder nameplate values (asset.yaml). [Assumed]
+
 ## Weather
 
 **A11. Site point for Transformer-1 weather: Bengaluru city (12.97 N, 77.59 E)**, Open-Meteo archive, cached

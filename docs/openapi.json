@@ -493,6 +493,283 @@
     }
    }
   },
+  "/api/datasets/{dataset_id}/frames": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Frames",
+    "description": "api.frames() \u2014 every sample, aligned on one time axis, for replay and full-resolution charts.",
+    "operationId": "frames_api_datasets__dataset_id__frames_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "fields",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "comma-separated column names; omit = all",
+       "title": "Fields"
+      },
+      "description": "comma-separated column names; omit = all"
+     },
+     {
+      "name": "start",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Start"
+      }
+     },
+     {
+      "name": "end",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "End"
+      }
+     },
+     {
+      "name": "every",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 1000,
+       "minimum": 1,
+       "default": 1,
+       "title": "Every"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FramesModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/thermal-profile": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Thermal Profile",
+    "description": "api.thermal_profile() \u2014 bottom/top oil, winding, hot-spot, losses, heat flow, oil flow, radiator effectiveness.",
+    "operationId": "thermal_profile_api_datasets__dataset_id__thermal_profile_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "t",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date-time",
+       "description": "ISO 8601; naive = Asia/Kolkata",
+       "title": "T"
+      },
+      "description": "ISO 8601; naive = Asia/Kolkata"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ThermalProfileModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/components": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Components",
+    "description": "api.components() \u2014 per-part quantities, governing equations with live values, findings and tests.",
+    "operationId": "components_api_datasets__dataset_id__components_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "t",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date-time",
+       "description": "ISO 8601; naive = Asia/Kolkata",
+       "title": "T"
+      },
+      "description": "ISO 8601; naive = Asia/Kolkata"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ComponentsModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
   "/api/self-test": {
    "get": {
     "tags": [
@@ -912,6 +1189,44 @@
     ],
     "title": "Body_load_file_api_datasets_post"
    },
+   "ComponentsModel": {
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "title": "Dataset Id"
+     },
+     "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Timestamp"
+     },
+     "mode": {
+      "type": "string",
+      "title": "Mode"
+     },
+     "parts": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/PartModel"
+      },
+      "type": "object",
+      "title": "Parts"
+     },
+     "simulated": {
+      "type": "boolean",
+      "title": "Simulated"
+     }
+    },
+    "type": "object",
+    "required": [
+     "dataset_id",
+     "timestamp",
+     "mode",
+     "parts",
+     "simulated"
+    ],
+    "title": "ComponentsModel",
+    "description": "Per-part view at one instant; part ids match web/src/twin/parts.ts."
+   },
    "DatasetInfoModel": {
     "properties": {
      "dataset_id": {
@@ -1071,6 +1386,66 @@
     "title": "DatasetModel",
     "description": "contracts.models.Dataset without the frames (fetch them with /run)."
    },
+   "EquationModel": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "symbolic": {
+      "type": "string",
+      "title": "Symbolic"
+     },
+     "substituted": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Substituted",
+      "description": "the equation with live values; null when an input is missing"
+     },
+     "result": {
+      "$ref": "#/components/schemas/ResultModel"
+     },
+     "terms": {
+      "items": {
+       "$ref": "#/components/schemas/TermModel"
+      },
+      "type": "array",
+      "title": "Terms"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "estimated": {
+      "type": "boolean",
+      "title": "Estimated"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "symbolic",
+     "substituted",
+     "result",
+     "terms",
+     "note",
+     "estimated"
+    ],
+    "title": "EquationModel"
+   },
    "ErrorModel": {
     "properties": {
      "detail": {
@@ -1083,6 +1458,43 @@
      "detail"
     ],
     "title": "ErrorModel"
+   },
+   "FramesModel": {
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "title": "Dataset Id"
+     },
+     "rows": {
+      "type": "integer",
+      "title": "Rows"
+     },
+     "timestamp": {
+      "items": {
+       "type": "string",
+       "format": "date-time"
+      },
+      "type": "array",
+      "title": "Timestamp"
+     },
+     "columns": {
+      "additionalProperties": {
+       "items": {},
+       "type": "array"
+      },
+      "type": "object",
+      "title": "Columns"
+     }
+    },
+    "type": "object",
+    "required": [
+     "dataset_id",
+     "rows",
+     "timestamp",
+     "columns"
+    ],
+    "title": "FramesModel",
+    "description": "Full-resolution, time-aligned columns (not downsampled): one list per field, same length as timestamp."
    },
    "HealthModel": {
     "properties": {
@@ -1169,6 +1581,150 @@
      "warnings"
     ],
     "title": "InspectResultModel"
+   },
+   "PartAlertModel": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "type": {
+      "type": "string",
+      "title": "Type"
+     },
+     "severity": {
+      "type": "string",
+      "title": "Severity"
+     },
+     "origin": {
+      "type": "string",
+      "title": "Origin"
+     },
+     "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Timestamp"
+     },
+     "explanation": {
+      "type": "string",
+      "title": "Explanation"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "type",
+     "severity",
+     "origin",
+     "timestamp",
+     "explanation"
+    ],
+    "title": "PartAlertModel"
+   },
+   "PartModel": {
+    "properties": {
+     "quantities": {
+      "items": {
+       "$ref": "#/components/schemas/QuantityModel"
+      },
+      "type": "array",
+      "title": "Quantities"
+     },
+     "equations": {
+      "items": {
+       "$ref": "#/components/schemas/EquationModel"
+      },
+      "type": "array",
+      "title": "Equations"
+     },
+     "alerts": {
+      "items": {
+       "$ref": "#/components/schemas/PartAlertModel"
+      },
+      "type": "array",
+      "title": "Alerts",
+      "description": "alerts active on this part (last 24 h)"
+     },
+     "tests": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Tests",
+      "description": "recommended tests for those alerts"
+     },
+     "verdict": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Verdict",
+      "description": "oti only: inside | above | suspect"
+     }
+    },
+    "type": "object",
+    "required": [
+     "quantities",
+     "equations",
+     "alerts",
+     "tests"
+    ],
+    "title": "PartModel"
+   },
+   "QuantityModel": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Value"
+     },
+     "unit": {
+      "type": "string",
+      "title": "Unit"
+     },
+     "kind": {
+      "type": "string",
+      "title": "Kind",
+      "description": "measured | twin | residual | info"
+     },
+     "estimated": {
+      "type": "boolean",
+      "title": "Estimated"
+     },
+     "digits": {
+      "type": "integer",
+      "title": "Digits"
+     }
+    },
+    "type": "object",
+    "required": [
+     "key",
+     "label",
+     "value",
+     "unit",
+     "kind",
+     "estimated",
+     "digits"
+    ],
+    "title": "QuantityModel"
    },
    "RULModel": {
     "properties": {
@@ -1261,6 +1817,41 @@
      "standard_ref"
     ],
     "title": "RecommendationModel"
+   },
+   "ResultModel": {
+    "properties": {
+     "symbol": {
+      "type": "string",
+      "title": "Symbol"
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Value"
+     },
+     "unit": {
+      "type": "string",
+      "title": "Unit"
+     },
+     "digits": {
+      "type": "integer",
+      "title": "Digits"
+     }
+    },
+    "type": "object",
+    "required": [
+     "symbol",
+     "value",
+     "unit",
+     "digits"
+    ],
+    "title": "ResultModel"
    },
    "RunModel": {
     "properties": {
@@ -1503,6 +2094,135 @@
      "rows"
     ],
     "title": "TableModel"
+   },
+   "TermModel": {
+    "properties": {
+     "symbol": {
+      "type": "string",
+      "title": "Symbol"
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Value"
+     },
+     "unit": {
+      "type": "string",
+      "title": "Unit"
+     },
+     "meaning": {
+      "type": "string",
+      "title": "Meaning"
+     },
+     "estimated": {
+      "type": "boolean",
+      "title": "Estimated"
+     },
+     "digits": {
+      "type": "integer",
+      "title": "Digits"
+     }
+    },
+    "type": "object",
+    "required": [
+     "symbol",
+     "value",
+     "unit",
+     "meaning",
+     "estimated",
+     "digits"
+    ],
+    "title": "TermModel"
+   },
+   "ThermalProfileModel": {
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "title": "Dataset Id"
+     },
+     "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Timestamp"
+     },
+     "mode": {
+      "type": "string",
+      "title": "Mode"
+     },
+     "values": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/ValueModel"
+      },
+      "type": "object",
+      "title": "Values"
+     },
+     "params": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Params",
+      "description": "model constants: P0_W, Pk_W, R, d_theta_or_K, x, y, gr_K, H, tau_*"
+     },
+     "simulated": {
+      "type": "boolean",
+      "title": "Simulated"
+     }
+    },
+    "type": "object",
+    "required": [
+     "dataset_id",
+     "timestamp",
+     "mode",
+     "values",
+     "params",
+     "simulated"
+    ],
+    "title": "ThermalProfileModel",
+    "description": "IEC 60076-7 thermal diagram and heat flow at one instant (twin/profile.py)."
+   },
+   "ValueModel": {
+    "properties": {
+     "value": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Value"
+     },
+     "unit": {
+      "type": "string",
+      "title": "Unit"
+     },
+     "estimated": {
+      "type": "boolean",
+      "title": "Estimated",
+      "description": "rests on an IEC typical value or a placeholder nameplate value"
+     },
+     "source": {
+      "type": "string",
+      "title": "Source",
+      "description": "measured | twin | model"
+     }
+    },
+    "type": "object",
+    "required": [
+     "value",
+     "unit",
+     "estimated",
+     "source"
+    ],
+    "title": "ValueModel"
    }
   }
  }

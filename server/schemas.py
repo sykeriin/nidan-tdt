@@ -126,6 +126,93 @@ class RunModel(BaseModel):
     downsampled: bool
 
 
+class FramesModel(BaseModel):
+    """Full-resolution, time-aligned columns (not downsampled): one list per field, same length as timestamp."""
+    dataset_id: str
+    rows: int
+    timestamp: list[datetime]
+    columns: dict[str, list[Any]]
+
+
+class ValueModel(BaseModel):
+    value: float | None
+    unit: str
+    estimated: bool = Field(description="rests on an IEC typical value or a placeholder nameplate value")
+    source: str = Field(description="measured | twin | model")
+
+
+class ThermalProfileModel(BaseModel):
+    """IEC 60076-7 thermal diagram and heat flow at one instant (twin/profile.py)."""
+    dataset_id: str
+    timestamp: datetime
+    mode: str
+    values: dict[str, ValueModel]
+    params: dict[str, float] = Field(description="model constants: P0_W, Pk_W, R, d_theta_or_K, x, y, gr_K, H, tau_*")
+    simulated: bool
+
+
+class QuantityModel(BaseModel):
+    key: str
+    label: str
+    value: float | None
+    unit: str
+    kind: str = Field(description="measured | twin | residual | info")
+    estimated: bool
+    digits: int
+
+
+class TermModel(BaseModel):
+    symbol: str
+    value: float | None
+    unit: str
+    meaning: str
+    estimated: bool
+    digits: int
+
+
+class ResultModel(BaseModel):
+    symbol: str
+    value: float | None
+    unit: str
+    digits: int
+
+
+class EquationModel(BaseModel):
+    name: str
+    symbolic: str
+    substituted: str | None = Field(description="the equation with live values; null when an input is missing")
+    result: ResultModel
+    terms: list[TermModel]
+    note: str | None
+    estimated: bool
+
+
+class PartAlertModel(BaseModel):
+    id: str
+    type: str
+    severity: str
+    origin: str
+    timestamp: datetime
+    explanation: str
+
+
+class PartModel(BaseModel):
+    quantities: list[QuantityModel]
+    equations: list[EquationModel]
+    alerts: list[PartAlertModel] = Field(description="alerts active on this part (last 24 h)")
+    tests: list[str] = Field(description="recommended tests for those alerts")
+    verdict: str | None = Field(default=None, description="oti only: inside | above | suspect")
+
+
+class ComponentsModel(BaseModel):
+    """Per-part view at one instant; part ids match web/src/twin/parts.ts."""
+    dataset_id: str
+    timestamp: datetime
+    mode: str
+    parts: dict[str, PartModel]
+    simulated: bool
+
+
 class StateAtModel(BaseModel):
     timestamp: datetime
     row: dict[str, Any]

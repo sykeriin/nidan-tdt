@@ -7,6 +7,9 @@
     state_at(dataset_id, t)                 -> StateAt
     replay(dataset_id, speed, ...)          -> Iterator[StateAt]
     self_test()                             -> DataFrame          (CPRI Excel format)
+    frames(dataset_id, fields, start, end)  -> DataFrame          (full-resolution aligned columns for replay)
+    thermal_profile(dataset_id, t)          -> dict               (IEC 60076-7 thermal diagram + heat flow at t)
+    components(dataset_id, t)               -> dict               (per-part quantities, live equations, findings)
     snapshot_table(dataset_id)              -> DataFrame          (records ranked worst health first)
     report_pdf(dataset_id)                  -> bytes              (stub: final signature, not built yet)
 
@@ -36,10 +39,12 @@ from analytics.pipeline import analyze, analyze_snapshot
 from contracts.canonical import TZ
 from contracts.models import (Alert, AnalysisResult, Dataset, Health, InspectResult, Recommendation, RUL, Run,
                               StateAt)
+from dt import components as comp_mod
 from eval import scenarios as sc
 from ingest import adapter
 from sim.replay import Replay
-from twin.engine import TwinEngine
+from twin import profile as profile_mod
+from twin.engine import TwinEngine, load_config as twin_config
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "data" / "cache" / "runs"
@@ -49,6 +54,7 @@ TWIN_PREFIXES = ("twin_", "rise_", "aging_", "days_", "residual_", "fidelity_", 
                  "load_pu", "dt_min")
 ALERT_WINDOW = pd.Timedelta(hours=24)
 _MEM: dict[str, Run] = {}
+_PROFILE: dict[int, pd.DataFrame] = {}
 
 
 # ---------------------------------------------------------------- serialisation of the cache
@@ -357,6 +363,116 @@ def self_test() -> pd.DataFrame:
         tripped = float(ramp[np.argmax(ramp >= setp)])
         add("software_trip_check", item, setp, tripped, unit, setting=setp)
     return pd.DataFrame(rows)
+
+
+def frames(dataset_id: str, fields: list[str] | None = None, start=None, end=None, every: int = 1) -> pd.DataFrame:
+    """Full-resolution, time-aligned columns for replay and charts: measured + twin columns of the run, the thermal
+    profile columns (twin/profile.py COLUMNS), plus the Health Index series as health_score, health_band,
+    health_<sub-score>, health_capped. Not downsampled.
+
+    fields: column subset (timestamp is always included); unknown names raise ValueError. every: keep every n-th row.
+    """
+    run = get_run(dataset_id)
+    if run.mode == "snapshot":
+        raise ValueError("snapshot datasets have no time axis; use snapshot_table()")
+    df = pd.concat([run.trend.reset_index(drop=True), _profile(run).reset_index(drop=True)], axis=1)
+    if len(run.health_series):
+        hs = run.health_series.drop(columns=["timestamp"]).add_prefix("health_")
+        df = pd.concat([df, hs.reset_index(drop=True)], axis=1)
+    if fields:
+        unknown = sorted(set(fields) - set(df.columns))
+        if unknown:
+            raise ValueError(f"unknown field(s) {unknown}; available: {sorted(df.columns)}")
+        df = df[["timestamp"] + [f for f in fields if f != "timestamp"]]
+    for bound, op in ((start, "ge"), (end, "le")):
+        if bound is not None:
+            b = pd.Timestamp(bound)
+            b = b.tz_localize(TZ) if b.tzinfo is None else b
+            df = df[getattr(df["timestamp"], op)(b)]
+    if every < 1:
+        raise ValueError("every must be >= 1")
+    return df.iloc[::every].reset_index(drop=True)
+
+
+def _profile(run: Run) -> pd.DataFrame:
+    key = id(run)
+    if key not in _PROFILE:
+        _PROFILE[key] = profile_mod.compute(run.trend, run.asset, float(twin_config()["bottom_oil_ratio"]))
+    return _PROFILE[key]
+
+
+def _params(run: Run) -> dict:
+    return profile_mod.params(profile_mod.specs_for(run.asset), float(twin_config()["bottom_oil_ratio"]))
+
+
+def _index_at(run: Run, t) -> int:
+    if run.mode == "snapshot":
+        raise ValueError("snapshot datasets have no time axis; use snapshot_table()")
+    t = pd.Timestamp(t)
+    if t.tzinfo is None:
+        t = t.tz_localize(TZ)
+    ts = run.trend["timestamp"]
+    i = int(ts.searchsorted(t, side="right")) - 1
+    if i < 0:
+        raise ValueError(f"t={t.isoformat()} is before the first sample {ts.iloc[0].isoformat()}")
+    return i
+
+
+def _val(v, unit: str, estimated: bool, source: str) -> dict:
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        f = math.nan
+    return {"value": f if math.isfinite(f) else None, "unit": unit, "estimated": estimated, "source": source}
+
+
+def thermal_profile(dataset_id: str, t) -> dict:
+    """IEC 60076-7 thermal diagram and heat flow at the last sample at or before t (twin/profile.py).
+
+    values: name -> {value, unit, estimated, source}; source: measured | twin | model (a constant of the model).
+    Measured-based values are None in meter_only mode or where measured OTI does not drive ageing (untrusted)."""
+    run = get_run(dataset_id)
+    i = _index_at(run, t)
+    row, pr = run.trend.iloc[i], _profile(run).iloc[i]
+    meas_ok = run.mode != "meter_only" and row.get("ageing_source") == "measured"
+    U = profile_mod.COLUMNS
+    vals = {
+        "load_pu": _val(row.get("load_pu"), "pu", False, "measured"),
+        "ambient_C": _val(row.get("amb_C"), "°C", False, "measured"),
+        "bottom_oil_C": _val(pr["bottom_oil_C"], "°C", True, "twin"),
+        "top_oil_C": _val(row.get("twin_oil_C"), "°C", False, "twin"),
+        "top_oil_measured_C": _val(row.get("OTI_C") if meas_ok else None, "°C", False, "measured"),
+        "avg_winding_C": _val(pr["avg_winding_C"], "°C", True, "twin"),
+        "hot_spot_C": _val(row.get("twin_hs_C"), "°C", False, "twin"),
+        "hot_spot_measured_C": _val(row.get("hs_ageing_C") if meas_ok else None, "°C", False, "measured"),
+        "winding_gradient_K": _val(pr["hs_gradient_K"], "K", False, "twin"),
+        "hot_spot_factor": _val(pr["hot_spot_factor"], "", False, "model"),
+        "top_oil_ss_C": _val(pr["top_oil_ss_C"], "°C", False, "twin"),
+        "hot_spot_ss_C": _val(pr["hot_spot_ss_C"], "°C", False, "twin"),
+        "ageing_rate": _val(row.get("aging_rate"), "× normal", False, "twin"),
+        "ageing_rate_actual": _val(row.get("aging_rate_actual"), "× normal", False, "measured" if meas_ok else "twin"),
+        "life_used_days": _val(row.get("days_aged_cum"), "days", False, "twin"),
+        "life_used_actual_days": _val(row.get("days_aged_actual_cum"), "days", False, "measured" if meas_ok else "twin"),
+    }
+    for c in ("losses_noload_W", "losses_load_W", "losses_total_W", "heat_dissipated_W", "heat_stored_W",
+              "oil_flow_intensity", "radiator_effectiveness", "tau_oil_min", "tau_winding_min"):
+        vals[c] = _val(pr[c], U[c][0], U[c][1], "model" if c.startswith("tau") else "twin")
+    return {"dataset_id": dataset_id, "timestamp": row["timestamp"], "mode": run.mode, "values": vals,
+            "params": _params(run), "simulated": bool(row.get("simulated", False))}
+
+
+def components(dataset_id: str, t) -> dict:
+    """Per-part quantities, governing equations with live values, active findings and tests at t (dt/components.py)."""
+    run = get_run(dataset_id)
+    i = _index_at(run, t)
+    row = run.trend.iloc[i].to_dict()
+    ts = pd.Timestamp(row["timestamp"])
+    alerts = [a for a in run.analysis.alerts if ts - ALERT_WINDOW < a.timestamp <= ts]
+    oti_suspect = (run.summary.get("plausibility") or {}).get("OTI_C") == "suspect"
+    parts = comp_mod.build(row, _profile(run).iloc[i].to_dict(), _params(run), run.asset, run.mode, alerts,
+                           run.analysis.recommendations, oti_suspect=oti_suspect)
+    return {"dataset_id": dataset_id, "timestamp": ts, "mode": run.mode, "parts": parts,
+            "simulated": bool(row.get("simulated", False))}
 
 
 def snapshot_table(dataset_id: str) -> pd.DataFrame:

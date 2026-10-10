@@ -231,6 +231,36 @@ def replay(dataset_id: str,
     return StreamingResponse(lines(), media_type="application/x-ndjson")
 
 
+@app.get("/api/datasets/{dataset_id}/frames", response_model=S.FramesModel, responses=ERRORS, tags=["run"])
+def frames(dataset_id: str,
+           fields: Annotated[str | None, Query(description="comma-separated column names; omit = all")] = None,
+           start: Annotated[datetime | None, Query()] = None,
+           end: Annotated[datetime | None, Query()] = None,
+           every: Annotated[int, Query(ge=1, le=1000)] = 1):
+    """api.frames() — every sample, aligned on one time axis, for replay and full-resolution charts."""
+    _known(dataset_id)
+    df = api.frames(dataset_id, fields=[f.strip() for f in fields.split(",") if f.strip()] if fields else None,
+                    start=_local(start), end=_local(end), every=every)
+    return {"dataset_id": dataset_id, "rows": len(df), "timestamp": plain(df["timestamp"]),
+            "columns": {c: plain(df[c].round(4) if df[c].dtype.kind == "f" else df[c])
+                        for c in df.columns if c != "timestamp"}}
+
+
+@app.get("/api/datasets/{dataset_id}/thermal-profile", response_model=S.ThermalProfileModel, responses=ERRORS,
+         tags=["run"])
+def thermal_profile(dataset_id: str, t: Annotated[datetime, Query(description="ISO 8601; naive = Asia/Kolkata")]):
+    """api.thermal_profile() — bottom/top oil, winding, hot-spot, losses, heat flow, oil flow, radiator effectiveness."""
+    _known(dataset_id)
+    return plain(api.thermal_profile(dataset_id, _local(t)))
+
+
+@app.get("/api/datasets/{dataset_id}/components", response_model=S.ComponentsModel, responses=ERRORS, tags=["run"])
+def components(dataset_id: str, t: Annotated[datetime, Query(description="ISO 8601; naive = Asia/Kolkata")]):
+    """api.components() — per-part quantities, governing equations with live values, findings and tests."""
+    _known(dataset_id)
+    return plain(api.components(dataset_id, _local(t)))
+
+
 @app.get("/api/self-test", response_model=S.TableModel, tags=["self-test"])
 def self_test():
     """api.self_test() — CPRI Excel format: reference vs software, diff, % diff, pass (<= 1 %), trip checks."""

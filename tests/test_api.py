@@ -92,3 +92,87 @@ def test_inspect_and_load_upload(tmp_path, monkeypatch):
     assert r.mode == "snapshot" and r.analysis.alerts == [] and len(api.snapshot_table(did)) == 675
     with pytest.raises(ValueError):
         api.state_at(did, "2026-04-01")
+
+
+@pytest.mark.parametrize("dataset_id", IDS)
+def test_thermal_profile(dataset_id):
+    r = api.get_run(dataset_id)
+    t = r.trend["timestamp"].iloc[len(r.trend) // 2]
+    tp = api.thermal_profile(dataset_id, t)
+    v = {k: d["value"] for k, d in tp["values"].items()}
+    row = r.trend.iloc[len(r.trend) // 2]
+    assert v["top_oil_C"] == pytest.approx(row["twin_oil_C"]) and v["hot_spot_C"] == pytest.approx(row["twin_hs_C"])
+    p = tp["params"]
+    assert v["losses_total_W"] == pytest.approx(p["P0_W"] + p["Pk_W"] * row["load_pu"] ** 2)
+    assert v["heat_stored_W"] == pytest.approx(v["losses_total_W"] - v["heat_dissipated_W"])
+    assert v["ambient_C"] <= v["bottom_oil_C"] <= v["top_oil_C"] <= v["hot_spot_C"]
+    assert 0 <= v["oil_flow_intensity"] <= 1
+    assert v["tau_oil_min"] == 180 and v["tau_winding_min"] == 4
+    assert all(tp["values"][k]["estimated"] for k in ("bottom_oil_C", "oil_flow_intensity", "radiator_effectiveness"))
+    if r.mode == "meter_only":
+        assert v["top_oil_measured_C"] is None and v["hot_spot_measured_C"] is None
+
+
+def test_thermal_profile_steady_state_holds():
+    """At constant load and ambient the twin settles on the profile's steady-state values, and stored heat -> 0."""
+    from twin import profile
+    from twin.engine import TwinEngine
+    eng = TwinEngine()
+    ts = pd.date_range("2026-04-01", periods=3 * 96, freq="15min", tz="Asia/Kolkata")
+    trend = pd.DataFrame({"timestamp": ts, "I_mean": 0.8 * eng.i_rated, "amb_C": 30.0})
+    res = eng.run(trend)
+    pr = profile.compute(res, eng.asset, 0.5).iloc[-1]
+    assert res["twin_oil_C"].iloc[-1] == pytest.approx(pr["top_oil_ss_C"], abs=0.05)
+    assert res["twin_hs_C"].iloc[-1] == pytest.approx(pr["hot_spot_ss_C"], abs=0.05)
+    assert abs(pr["heat_stored_W"]) < 5
+
+
+def test_radiator_effectiveness_tracks_cooling_fault():
+    n = api.frames("N", fields=["radiator_effectiveness"])["radiator_effectiveness"].median()
+    s2 = api.frames("S2", fields=["timestamp", "radiator_effectiveness"])
+    late = s2[s2["timestamp"] >= s2["timestamp"].iloc[-1] - pd.Timedelta(days=3)]["radiator_effectiveness"].median()
+    assert n == pytest.approx(1.0, abs=0.08)        # healthy plant ~ nominal twin
+    assert late < n - 0.12                           # S2 cooling fault shows as lost radiator capacity
+
+
+@pytest.mark.parametrize("dataset_id", IDS)
+def test_components(dataset_id):
+    from dt.components import PART_IDS
+    r = api.get_run(dataset_id)
+    t = r.trend["timestamp"].iloc[-1]
+    c = api.components(dataset_id, t)
+    assert set(c["parts"]) == set(PART_IDS)
+    w = c["parts"]["winding-R"]
+    age = next(e for e in w["equations"] if e["symbolic"] == "V = 2^((θh − 98)/6)")
+    th = age["terms"][0]["value"]
+    if th is not None:
+        assert age["result"]["value"] == pytest.approx(2 ** ((th - 98) / 6), rel=1e-6)
+        assert age["substituted"].startswith(f"V = 2^(({th:.1f} − 98)/6)")
+    for part in c["parts"].values():
+        for e in part["equations"]:
+            assert (e["substituted"] is None) == (e["result"]["value"] is None)
+    if r.mode == "meter_only":
+        assert c["parts"]["oti"]["verdict"] is None
+
+
+def test_components_findings_on_parts():
+    c = api.components("S2", "2026-04-27T15:00")
+    assert any(a["type"] == "hot_spot_high" for a in c["parts"]["winding-B"]["alerts"])
+    assert c["parts"]["winding-B"]["tests"]
+    assert c["parts"]["oti"]["verdict"] == "above"      # hotter than physics, but the channel is plausible overall
+    k = api.components("kaggle", "2019-08-16T13:00")
+    assert k["parts"]["oti"]["verdict"] == "suspect"
+    assert any(a["id"].endswith("-OTI_C") for a in k["parts"]["oti"]["alerts"])
+
+
+@pytest.mark.parametrize("dataset_id", IDS)
+def test_frames(dataset_id):
+    r = api.get_run(dataset_id)
+    f = api.frames(dataset_id)
+    assert isinstance(f, pd.DataFrame) and len(f) == len(r.trend)
+    assert {"timestamp", "OTI_C", "twin_oil_C", "health_score", "health_band", "health_thermal"} <= set(f.columns)
+    assert (f["health_score"].to_numpy() == r.health_series["score"].to_numpy()).all()
+    sub = api.frames(dataset_id, fields=["OTI_C"], every=10)
+    assert list(sub.columns) == ["timestamp", "OTI_C"] and len(sub) == len(range(0, len(r.trend), 10))
+    with pytest.raises(ValueError):
+        api.frames(dataset_id, fields=["nope"])
