@@ -139,7 +139,7 @@ def ground_truth(scenario: str) -> list[dict]:
     d = lambda days, hours=0, minutes=0: START + pd.Timedelta(days=days, hours=hours, minutes=minutes)  # noqa: E731
     table = {
         "N": [],
-        "S1": [{"fault": "overload", "onset": d(24, 8), "end": d(27), "expect": ["loading_high", "overcurrent", "hot_spot_high"]}],
+        "S1": [{"fault": "overload", "onset": d(24, 8), "end": d(27), "expect": ["loading_high", "overcurrent", "hot_spot_high", "top_oil_high", "ageing_rate_high"]}],
         "S2": [{"fault": "cooling_degradation", "onset": d(20), "end": d(30), "expect": ["residual_drift"]}],
         "S3": [{"fault": "unbalance", "onset": d(25), "end": d(30), "expect": ["current_unbalance"]}],
         "S4": [

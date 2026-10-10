@@ -38,7 +38,7 @@ def _temperature(df: pd.DataFrame) -> pd.Series | None:
 
 def detect(df: pd.DataFrame, thresholds: dict) -> list[Alert]:
     df = strip_quarantined(df).reset_index(drop=True)
-    if df.empty or "OLI_pct" not in df.columns or "timestamp" not in df.columns:
+    if len(df) < 2 or "OLI_pct" not in df.columns or "timestamp" not in df.columns:  # interval undefined below 2 rows
         return []
     lvl = pd.to_numeric(df["OLI_pct"], errors="coerce")
     if lvl.isna().all():

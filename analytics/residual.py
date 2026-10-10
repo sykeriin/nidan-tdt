@@ -46,7 +46,7 @@ def calibrate(normal_df: pd.DataFrame, thresholds: dict) -> dict:
 def detect(df: pd.DataFrame, thresholds: dict, reference: dict | None = None) -> list[Alert]:
     df = strip_quarantined(df).reset_index(drop=True)
     r = _residual(df)
-    if r is None or "timestamp" not in df.columns:
+    if r is None or len(df) < 2 or "timestamp" not in df.columns:  # sampling interval undefined below 2 rows
         return []
     cfg = thresholds["operating"]["residual"]
     self_ref = not reference

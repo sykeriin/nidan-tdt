@@ -61,7 +61,7 @@ def _emit(
 
 def detect(df: pd.DataFrame, thresholds: dict) -> list[Alert]:
     df = strip_quarantined(df).reset_index(drop=True)
-    if df.empty or "timestamp" not in df.columns:
+    if len(df) < 2 or "timestamp" not in df.columns:  # sampling interval undefined below 2 rows
         return []
     op = thresholds["operating"]
     clear = op.get("hysteresis_clear_fraction", 0.95)
