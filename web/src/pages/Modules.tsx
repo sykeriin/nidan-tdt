@@ -39,8 +39,8 @@ function Body({ run, now, tab }: { run: Run; now: Now; tab: (typeof TABS)[number
     return (
       <div className="grid grid--2">
         <Card title="Loading and hot spot">
-          {chart([{ name: 'Loading %', series: run.series.loading_pct, color: '#0F172A' }], '% of rated', [{ y: 100, label: 'alarm' }])}
-          {chart([{ name: 'Hot spot (twin)', series: run.series.twin_hs_C, color: '#0284C7', dash: 'dash' }, ...(run.series.WTI_C ? [{ name: 'Hot spot (measured)', series: run.series.WTI_C, color: '#0F172A' }] : [])], '°C', [{ y: 98, label: '98 °C' }])}
+          {chart([{ name: 'Loading %', series: run.series.loading_pct, color: '#0b0b0c' }], '% of rated', [{ y: 100, label: 'alarm' }])}
+          {chart([{ name: 'Hot spot (twin)', series: run.series.twin_hs_C, color: '#8a8d93', dash: 'dash' }, ...(run.series.WTI_C ? [{ name: 'Hot spot (measured)', series: run.series.WTI_C, color: '#0b0b0c' }] : [])], '°C', [{ y: 98, label: '98 °C' }])}
           <p className="muted">Loading %, hot spot against limits, and the ageing rate it causes.</p>
         </Card>
         <Card title="Alerts"><Alerts list={of('overloading')} onJump={s.setCursor} /></Card>
@@ -53,8 +53,8 @@ function Body({ run, now, tab }: { run: Run; now: Now; tab: (typeof TABS)[number
         <Card title="Ageing rate">
           {c.ageing_rul ? (
             chart([
-              { name: 'Expected (twin)', series: run.series.aging_rate, color: '#0284C7', dash: 'dash' },
-              ...(run.series.aging_rate_actual ? [{ name: 'Actual (measured oil)', series: run.series.aging_rate_actual, color: '#0F172A' }] : []),
+              { name: 'Expected (twin)', series: run.series.aging_rate, color: '#8a8d93', dash: 'dash' },
+              ...(run.series.aging_rate_actual ? [{ name: 'Actual (measured oil)', series: run.series.aging_rate_actual, color: '#0b0b0c' }] : []),
             ], '× normal', [{ y: 1, label: 'normal ageing' }])
           ) : <Unavailable>ageing needs current and ambient temperature over time.</Unavailable>}
           <p className="muted">
@@ -87,7 +87,7 @@ function Body({ run, now, tab }: { run: Run; now: Now; tab: (typeof TABS)[number
     return (
       <div className="grid grid--2">
         <Card title="Oil level">
-          {c.oil_leak_theft ? chart([{ name: 'Oil level %', series: run.series.OLI_pct, color: '#0F172A' }], '%', [{ y: 85, label: 'low-level limit 85 %' }]) : <Unavailable>this dataset has no oil level channel.</Unavailable>}
+          {c.oil_leak_theft ? chart([{ name: 'Oil level %', series: run.series.OLI_pct, color: '#0b0b0c' }], '%', [{ y: 85, label: 'low-level limit 85 %' }]) : <Unavailable>this dataset has no oil level channel.</Unavailable>}
           <p className="muted">A slow slope is a leak. A step within an hour with no thermal cause, especially at night, is possible theft or tampering.</p>
         </Card>
         <Card title="Alerts"><Alerts list={of('oil')} onJump={s.setCursor} /></Card>
@@ -100,9 +100,9 @@ function Body({ run, now, tab }: { run: Run; now: Now; tab: (typeof TABS)[number
       <div className="grid grid--2">
         <Card title="Phase currents">
           {c.unbalance ? chart([
-            { name: 'R', series: run.series.IR, color: '#0F172A', width: 1.2 },
-            { name: 'Y', series: run.series.IY, color: '#0891B2', width: 1.2 },
-            { name: 'B', series: run.series.IB, color: '#7C3AED', width: 1.2 },
+            { name: 'R', series: run.series.IR, color: '#0b0b0c', width: 1.2 },
+            { name: 'Y', series: run.series.IY, color: '#55595f', width: 1.2 },
+            { name: 'B', series: run.series.IB, color: '#a9acb1', width: 1.2 },
           ], 'A') : <Unavailable>unbalance needs measured R, Y and B currents.</Unavailable>}
           <p className="muted">
             Neutral: {c.neutral_measured ? `measured, ${fmt(now.at('IN'), 1)} A` : 'proxy from unbalance (no neutral sensor); no earthing claims'}.

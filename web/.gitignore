@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+# web/dist is committed on purpose: the demo laptop needs no Node to run the dashboard
 dist-ssr
 *.local
 

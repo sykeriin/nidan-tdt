@@ -105,6 +105,27 @@ def _json_form(text: str | None, what: str):
         raise ValueError(f"{what} must be JSON: {e.msg} at position {e.pos}") from None
 
 
+def _asset_form(asset: str | None):
+    """The `asset` form field: omitted -> Transformer-1's asset.yaml, the word `estimate`, or a JSON object of profile values.
+    Never a file path: a JSON string would otherwise be opened as a YAML file on the server."""
+    if not asset:
+        return "config/asset.yaml"
+    if asset == "estimate":
+        return None
+    from twin.profile import INPUT_FIELDS
+    values = _json_form(asset, "asset")
+    if not isinstance(values, dict):
+        raise ValueError("asset must be a JSON object of profile values (rating_kVA, lv_voltage_V ...) or the word 'estimate'")
+    clean = {}
+    for k, v in values.items():
+        if k not in INPUT_FIELDS:
+            raise ValueError(f"unknown asset field {k!r}")
+        if isinstance(v, bool) or not isinstance(v, (int, float, str)) or (isinstance(v, str) and len(v) > 80):
+            raise ValueError(f"asset field {k!r} must be a number or a short text")
+        clean[k] = v
+    return clean
+
+
 def _local(t):
     """Query times: naive = Asia/Kolkata (the data's zone)."""
     if t is None:
@@ -157,7 +178,7 @@ async def load_file(
     folder = UPLOADS / dataset_id
     try:
         paths = await _save(files, folder)
-        a = _json_form(asset, "asset") if asset and asset != "estimate" else (None if asset == "estimate" else "config/asset.yaml")
+        a = _asset_form(asset)
         ds = api.load_file(paths, mapping=_json_form(mapping, "mapping"), asset=a, name=name,
                            dataset_id=dataset_id, interval=interval)
     except Exception:
@@ -244,6 +265,17 @@ def snapshot_table(dataset_id: str):
     return table(api.snapshot_table(dataset_id))
 
 
+@app.get("/api/datasets/{dataset_id}/report", tags=["reports"], responses=ERRORS)
+def get_report(dataset_id: str, fmt: Annotated[str, Query(description="html | csv | json")] = "html",
+               download: Annotated[bool, Query(description="force a file download")] = False):
+    """api.report() — self-contained print-ready HTML (inline SVG charts), the full CSV, or JSON."""
+    _known(dataset_id)
+    body, media, filename = api.report(dataset_id, fmt)
+    disposition = "attachment" if download or fmt != "html" else "inline"
+    from fastapi import Response
+    return Response(body, media_type=media, headers={"Content-Disposition": f'{disposition}; filename="{filename}"'})
+
+
 @app.get("/api/datasets/{dataset_id}/report.pdf", responses={**ERRORS, 501: {"model": S.ErrorModel},
          200: {"content": {"application/pdf": {}}}}, tags=["reports"])
 def report_pdf(dataset_id: str):
@@ -251,6 +283,98 @@ def report_pdf(dataset_id: str):
     _known(dataset_id)
     from fastapi import Response
     return Response(api.report_pdf(dataset_id), media_type="application/pdf")
+
+
+# ---------------------------------------------------------------- generic transformer profile
+@app.get("/api/presets", response_model=list[S.PresetModel], tags=["profile"])
+def get_presets():
+    """api.presets() — example profiles (Transformer-1, a nameplate-derived 1250 kVA, generic ratings) with value tags."""
+    return plain(api.presets())
+
+
+@app.post("/api/profile", response_model=S.ProfileModel, responses=ERRORS, tags=["profile"])
+def resolve_profile(body: S.ProfileIn):
+    """api.resolve_profile() — complete a typed profile: rated current, loss split, IEC defaults, every value tagged."""
+    return plain(api.resolve_profile(body.values, body.tags))
+
+
+@app.post("/api/simulate", response_model=S.DatasetModel, status_code=201, responses=ERRORS, tags=["profile"])
+def simulate(body: S.SimulateIn):
+    """api.simulate() — generate a SIMULATED scenario for any transformer profile and run the full pipeline."""
+    ds = api.simulate(body.scenario, body.values, body.tags, seed=body.seed, name=body.name, plant=body.plant)
+    dataset_id = ds.health_report["dataset_id"]
+    _register(dataset_id, {"name": body.name or dataset_id, "files": None, "uploaded": datetime.now().astimezone().isoformat()})
+    rep = {k: v for k, v in ds.health_report.items() if not isinstance(v, pd.DataFrame)}
+    return {"dataset_id": dataset_id, "mode": ds.mode, "rows": len(ds.trend), "capabilities": ds.capabilities,
+            "health_report": plain(rep), "asset": plain({k: v for k, v in ds.asset.items() if k != "tags"})}
+
+
+# ---------------------------------------------------------------- live ingestion: the path to real sensors
+@app.post("/api/ingest", status_code=201, tags=["live"], responses=ERRORS)
+def ingest(body: S.IngestIn):
+    """api.ingest() — append readings from a device to a live session; it appears as the dataset u-live-<session>."""
+    out = plain(api.ingest(body.session, body.rows, body.asset))
+    _register(out["dataset_id"], {"name": f"Live feed: {body.session}", "files": None, "uploaded": datetime.now().astimezone().isoformat()})
+    return out
+
+
+@app.delete("/api/ingest/{session}", tags=["live"])
+def end_live(session: str):
+    """api.end_live() — forget a live session and its cached run."""
+    ended = api.end_live(session)
+    reg = _registry()
+    if reg.pop(f"u-live-{session}", None) is not None:
+        REGISTRY.write_text(json.dumps(reg, indent=1), encoding="utf-8")
+    return {"ended": ended}
+
+
+# ---------------------------------------------------------------- the physics, made visible
+@app.post("/api/physics/chain", response_model=S.ChainModel, responses=ERRORS, tags=["physics"])
+def physics_chain(body: S.ChainIn):
+    """api.physics_chain() — load -> top-oil -> hot-spot -> ageing with the IEC 60076-7 equations and this asset's numbers."""
+    return plain(api.physics_chain(body.values, body.tags, body.load_pu, body.ambient_C))
+
+
+@app.post("/api/physics/step", response_model=S.StepResponseModel, responses=ERRORS, tags=["physics"])
+def physics_step(body: S.StepIn):
+    """api.physics_step() — oil and winding hot-spot after a load step (thermal time constants made visible)."""
+    return plain(api.physics_step(body.values, body.tags, body.from_pu, body.to_pu, body.ambient_C, body.minutes))
+
+
+@app.post("/api/physics/detailed", tags=["physics"], responses=ERRORS)
+def physics_detailed(body: S.DetailedIn):
+    """api.physics_detailed() — the IEC model and the detailed heat-balance model on one load step, with loss breakdown."""
+    return plain(api.physics_detailed(body.values, body.tags, body.from_pu, body.to_pu, body.ambient_C, body.minutes,
+                                      body.k_factor, body.use_mass_capacity))
+
+
+@app.get("/api/physics/ageing-models", tags=["physics"])
+def physics_ageing_models():
+    """api.physics_ageing_models() — the 6 K rule and Arrhenius ageing curves side by side."""
+    return plain(api.physics_ageing_models())
+
+
+@app.post("/api/datasets/{dataset_id}/whatif", response_model=S.WhatIfModel, responses=ERRORS, tags=["physics"])
+def physics_whatif(dataset_id: str, body: S.WhatIfIn):
+    """api.physics_whatif() — the dataset's own load and weather replayed under changed load, ambient and cooling."""
+    _known(dataset_id)
+    df, summary = api.physics_whatif(dataset_id, body.load_mult, body.ambient_offset_C, body.rise_mult, body.model, body.k_factor)
+    ser, _ = series(df, 600)
+    return {"series": ser, "summary": plain(summary)}
+
+
+@app.get("/api/datasets/{dataset_id}/brief", tags=["run"], responses=ERRORS)
+def get_brief(dataset_id: str, t: Annotated[datetime, Query(description="ISO 8601; naive = Asia/Kolkata")]):
+    """api.brief() — status sentence, ranked diagnosis, maintenance work order, headroom and time-to-limit at time t."""
+    _known(dataset_id)
+    return plain(api.brief(dataset_id, _local(t)))
+
+
+@app.get("/api/datasets/{dataset_id}/outlook", tags=["run"], responses=ERRORS)
+def get_outlook(dataset_id: str, t: Annotated[datetime, Query(description="ISO 8601; naive = Asia/Kolkata")]):
+    """api.outlook() — Monte Carlo remaining insulation life (P10/P50/P90 and fan), 30-day risk and a 24 h forecast from t."""
+    _known(dataset_id)
+    return plain(api.outlook(dataset_id, _local(t)))
 
 
 @app.get("/api/health", tags=["meta"])

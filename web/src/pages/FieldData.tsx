@@ -58,13 +58,13 @@ export default function FieldData() {
           <div className="grid grid--2">
             <Card title="Oil temperature vs ambient">
               <TimeChart range={range} cursor={null} clip={false} yTitle="°C" traces={[
-                { name: 'Top oil (OTI)', series: run.series.OTI_C, color: '#0F172A', width: 1 },
-                { name: 'Ambient (ATI)', series: run.series.ATI_C ?? run.series.amb_C, color: '#64748B', width: 1 },
+                { name: 'Top oil (OTI)', series: run.series.OTI_C, color: '#0b0b0c', width: 1 },
+                { name: 'Ambient (ATI)', series: run.series.ATI_C ?? run.series.amb_C, color: '#8a8d93', width: 1 },
               ]} />
               <p className="muted">Plateaus at 245–250 °C are sensor glitches, not heat.</p>
             </Card>
             <Card title="Oil level gauge">
-              <TimeChart range={range} cursor={null} clip={false} yTitle="%" traces={[{ name: 'OLI', series: run.series.OLI_pct, color: '#0F172A', width: 1 }]} />
+              <TimeChart range={range} cursor={null} clip={false} yTitle="%" traces={[{ name: 'OLI', series: run.series.OLI_pct, color: '#0b0b0c', width: 1 }]} />
               <p className="muted">Drifts from about 40 % to 100 % with no refill step: oil cannot rise like that, so the gauge is faulty.</p>
             </Card>
           </div>

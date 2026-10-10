@@ -25,7 +25,7 @@ import yaml
 
 from contracts.models import Dataset, TwinState
 from ingest.enrich import read_asset
-from twin import ageing, plausibility, rul, thermal
+from twin import ageing, plausibility, profile, rul, thermal
 
 ROOT = Path(__file__).resolve().parent.parent
 DRIFT_MESSAGE = "model drift — check cooling / recalibrate"
@@ -57,10 +57,10 @@ def _bad_temp(flags: str) -> bool:
 
 class TwinEngine:
     def __init__(self, asset: dict | str = "config/asset.yaml", cfg: dict | None = None):
-        a = read_asset(ROOT / asset) if isinstance(asset, str) else dict(asset)
+        a = profile.complete(read_asset(ROOT / asset) if isinstance(asset, str) else dict(asset))
         self.asset, self.cfg = a, cfg or load_config()
         self.i_rated = float(a["i_rated_A"])
-        self.tr = thermal.make_transformer(self.i_rated, a["load_loss_W"], a["no_load_loss_W"])
+        self.tr = thermal.make_transformer(self.i_rated, a["load_loss_W"], a["no_load_loss_W"], **profile.thermal_kwargs(a))
         self.bands = {k: _band_transformer(self.i_rated, plausibility.BANDS[k]) for k in ("low", "high")}
         self.insulation = a.get("insulation", "normal")
         self._reset_stream()

@@ -21,7 +21,22 @@ const STATUS_LOOK = {
 };
 const NEUTRAL_PARTS = new Set(['core']);   // not monitored: never a health colour
 
-const DEFAULT_VIEW = new THREE.Vector3(0.8, 0.5, 1).normalize();
+// Thermal-camera palette (ironbow) for the heat-map view: cold is deep indigo, hot is white-yellow.
+const IRONBOW = [[0, '#0b0b2a'], [0.28, '#4b1f8f'], [0.5, '#c1317d'], [0.72, '#ff7a3d'], [0.9, '#ffd23f'], [1, '#fff6d6']]
+  .map(([t, c]) => [t, new THREE.Color(c)]);
+function ironbow(t, out = new THREE.Color()) {
+  const x = Math.min(1, Math.max(0, t));
+  for (let i = 1; i < IRONBOW.length; i++) {
+    if (x <= IRONBOW[i][0]) {
+      const [t0, c0] = IRONBOW[i - 1];
+      const [t1, c1] = IRONBOW[i];
+      return out.copy(c0).lerp(c1, (x - t0) / (t1 - t0));
+    }
+  }
+  return out.copy(IRONBOW[IRONBOW.length - 1][1]);
+}
+
+const DEFAULT_VIEW = new THREE.Vector3(-0.45, 0.42, 1).normalize();
 const FIT_MARGIN = 1.25;              // whole model in view with about 10 % to spare on each side
 const FOCUS_DISTANCE = 0.75;          // of the fit distance, when a part is focused
 const IDLE_RESUME_MS = 10000;
@@ -37,8 +52,8 @@ function groundShadow(radius) {
   canvas.width = canvas.height = 128;
   const ctx = canvas.getContext('2d');
   const gradient = ctx.createRadialGradient(64, 64, 8, 64, 64, 64);
-  gradient.addColorStop(0, 'rgba(15, 23, 42, 0.22)');
-  gradient.addColorStop(1, 'rgba(15, 23, 42, 0)');
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
+  gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 128, 128);
   const mesh = new THREE.Mesh(
@@ -69,9 +84,9 @@ function outlineMaterial(objectThickness) {
 // handlers: onHover(partId | null, x, y) in container pixels, onSelect(partId | null),
 // onFrame() after each rendered frame
 export async function createScene(container, handlers = {}) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(CANVAS_COLOR);
+  renderer.setClearColor(CANVAS_COLOR, 0);      // transparent: the stage draws the dark viewfinder behind the model
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.85;
   container.append(renderer.domElement);
@@ -230,7 +245,21 @@ export async function createScene(container, handlers = {}) {
   }
 
   const tint = new THREE.Color();
+  const heat = { on: false, values: {}, min: 30, max: 140 };
+  const heatColor = new THREE.Color();
   function applyLook(id, pulse = 1) {
+    if (heat.on && !NEUTRAL_PARTS.has(id)) {
+      // Heat-map view: colour by estimated temperature instead of health status.
+      const value = heat.values[id];
+      for (const material of model.parts[id].materials) {
+        material.color.copy(material.userData.baseColor);
+        if (value == null) material.color.multiply(tint.copy(WHITE).lerp(STATUS_LOOK.grey.color, 0.75));
+        else material.color.copy(ironbow((value - heat.min) / (heat.max - heat.min), heatColor)).multiplyScalar(1.45);
+        if (id === hovered) material.color.multiply(HOVER_TINT);
+      }
+      for (const shell of outlines[id]?.shells ?? []) shell.visible = false;
+      return;
+    }
     const look = NEUTRAL_PARTS.has(id) ? null : STATUS_LOOK[statuses[id]];
     for (const material of model.parts[id].materials) {
       material.color.copy(material.userData.baseColor);
@@ -437,6 +466,14 @@ export async function createScene(container, handlers = {}) {
     focusPart,
     resetView,
     setStatuses,
+    // values: { partId: temperature °C | null }; the colour scale runs min..max
+    setHeat(on, values, min, max) {
+      heat.on = Boolean(on);
+      heat.values = values ?? {};
+      if (Number.isFinite(min)) heat.min = min;
+      if (Number.isFinite(max) && max > heat.min) heat.max = max;
+      for (const id of Object.keys(model.parts)) applyLook(id);
+    },
     project,
     setXray(on) { xray.on = Boolean(on); pointer.moved = true; },
     get xray() { return xray.on; },

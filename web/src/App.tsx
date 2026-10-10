@@ -7,6 +7,8 @@ import FieldData from './pages/FieldData'
 import ImportPage from './pages/Import'
 import Modules from './pages/Modules'
 import Overview from './pages/Overview'
+import Physics from './pages/Physics'
+import ProfilePage from './pages/Profile'
 import Records from './pages/Records'
 import Reports from './pages/Reports'
 import SelfTest from './pages/SelfTest'
@@ -17,6 +19,8 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Overview />} />
+        <Route path="physics" element={<Physics />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="records" element={<Records />} />
         <Route path="temps" element={<Temps />} />
         <Route path="modules" element={<Modules />} />

@@ -578,6 +578,91 @@
     }
    }
   },
+  "/api/datasets/{dataset_id}/report": {
+   "get": {
+    "tags": [
+     "reports"
+    ],
+    "summary": "Get Report",
+    "description": "api.report() \u2014 self-contained print-ready HTML (inline SVG charts), the full CSV, or JSON.",
+    "operationId": "get_report_api_datasets__dataset_id__report_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "fmt",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "description": "html | csv | json",
+       "default": "html",
+       "title": "Fmt"
+      },
+      "description": "html | csv | json"
+     },
+     {
+      "name": "download",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "description": "force a file download",
+       "default": false,
+       "title": "Download"
+      },
+      "description": "force a file download"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
   "/api/datasets/{dataset_id}/report.pdf": {
    "get": {
     "tags": [
@@ -646,6 +731,680 @@
        }
       },
       "description": "Not Implemented"
+     }
+    }
+   }
+  },
+  "/api/presets": {
+   "get": {
+    "tags": [
+     "profile"
+    ],
+    "summary": "Get Presets",
+    "description": "api.presets() \u2014 example profiles (Transformer-1, a nameplate-derived 1250 kVA, generic ratings) with value tags.",
+    "operationId": "get_presets_api_presets_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PresetModel"
+         },
+         "type": "array",
+         "title": "Response Get Presets Api Presets Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/profile": {
+   "post": {
+    "tags": [
+     "profile"
+    ],
+    "summary": "Resolve Profile",
+    "description": "api.resolve_profile() \u2014 complete a typed profile: rated current, loss split, IEC defaults, every value tagged.",
+    "operationId": "resolve_profile_api_profile_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ProfileIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProfileModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/simulate": {
+   "post": {
+    "tags": [
+     "profile"
+    ],
+    "summary": "Simulate",
+    "description": "api.simulate() \u2014 generate a SIMULATED scenario for any transformer profile and run the full pipeline.",
+    "operationId": "simulate_api_simulate_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SimulateIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DatasetModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/ingest": {
+   "post": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Ingest",
+    "description": "api.ingest() \u2014 append readings from a device to a live session; it appears as the dataset u-live-<session>.",
+    "operationId": "ingest_api_ingest_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/IngestIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/ingest/{session}": {
+   "delete": {
+    "tags": [
+     "live"
+    ],
+    "summary": "End Live",
+    "description": "api.end_live() \u2014 forget a live session and its cached run.",
+    "operationId": "end_live_api_ingest__session__delete",
+    "parameters": [
+     {
+      "name": "session",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Session"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/physics/chain": {
+   "post": {
+    "tags": [
+     "physics"
+    ],
+    "summary": "Physics Chain",
+    "description": "api.physics_chain() \u2014 load -> top-oil -> hot-spot -> ageing with the IEC 60076-7 equations and this asset's numbers.",
+    "operationId": "physics_chain_api_physics_chain_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ChainIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ChainModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/physics/step": {
+   "post": {
+    "tags": [
+     "physics"
+    ],
+    "summary": "Physics Step",
+    "description": "api.physics_step() \u2014 oil and winding hot-spot after a load step (thermal time constants made visible).",
+    "operationId": "physics_step_api_physics_step_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StepIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StepResponseModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/physics/detailed": {
+   "post": {
+    "tags": [
+     "physics"
+    ],
+    "summary": "Physics Detailed",
+    "description": "api.physics_detailed() \u2014 the IEC model and the detailed heat-balance model on one load step, with loss breakdown.",
+    "operationId": "physics_detailed_api_physics_detailed_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DetailedIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/physics/ageing-models": {
+   "get": {
+    "tags": [
+     "physics"
+    ],
+    "summary": "Physics Ageing Models",
+    "description": "api.physics_ageing_models() \u2014 the 6 K rule and Arrhenius ageing curves side by side.",
+    "operationId": "physics_ageing_models_api_physics_ageing_models_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/whatif": {
+   "post": {
+    "tags": [
+     "physics"
+    ],
+    "summary": "Physics Whatif",
+    "description": "api.physics_whatif() \u2014 the dataset's own load and weather replayed under changed load, ambient and cooling.",
+    "operationId": "physics_whatif_api_datasets__dataset_id__whatif_post",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WhatIfIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WhatIfModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/brief": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Get Brief",
+    "description": "api.brief() \u2014 status sentence, ranked diagnosis, maintenance work order, headroom and time-to-limit at time t.",
+    "operationId": "get_brief_api_datasets__dataset_id__brief_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "t",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date-time",
+       "description": "ISO 8601; naive = Asia/Kolkata",
+       "title": "T"
+      },
+      "description": "ISO 8601; naive = Asia/Kolkata"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
+  "/api/datasets/{dataset_id}/outlook": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Get Outlook",
+    "description": "api.outlook() \u2014 Monte Carlo remaining insulation life (P10/P50/P90 and fan), 30-day risk and a 24 h forecast from t.",
+    "operationId": "get_outlook_api_datasets__dataset_id__outlook_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "t",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date-time",
+       "description": "ISO 8601; naive = Asia/Kolkata",
+       "title": "T"
+      },
+      "description": "ISO 8601; naive = Asia/Kolkata"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
      }
     }
    }
@@ -912,6 +1671,164 @@
     ],
     "title": "Body_load_file_api_datasets_post"
    },
+   "ChainIn": {
+    "properties": {
+     "values": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Values",
+      "description": "Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required."
+     },
+     "tags": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "string"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tags",
+      "description": "optional source tag per value; untagged values are 'User input'"
+     },
+     "load_pu": {
+      "type": "number",
+      "maximum": 3.0,
+      "minimum": 0.0,
+      "title": "Load Pu",
+      "default": 1.0
+     },
+     "ambient_C": {
+      "type": "number",
+      "maximum": 60.0,
+      "minimum": -30.0,
+      "title": "Ambient C",
+      "default": 30.0
+     }
+    },
+    "type": "object",
+    "required": [
+     "values"
+    ],
+    "title": "ChainIn"
+   },
+   "ChainModel": {
+    "properties": {
+     "steps": {
+      "items": {
+       "$ref": "#/components/schemas/ChainStepModel"
+      },
+      "type": "array",
+      "title": "Steps"
+     },
+     "inputs": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Inputs"
+     },
+     "top_oil_C": {
+      "type": "number",
+      "title": "Top Oil C"
+     },
+     "hot_spot_C": {
+      "type": "number",
+      "title": "Hot Spot C"
+     },
+     "ageing_rate": {
+      "type": "number",
+      "title": "Ageing Rate"
+     },
+     "hours_per_equivalent_day": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hours Per Equivalent Day"
+     },
+     "library_check": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Library Check"
+     },
+     "parameters": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Parameters"
+     },
+     "tags": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Tags"
+     }
+    },
+    "type": "object",
+    "required": [
+     "steps",
+     "inputs",
+     "top_oil_C",
+     "hot_spot_C",
+     "ageing_rate",
+     "hours_per_equivalent_day",
+     "library_check",
+     "parameters",
+     "tags"
+    ],
+    "title": "ChainModel"
+   },
+   "ChainStepModel": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "formula": {
+      "type": "string",
+      "title": "Formula"
+     },
+     "working": {
+      "type": "string",
+      "title": "Working"
+     },
+     "value": {
+      "type": "number",
+      "title": "Value"
+     },
+     "unit": {
+      "type": "string",
+      "title": "Unit"
+     },
+     "why": {
+      "type": "string",
+      "title": "Why"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "formula",
+     "working",
+     "value",
+     "unit",
+     "why"
+    ],
+    "title": "ChainStepModel"
+   },
    "DatasetInfoModel": {
     "properties": {
      "dataset_id": {
@@ -1071,6 +1988,78 @@
     "title": "DatasetModel",
     "description": "contracts.models.Dataset without the frames (fetch them with /run)."
    },
+   "DetailedIn": {
+    "properties": {
+     "values": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Values",
+      "description": "Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required."
+     },
+     "tags": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "string"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tags",
+      "description": "optional source tag per value; untagged values are 'User input'"
+     },
+     "from_pu": {
+      "type": "number",
+      "maximum": 3.0,
+      "minimum": 0.0,
+      "title": "From Pu",
+      "default": 0.4
+     },
+     "to_pu": {
+      "type": "number",
+      "maximum": 3.0,
+      "minimum": 0.0,
+      "title": "To Pu",
+      "default": 1.2
+     },
+     "ambient_C": {
+      "type": "number",
+      "maximum": 60.0,
+      "minimum": -30.0,
+      "title": "Ambient C",
+      "default": 30.0
+     },
+     "minutes": {
+      "type": "integer",
+      "maximum": 2880.0,
+      "minimum": 10.0,
+      "title": "Minutes",
+      "default": 600
+     },
+     "k_factor": {
+      "type": "number",
+      "maximum": 20.0,
+      "minimum": 1.0,
+      "title": "K Factor",
+      "description": "harmonic K-factor; adds eddy and stray loss",
+      "default": 1.0
+     },
+     "use_mass_capacity": {
+      "type": "boolean",
+      "title": "Use Mass Capacity",
+      "description": "use the thermal capacity implied by the nameplate masses",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "values"
+    ],
+    "title": "DetailedIn"
+   },
    "ErrorModel": {
     "properties": {
      "detail": {
@@ -1083,6 +2072,19 @@
      "detail"
     ],
     "title": "ErrorModel"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
    },
    "HealthModel": {
     "properties": {
@@ -1125,6 +2127,43 @@
      "capped"
     ],
     "title": "HealthModel"
+   },
+   "IngestIn": {
+    "properties": {
+     "session": {
+      "type": "string",
+      "title": "Session",
+      "description": "1 to 40 letters, digits, '-' or '_'; becomes the dataset u-live-<session>"
+     },
+     "rows": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Rows",
+      "description": "readings, any column names the adapter can map (timestamp, IR, IY, IB, VR, OTI_C, amb_C ...)"
+     },
+     "asset": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Asset",
+      "description": "optional transformer profile values (rating_kVA, lv_voltage_V ...); default is Transformer-1"
+     }
+    },
+    "type": "object",
+    "required": [
+     "session",
+     "rows"
+    ],
+    "title": "IngestIn"
    },
    "InspectResultModel": {
     "properties": {
@@ -1169,6 +2208,111 @@
      "warnings"
     ],
     "title": "InspectResultModel"
+   },
+   "PresetModel": {
+    "properties": {
+     "values": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Values"
+     },
+     "tags": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Tags"
+     },
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Notes"
+     },
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "description": {
+      "type": "string",
+      "title": "Description"
+     }
+    },
+    "type": "object",
+    "required": [
+     "values",
+     "tags",
+     "notes",
+     "id",
+     "label",
+     "description"
+    ],
+    "title": "PresetModel"
+   },
+   "ProfileIn": {
+    "properties": {
+     "values": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Values",
+      "description": "Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required."
+     },
+     "tags": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "string"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tags",
+      "description": "optional source tag per value; untagged values are 'User input'"
+     }
+    },
+    "type": "object",
+    "required": [
+     "values"
+    ],
+    "title": "ProfileIn"
+   },
+   "ProfileModel": {
+    "properties": {
+     "values": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Values"
+     },
+     "tags": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Tags"
+     },
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Notes"
+     }
+    },
+    "type": "object",
+    "required": [
+     "values",
+     "tags",
+     "notes"
+    ],
+    "title": "ProfileModel"
    },
    "RULModel": {
     "properties": {
@@ -1431,6 +2575,64 @@
     ],
     "title": "SeriesModel"
    },
+   "SimulateIn": {
+    "properties": {
+     "values": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Values",
+      "description": "Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required."
+     },
+     "tags": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "string"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tags",
+      "description": "optional source tag per value; untagged values are 'User input'"
+     },
+     "scenario": {
+      "type": "string",
+      "title": "Scenario",
+      "description": "N | S1 | S2 | S3 | S4a | S4b | S5",
+      "default": "N"
+     },
+     "seed": {
+      "type": "integer",
+      "title": "Seed",
+      "default": 0
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "plant": {
+      "type": "string",
+      "title": "Plant",
+      "description": "iec: thermal library with perturbed parameters | detailed: independent heat-balance model",
+      "default": "iec"
+     }
+    },
+    "type": "object",
+    "required": [
+     "values"
+    ],
+    "title": "SimulateIn"
+   },
    "StateAtModel": {
     "properties": {
      "timestamp": {
@@ -1479,6 +2681,120 @@
     ],
     "title": "StateAtModel"
    },
+   "StepIn": {
+    "properties": {
+     "values": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Values",
+      "description": "Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required."
+     },
+     "tags": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "string"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tags",
+      "description": "optional source tag per value; untagged values are 'User input'"
+     },
+     "from_pu": {
+      "type": "number",
+      "maximum": 3.0,
+      "minimum": 0.0,
+      "title": "From Pu",
+      "default": 0.4
+     },
+     "to_pu": {
+      "type": "number",
+      "maximum": 3.0,
+      "minimum": 0.0,
+      "title": "To Pu",
+      "default": 1.2
+     },
+     "ambient_C": {
+      "type": "number",
+      "maximum": 60.0,
+      "minimum": -30.0,
+      "title": "Ambient C",
+      "default": 30.0
+     },
+     "minutes": {
+      "type": "integer",
+      "maximum": 2880.0,
+      "minimum": 10.0,
+      "title": "Minutes",
+      "default": 480
+     }
+    },
+    "type": "object",
+    "required": [
+     "values"
+    ],
+    "title": "StepIn"
+   },
+   "StepResponseModel": {
+    "properties": {
+     "t_min": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "T Min"
+     },
+     "top_oil_C": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Top Oil C"
+     },
+     "hot_spot_C": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Hot Spot C"
+     },
+     "final": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Final"
+     },
+     "time_constants_min": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Time Constants Min"
+     },
+     "inputs": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Inputs"
+     }
+    },
+    "type": "object",
+    "required": [
+     "t_min",
+     "top_oil_C",
+     "hot_spot_C",
+     "final",
+     "time_constants_min",
+     "inputs"
+    ],
+    "title": "StepResponseModel"
+   },
    "TableModel": {
     "properties": {
      "columns": {
@@ -1503,6 +2819,109 @@
      "rows"
     ],
     "title": "TableModel"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "WhatIfIn": {
+    "properties": {
+     "model": {
+      "type": "string",
+      "title": "Model",
+      "description": "iec | detailed",
+      "default": "iec"
+     },
+     "k_factor": {
+      "type": "number",
+      "maximum": 20.0,
+      "minimum": 1.0,
+      "title": "K Factor",
+      "default": 1.0
+     },
+     "load_mult": {
+      "type": "number",
+      "maximum": 2.0,
+      "minimum": 0.2,
+      "title": "Load Mult",
+      "default": 1.0
+     },
+     "ambient_offset_C": {
+      "type": "number",
+      "maximum": 25.0,
+      "minimum": -15.0,
+      "title": "Ambient Offset C",
+      "default": 0.0
+     },
+     "rise_mult": {
+      "type": "number",
+      "maximum": 2.0,
+      "minimum": 0.7,
+      "title": "Rise Mult",
+      "description": ">1 models degraded cooling",
+      "default": 1.0
+     }
+    },
+    "type": "object",
+    "title": "WhatIfIn"
+   },
+   "WhatIfModel": {
+    "properties": {
+     "series": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/SeriesModel"
+      },
+      "type": "object",
+      "title": "Series"
+     },
+     "summary": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Summary"
+     }
+    },
+    "type": "object",
+    "required": [
+     "series",
+     "summary"
+    ],
+    "title": "WhatIfModel"
    }
   }
  }

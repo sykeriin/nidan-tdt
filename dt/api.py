@@ -39,7 +39,8 @@ from contracts.models import (Alert, AnalysisResult, Dataset, Health, InspectRes
 from eval import scenarios as sc
 from ingest import adapter
 from sim.replay import Replay
-from twin.engine import TwinEngine
+from twin import physics, profile
+from twin.engine import TwinEngine, load_config
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "data" / "cache" / "runs"
@@ -226,7 +227,8 @@ def inspect_file(paths) -> InspectResult:
 
 
 def load_file(paths, mapping: dict | None = None, asset: dict | str | None = "config/asset.yaml",
-              name: str | None = None, dataset_id: str | None = None, interval: str | None = None) -> Dataset:
+              name: str | None = None, dataset_id: str | None = None, interval: str | None = None,
+              residual_ref="auto") -> Dataset:
     """Load through the adapter, then compute and cache the run (get_run(dataset_id) afterwards).
 
     mapping: {source column: {to, unit}} from the Import page (None = auto-map). asset: asset.yaml path, a dict from
@@ -247,6 +249,67 @@ def load_file(paths, mapping: dict | None = None, asset: dict | str | None = "co
     _MEM[dataset_id] = run
     ds.health_report["dataset_id"] = dataset_id
     return ds
+
+
+def _residual_reference(ds: Dataset) -> dict | None:
+    """Healthy residual baseline: shipped Normal month for Transformer-1, the generator's own Normal month for any
+    other rated profile, and none (self-calibrate on the first week) when the rating itself is only estimated."""
+    if ds.mode != "full":
+        return None
+    source = ds.asset.get("nameplate_source")
+    if source == "asset.yaml":
+        return sc.normal_reference(load_thresholds())
+    if source == "estimated":
+        return None
+    return sc.normal_reference_for({**ds.asset, **_losses(ds.asset)})
+
+
+# ---------------------------------------------------------------- generic transformer profile
+def presets() -> list[dict]:
+    """Example profiles for the rating panel: values, tags (Confirmed / Derived / IEC default / Assumed) and notes."""
+    raw = yaml.safe_load((ROOT / "config" / "presets.yaml").read_text(encoding="utf-8"))
+    out = []
+    for p in raw:
+        values = {k: v["value"] for k, v in p["profile"].items()}
+        tags = {k: v["tag"] for k, v in p["profile"].items()}
+        out.append({"id": p["id"], "label": p["label"], "description": " ".join(str(p["description"]).split()),
+                    **resolve_profile(values, tags)})
+    return out
+
+
+def resolve_profile(values: dict, tags: dict | None = None) -> dict:
+    """Complete a typed profile (rating, voltage, anything else known) into the full tagged parameter set."""
+    a = profile.resolve({**values, "tags": dict(tags or {})})
+    notes = a.pop("profile_notes", [])
+    tg = a.pop("tags", {})
+    a.pop("nameplate_source", None)
+    return _jsonable({"values": a, "tags": tg, "notes": notes})
+
+
+def simulate(scenario: str, values: dict, tags: dict | None = None, seed: int = 0, name: str | None = None,
+             dataset_id: str | None = None, plant: str = "iec") -> Dataset:
+    """Generate a SIMULATED scenario for ANY transformer profile and run it through the full pipeline.
+
+    plant="iec" is the thermal library with perturbed parameters; plant="detailed" is the independent heat-balance
+    model (twin/detailed.py), so the twin is tested against different physics."""
+    from sim import generator
+    if scenario not in generator.SCENARIO_IDS:
+        raise ValueError(f"unknown scenario {scenario!r}; choose from {', '.join(generator.SCENARIO_IDS)}")
+    asset = profile.resolve({**values, "tags": dict(tags or {})})
+    label = str(asset.get("name") or f"{asset['rating_kVA']:g} kVA")
+    trend, events = generator.generate(scenario, seed=int(seed), asset=asset, plant=plant)
+    ref = "auto" if plant == "iec" else sc.normal_reference_for(asset, plant)
+    dataset_id = dataset_id or f"u-{hashlib.sha1((scenario + label + str(time.time())).encode()).hexdigest()[:10]}"
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        paths = [Path(tmp) / "trend.csv"]
+        trend.to_csv(paths[0], index=False)
+        if len(events):
+            paths.append(Path(tmp) / "events.csv")
+            events.to_csv(paths[1], index=False)
+        suffix = "" if plant == "iec" else " · detailed physics"
+        return load_file(paths, asset=asset, name=name or f"{label} · scenario {scenario}{suffix} (SIMULATED)",
+                         dataset_id=dataset_id, residual_ref=ref)
 
 
 def get_run(dataset_id: str) -> Run:
@@ -387,3 +450,149 @@ if __name__ == "__main__":
             print("built", RUNS / i)
     else:
         print("usage: python -m dt.api rebuild [ID ...]   ids:", " ".join(CACHED))
+
+
+# ---------------------------------------------------------------- the physics, made visible
+def physics_chain(values: dict, tags: dict | None, load_pu: float, ambient_C: float) -> dict:
+    return physics.steady_chain(profile.resolve({**values, "tags": dict(tags or {})}), load_pu, ambient_C)
+
+
+def physics_step(values: dict, tags: dict | None, from_pu: float, to_pu: float, ambient_C: float, minutes: int) -> dict:
+    return physics.step_response(profile.resolve({**values, "tags": dict(tags or {})}), from_pu, to_pu, ambient_C, minutes)
+
+
+def physics_detailed(values: dict, tags: dict | None, from_pu: float, to_pu: float, ambient_C: float, minutes: int,
+                     k_factor: float = 1.0, use_mass_capacity: bool = False) -> dict:
+    return physics.compare_models(profile.resolve({**values, "tags": dict(tags or {})}), from_pu, to_pu, ambient_C, minutes,
+                                  k_factor, use_mass_capacity)
+
+
+def physics_ageing_models() -> dict:
+    from twin import detailed
+    return detailed.ageing_models()
+
+
+def physics_whatif(dataset_id: str, load_mult: float, ambient_offset_C: float, rise_mult: float, model: str = "iec",
+                   k_factor: float = 1.0):
+    """Replay a dataset's own load and weather under changed conditions. Returns (series DataFrame, summary)."""
+    run = get_run(dataset_id)
+    if run.mode in ("snapshot", "data_only") or "timestamp" not in run.trend:
+        raise ValueError("what-if needs a dataset with a load and ambient-temperature time series")
+    asset = {k: v for k, v in run.asset.items() if k not in ("tags", "profile_notes")}
+    asset["tags"] = run.asset.get("tags", {})
+    return physics.whatif(run.trend, asset, load_mult, ambient_offset_C, rise_mult,
+                          reference_life_h=float(load_config()["reference_life_h"]), model=model, k_factor=k_factor)
+
+
+# ---------------------------------------------------------------- the picture at one moment, and the outlook
+def brief(dataset_id: str, t) -> dict:
+    """Status sentence, ranked diagnosis, maintenance work order and headroom at time t (analytics/brief.py)."""
+    from analytics import brief as brief_mod
+    return brief_mod.brief(get_run(dataset_id), t)
+
+
+def outlook(dataset_id: str, t, runs: int = 500) -> dict:
+    """Remaining-life distribution, 30-day risk and 24 h forecast from time t (twin/forecast.py). Seeded, so repeatable."""
+    from twin import forecast
+    run = get_run(dataset_id)
+    if run.mode in ("snapshot", "data_only") or "timestamp" not in run.trend:
+        raise ValueError("an outlook needs a dataset with a load and ambient-temperature time series")
+    from twin.forecast import _in_zone
+    t = _in_zone(t, run.trend)
+    asset = {k: v for k, v in run.asset.items() if k != "profile_notes"}
+    cfg = load_config()
+    life = (run.summary.get("life_consumed_days") or {}).get("actual") or 0.0
+    consumed_h = float(asset.get("years_in_service") or 0) * 8766.0 + float(life) * 24.0
+    seed = int(hashlib.sha1(dataset_id.encode()).hexdigest()[:6], 16)
+    return {
+        "t": t.isoformat(),
+        "rul": forecast.rul_distribution(asset, run.trend, t, consumed_h, float(cfg["reference_life_h"]), cfg["risk_years"], n=runs, seed=seed),
+        "trip_risk_30d": forecast.trip_risk_30d(asset, run.trend, t, seed=seed),
+        "forecast": forecast.forecast_24h(run.trend, asset, t),
+    }
+
+
+# ---------------------------------------------------------------- reporting layer
+def report(dataset_id: str, fmt: str = "html") -> tuple[bytes, str, str]:
+    """(content, media type, file name) for the run: self-contained HTML, full CSV, or JSON (reports/report.py)."""
+    from reports import report as rep
+    if fmt not in ("html", "csv", "json"):
+        raise ValueError("fmt must be html, csv or json")
+    run = get_run(dataset_id)
+    name = f"{dataset_id}-report"
+    if fmt == "csv":
+        return rep.build_csv(run).encode("utf-8"), "text/csv; charset=utf-8", f"{name}.csv"
+    series_ok = run.mode not in ("snapshot", "data_only") and "timestamp" in run.trend and len(run.trend)
+    end = run.trend["timestamp"].max() if series_ok else None
+    b = brief(dataset_id, end) if series_ok else {"level": "nodata", "sentence": "This dataset has no time axis.", "diagnosis": [], "advice": None, "kpis": {}}
+    o = None
+    if series_ok:
+        try:
+            o = outlook(dataset_id, end)
+        except ValueError:
+            o = None
+    if fmt == "json":
+        return rep.to_json_text(rep.build_json(run, _jsonable(b), _jsonable(o))).encode("utf-8"), "application/json", f"{name}.json"
+    return rep.build_html(run, b, o).encode("utf-8"), "text/html; charset=utf-8", f"{name}.html"
+
+
+# ---------------------------------------------------------------- live ingestion (the path to real sensors)
+_LIVE: dict[str, dict] = {}
+LIVE_MAX_ROWS = 20000
+LIVE_MAX_BATCH = 5000
+
+
+def _check_session(session: str) -> None:
+    import re
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", session or ""):
+        raise ValueError("session must be 1 to 40 letters, digits, '-' or '_'")
+
+
+def ingest(session: str, rows: list[dict], asset: dict | None = None) -> dict:
+    """Append readings from a device or gateway to a live session and recompute its run.
+
+    rows are dicts with any column names the adapter can map (timestamp, currents, voltages, oil and ambient temperature...).
+    The session shows up as the dataset `u-live-<session>`, so every dashboard page works on it. The whole buffer is
+    re-read through the same adapter as a file upload, so cleaning, units, flags and capabilities behave identically.
+    """
+    import tempfile
+    _check_session(session)
+    if not rows:
+        raise ValueError("send at least one reading")
+    if len(rows) > LIVE_MAX_BATCH:
+        raise ValueError(f"send at most {LIVE_MAX_BATCH} readings per call")
+    if not all(isinstance(r, dict) and r for r in rows):
+        raise ValueError("each reading must be an object of column: value pairs")
+    s = _LIVE.setdefault(session, {"rows": [], "asset": None})
+    if asset is not None:
+        s["asset"] = profile.resolve({**asset, "tags": {}})
+    s["rows"] = (s["rows"] + [dict(r) for r in rows])[-LIVE_MAX_ROWS:]
+    did = f"u-live-{session}"
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "live.csv"
+            pd.DataFrame(s["rows"]).to_csv(path, index=False)
+            ds = load_file([path], asset=s["asset"] or "config/asset.yaml", name=f"Live feed: {session}", dataset_id=did)
+    except Exception as e:
+        if len(_LIVE[session]["rows"]) == len(rows):          # the first batch was unusable: forget the session
+            _LIVE.pop(session, None)
+        else:
+            _LIVE[session]["rows"] = _LIVE[session]["rows"][:-len(rows)]   # drop the bad batch, keep the session
+        raise ValueError(f"These readings could not be read ({e}). Send a timestamp and at least one load column, for example "
+                         "I_mean or IR, IY, IB, plus ambient or oil temperature if you have them.") from None
+    last = ds.trend["timestamp"].max() if "timestamp" in ds.trend and len(ds.trend) else None
+    return {"dataset_id": did, "session": session, "rows_total": int(len(ds.trend)), "mode": ds.mode,
+            "capabilities": ds.capabilities, "last_timestamp": None if last is None else last.isoformat()}
+
+
+def end_live(session: str) -> bool:
+    """Forget a live session and its cached run. The name is validated before anything touches the file system."""
+    _check_session(session)
+    did = f"u-live-{session}"
+    target = (RUNS / did).resolve()
+    if target.parent != RUNS.resolve():
+        raise ValueError("bad session")
+    gone = _LIVE.pop(session, None) is not None
+    _MEM.pop(did, None)
+    shutil.rmtree(target, ignore_errors=True)
+    return gone

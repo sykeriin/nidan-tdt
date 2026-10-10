@@ -117,3 +117,38 @@ same curves/weights, each record scored alone), ranked worst first. Time-based d
 
 **A11. Site point for Transformer-1 weather: Bengaluru city (12.97 N, 77.59 E)**, Open-Meteo archive, cached
 offline. The campus coordinates were not used. [Assumed]
+
+## Generic profile, physics and outlook (added with the generic-transformer work)
+
+**A24. Unknown-unit defaults.** [Assumed] Rating and voltage are enough to run. Missing losses use 10 W/kVA (load) and
+1.1 W/kVA (no-load); missing thermal parameters use the IEC 60076-7 distribution-transformer defaults. Every value is tagged
+and a nameplate value always wins. The profile page shows which values are defaults.
+
+**A25. Loss split from two totals.** [Derived] Where a nameplate gives total losses at 100 % and 50 % load, load loss is
+`(T100 - T50) / 0.75` and no-load loss is `T100 - load loss`, assuming load loss scales with load squared and both totals
+are at the same temperature. To be verified against the datasheet.
+
+**A26. Winding rise on a nameplate is recorded but not used** by the thermal model: mapping an average winding rise to the
+winding-to-oil gradient needs an assumption the standard does not fix.
+
+**A27. Detailed heat-balance model constants.** [Assumed, To verify] Loss split 88 % I2R / 8 % eddy / 4 % stray of load
+loss; copper temperature constant 234.5 K; oil viscosity law `exp(2797.3 / (theta + 273))`; the winding-to-oil gradient scales
+with viscosity^(1/4); the cooling law uses the profile's exponent x. The thermal capacity is set so the small-signal oil time
+constant equals the profile's. Masses from a nameplate give an optional, upper-bound time constant (assumed specific heats and
+a 30 % tank / 70 % core-and-coil split of the dry mass).
+
+**A28. Residual baseline per transformer.** [Assumed] For any rated profile the residual detector's healthy baseline is the
+generator's Normal month for that asset, run through the twin (seed 0). When only an estimated rating is known the detector
+self-calibrates on the first week instead. A real unit whose model error is larger than the generator's +-4 % parameter
+perturbation could trigger false residual alerts.
+
+**A29. Outlook limits and draws.** [Assumed] Headroom and time-to-limit use top oil 95 C and hot spot 120 C (the critical
+thresholds). The Monte Carlo remaining life draws load level (log-normal sigma 0.08), ambient shift (sigma 2 K), load growth
+(N(2 %, 1.5 %) a year), cooling factor from the recent residual (1.0 to 1.6), ageing-model uncertainty (log-normal sigma 0.25),
+and initial-life uncertainty (sigma 5 % of the reference life), over a 60-year horizon. The reference life is 180,000 h
+[To verify].
+
+**A30. Diagnosis ramps and advice schedule.** [Assumed] Evidence ramps are in `analytics/brief.py` and `docs/METHODOLOGY.md`;
+a sustained condition with evidence of 0.4 or more raises the status to "watch" even when the alert that first flagged it is
+older than 24 h. Advice priority follows the most urgent recommendation linked to active alerts, with 7 days as the default
+when only a diagnosis (no alert) is active.

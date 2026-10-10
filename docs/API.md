@@ -267,3 +267,43 @@ crash on a missing channel.
 
 Use `alert.origin == "sensor"` for "check the device, not the transformer" styling. Use `simulated` for the
 SIMULATED badge.
+
+---
+
+## Generic transformer profile and physics
+
+A profile is any subset of nameplate numbers (`rating_kVA` or `i_rated_A` is required). `twin/profile.py` completes it
+and tags every value: `User input` / `Confirmed`, `Calculated` (rated current), `Derived` (load/no-load loss split from
+the total losses at 50 % and 100 % load), `IEC 60076-7 default`, `Assumed`. A nameplate value always beats a default.
+
+| Endpoint | Body | Returns |
+|---|---|---|
+| `GET /api/presets` | none | Example profiles (Transformer-1, a nameplate-derived 1250 kVA, generic 250/630/1600 kVA) with `values`, `tags`, `notes` |
+| `POST /api/profile` | `{values, tags?}` | The complete tagged profile and notes explaining each derivation |
+| `POST /api/simulate` | `{scenario, values, tags?, seed?, name?}` | Generates a SIMULATED scenario for that rating and runs the full pipeline. 201 with the new `dataset_id` (read it with `/run`) |
+| `POST /api/physics/chain` | `{values, tags?, load_pu, ambient_C}` | Six calculation steps (formula, this asset's numbers, result), hot spot, ageing rate, and a check against the thermal library's own steady state |
+| `POST /api/physics/step` | `{values, tags?, from_pu, to_pu, ambient_C, minutes}` | Top-oil and hot-spot curves after a load step, plus the time constants |
+| `POST /api/datasets/{id}/whatif` | `{load_mult, ambient_offset_C, rise_mult}` | The dataset's own load and weather history replayed under changed conditions: series (`base_*`, `whatif_*`) and a summary (peak temperatures, hours above 98 °C, ageing, life used) |
+
+The residual baseline is generated per transformer: for any rated profile the generator's healthy Normal month on that
+asset (its own rating, losses and thermal parameters) is run through the twin. When only an estimated rating is known,
+the detector self-calibrates on the first week instead.
+
+
+---
+
+## Moment, outlook, reports, live feed and the detailed physics
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/datasets/{id}/brief?t=` | `level` (good / watch / critical), the plain-language `sentence`, ranked `diagnosis` (evidence and share per fault class, with unobservable classes marked), the `advice` work order (priority, schedule, actions with tests) and `kpis` (headroom, time to a limit, ageing, residual %, unbalance) at time `t` |
+| `GET /api/datasets/{id}/outlook?t=` | Monte Carlo remaining insulation life (`years_p10/p50/p90`, risk class, fan chart), 30-day limit probability, and the 24 h forecast with its band. Seeded per dataset, so repeatable |
+| `GET /api/datasets/{id}/report?fmt=html\|csv\|json[&download=true]` | The self-contained HTML report (inline SVG, no external files), the full CSV (every sample with Health Index, residual and alert flags), or JSON. `report.pdf` still returns 501: print the HTML to PDF |
+| `POST /api/ingest` | `{session, rows[], asset?}`: append device readings; creates or updates the dataset `u-live-<session>`. Rows may use any column names the adapter can map. 400 with a readable reason if the readings cannot be read |
+| `DELETE /api/ingest/{session}` | Forget a live session |
+| `POST /api/physics/detailed` | The IEC model and the detailed heat-balance model on one load step, with the loss breakdown, viscosity and time constants |
+| `GET /api/physics/ageing-models` | The 6 K rule and Arrhenius ageing curves |
+| `POST /api/simulate` | Now also takes `plant`: `iec` (default) or `detailed` |
+| `POST /api/datasets/{id}/whatif` | Now also takes `model` (`iec` / `detailed`) and `k_factor` (harmonics, detailed model only) |
+
+Query times without an offset are Asia/Kolkata; times with an offset (the browser sends UTC) are converted to the data's own zone before any hour-of-day logic.

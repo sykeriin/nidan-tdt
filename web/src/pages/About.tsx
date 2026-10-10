@@ -3,7 +3,7 @@ import { Card, PageTitle } from '../components/ui'
 export default function About() {
   return (
     <>
-      <PageTitle title="About" sub="PowerNext-AI 2026 · Track 02 · digital twin of a distribution transformer" />
+      <PageTitle title="About" sub="PowerNext-AI 2026 · Track 02 · a digital twin for any distribution transformer" />
       <div className="grid grid--2">
         <Card title="What is the twin?">
           <p>
@@ -20,6 +20,13 @@ export default function About() {
             <li><strong>Analytics:</strong> rules with hysteresis, residual drift, sensor-vs-asset, oil, electrical, through-fault, Health Index.</li>
             <li><strong>Dashboard and reports:</strong> this app, talking to a FastAPI server.</li>
           </ol>
+        </Card>
+        <Card title="Generic by design">
+          <p>
+            The twin is a physics model driven by nameplate numbers, not fitted to one unit. Enter any rating on the Transformer profile page; whatever the
+            nameplate does not say falls back to a standard IEC 60076-7 default and is tagged as an assumption. The demo scenarios can be generated for any
+            rating, and the residual baseline is generated per transformer too.
+          </p>
         </Card>
         <Card title="Fidelity">
           <p>
@@ -45,7 +52,7 @@ export default function About() {
           </ul>
         </Card>
         <Card title="Credits">
-          <p>3D model: &quot;High voltage power transformer&quot; by Showdoze (Sketchfab), CC-BY-NC 4.0. Icons: Phosphor. Fonts: Inter and JetBrains Mono.</p>
+          <p>The 3D transformer is a generic cutaway built in code for this project, not a model of a specific unit. Icons: Phosphor. Fonts: Barlow and JetBrains Mono.</p>
         </Card>
       </div>
     </>

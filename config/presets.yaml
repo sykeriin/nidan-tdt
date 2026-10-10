@@ -1,0 +1,65 @@
+# Example transformer profiles for the rating panel. Same tagged format as asset.yaml; every value not marked
+# Confirmed is something the twin assumed or derived (twin/profile.py). A real nameplate always beats these.
+
+- id: transformer-1
+  label: Transformer-1 (MAHE campus, 1000 kVA)
+  description: The campus unit the demo scenarios were generated for. Losses are placeholders until its nameplate is read.
+  profile:
+    name: {value: Transformer-1, tag: Confirmed label}
+    rating_kVA: {value: 1000, tag: Confirmed label}
+    lv_voltage_V: {value: 415, tag: Confirmed}
+    i_rated_A: {value: 1391, tag: Calculated}
+    hv_voltage_V: {value: 11000, tag: Assumed}
+    vector_group: {value: Dyn11, tag: Assumed}
+    cooling: {value: ONAN, tag: Assumed}
+    load_loss_W: {value: 10000, tag: Assumed placeholder}
+    no_load_loss_W: {value: 1100, tag: Assumed placeholder}
+    years_in_service: {value: 3, tag: Assumed}
+
+- id: schneider-1250
+  label: Schneider 1250 kVA (from a nameplate photo)
+  description: >
+    IS 1180 (Part 1):2021, energy-efficiency level 2, Dyn11, ONAN, made 07/2025 for MAHE off-campus. The plate gives
+    total losses at two loads, so the load/no-load split is derived. Oil rise 40 K from the plate; winding rise 45 K
+    is recorded but not yet used by the model.
+  profile:
+    name: {value: Schneider 1250 kVA, tag: Confirmed}
+    rating_kVA: {value: 1250, tag: Confirmed}
+    lv_voltage_V: {value: 433, tag: Confirmed}
+    hv_voltage_V: {value: 11000, tag: Confirmed}
+    vector_group: {value: Dyn11, tag: Confirmed}
+    cooling: {value: ONAN, tag: Confirmed}
+    total_loss_100_W: {value: 8400, tag: Confirmed}
+    total_loss_50_W: {value: 3220, tag: Confirmed}
+    top_oil_rise_K: {value: 40, tag: Confirmed}
+    winding_rise_K: {value: 45, tag: Confirmed}
+    impedance_pct: {value: 4.83, tag: Confirmed}
+    oil_mass_kg: {value: 1500, tag: Confirmed}
+    total_mass_kg: {value: 6500, tag: Confirmed}
+    oil_volume_L: {value: 1725, tag: Confirmed}
+    manufacture_year: {value: 2025, tag: Confirmed}
+    manufacture_month: {value: 7, tag: Confirmed}
+
+- id: generic-250
+  label: Generic 250 kVA
+  description: Rating and voltage only. Everything else is a typical value, tagged as such.
+  profile:
+    name: {value: Generic 250 kVA, tag: Assumed}
+    rating_kVA: {value: 250, tag: Assumed}
+    lv_voltage_V: {value: 415, tag: Assumed}
+
+- id: generic-630
+  label: Generic 630 kVA
+  description: Rating and voltage only. Everything else is a typical value, tagged as such.
+  profile:
+    name: {value: Generic 630 kVA, tag: Assumed}
+    rating_kVA: {value: 630, tag: Assumed}
+    lv_voltage_V: {value: 415, tag: Assumed}
+
+- id: generic-1600
+  label: Generic 1600 kVA
+  description: Rating and voltage only. Everything else is a typical value, tagged as such.
+  profile:
+    name: {value: Generic 1600 kVA, tag: Assumed}
+    rating_kVA: {value: 1600, tag: Assumed}
+    lv_voltage_V: {value: 415, tag: Assumed}

@@ -4,14 +4,6 @@
 /* ---------- Fonts (vendored, no network) ---------- */
 
 @font-face {
-  font-family: "Inter";
-  src: url("/fonts/Inter-Variable.woff2") format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
   font-family: "JetBrains Mono";
   src: url("/fonts/JetBrainsMono-Variable.woff2") format("woff2");
   font-weight: 100 800;
@@ -48,7 +40,7 @@
   --shadow: 0 4px 16px rgba(15, 23, 42, .08);
 
   /* Type */
-  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-ui: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --fs-xs: 11px;
   --fs-sm: 12px;
@@ -154,9 +146,12 @@ button {
 
 .stage {
   position: relative;
-  height: 620px;            /* replaced by the height sent from Python */
-  background: var(--canvas);
-  border-radius: var(--r-md);
+  height: 620px;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 55%, rgba(255, 255, 255, 0.11), transparent 70%),
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.045) 1px, transparent 0) 0 0 / 26px 26px,
+    var(--canvas);
+  border-radius: var(--r-lg);
   overflow: hidden;
 }
 
@@ -202,9 +197,9 @@ button {
 .toggle:active { transform: translateY(1px); }
 
 .toggle[aria-pressed="true"] {
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--panel);
+  border-color: var(--twin);
+  background: rgba(62, 203, 255, 0.16);
+  color: var(--twin);
 }
 
 .tooltip {
@@ -258,22 +253,19 @@ button {
 /* ---------- Glass surfaces: detail boxes and the hover tooltip (UI_DESIGN §6.5) ---------- */
 
 .glass {
-  --glass-opacity: 0.75;
-  /* Faint status tint at the top, over frosted white. */
+  --glass-opacity: 0.8;
   background:
-    linear-gradient(to bottom, color-mix(in srgb, var(--status) 8%, transparent), transparent 40px),
-    rgba(255, 255, 255, var(--glass-opacity));
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-left: 4px solid var(--status);
+    linear-gradient(to bottom, color-mix(in srgb, var(--status) 14%, transparent), transparent 46px),
+    rgba(18, 19, 21, var(--glass-opacity));
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-left: 3px solid var(--status);
   border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   color: var(--text);
-
-  /* Secondary text is darker here than on solid panels, so it holds 4.5:1 over the model. */
-  --muted: #475569;
-  --accent-text: #075985;
+  --muted: #9fb1c6;
+  --accent-text: #7fdcff;
 }
 
 /* No blur available, or the viewer asked for less transparency: a solid surface. */
@@ -477,3 +469,30 @@ button {
     transition: none !important;
   }
 }
+
+/* ---------- Heat-map legend ---------- */
+.heat-legend {
+  position: absolute;
+  left: var(--s-3);
+  bottom: var(--s-3);
+  z-index: var(--z-chrome);
+  width: min(300px, 60%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--r-md);
+  background: rgba(13, 14, 16, 0.86);
+  backdrop-filter: blur(10px);
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  pointer-events: none;
+}
+.heat-legend__bar {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #0b0b2a, #4b1f8f 28%, #c1317d 50%, #ff7a3d 72%, #ffd23f 90%, #fff6d6);
+}
+.heat-legend__ticks { display: flex; justify-content: space-between; }
+.heat-legend__note { color: var(--muted); }

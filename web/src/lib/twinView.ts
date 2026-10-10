@@ -48,6 +48,8 @@ export interface TwinView {
   parts: Record<PartId, PartView>
   alerts: ViewAlert[]
   history: Partial<Record<PartId, { t: string[]; measured: (number | null)[]; twin: (number | null)[] }>>
+  /** Temperature per part for the heat-map view: measured where there is a sensor, otherwise the twin's estimate. */
+  heat: Partial<Record<PartId, number>>
 }
 
 const ALERT_TO_PART: Record<string, PartId> = {
@@ -210,6 +212,16 @@ export function buildTwinView(run: Run, now: Now, label: string, simulated: bool
     if (hs) history.windings = hs
   }
 
+  const oilNow = measured && r('OTI_C') != null ? r('OTI_C') : r('twin_oil_C')
+  const hsNow = measured && r('WTI_C') != null ? r('WTI_C') : r('twin_hs_C')
+  const heat: TwinView['heat'] = {}
+  if (hsNow != null) heat.windings = hsNow
+  if (oilNow != null) {
+    heat.tank = oilNow
+    heat.radiators = oilNow
+  }
+  // The conservator and bushings have no temperature estimate, so they stay grey rather than being coloured by guesswork.
+
   return {
     timestamp: new Date(now.ms).toISOString(),
     simulated,
@@ -219,5 +231,6 @@ export function buildTwinView(run: Run, now: Now, label: string, simulated: bool
     parts,
     alerts: alerts.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp)).slice(0, 60),
     history,
+    heat,
   }
 }

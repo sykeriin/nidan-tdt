@@ -1,0 +1,448 @@
+{
+ "generated": "2026-10-10T21:26:02+05:30",
+ "quick": false,
+ "synthetic": true,
+ "T1_false_alarms": {
+  "iec": {
+   "seeds": 10,
+   "asset_alerts_per_month": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "total_false_alarms": 0,
+   "twin_rmse_K_mean": 0.69,
+   "twin_rmse_K_max": 0.94,
+   "brief_not_good_fraction": 0.017
+  },
+  "detailed": {
+   "seeds": 10,
+   "asset_alerts_per_month": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "total_false_alarms": 0,
+   "twin_rmse_K_mean": 1.6,
+   "twin_rmse_K_max": 2.38,
+   "brief_not_good_fraction": 0.0
+  }
+ },
+ "T2_detection": {
+  "iec/S1": {
+   "plant": "iec",
+   "scenario": "S1",
+   "fault": "overload",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 0.5,
+   "delay_h_max": 0.5,
+   "lead_vs_plain_threshold_h_median": 0.0,
+   "plain_threshold_never_fires_in": 0
+  },
+  "iec/S2": {
+   "plant": "iec",
+   "scenario": "S2",
+   "fault": "cooling_degradation",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 56.5,
+   "delay_h_max": 61.5,
+   "lead_vs_plain_threshold_h_median": 126.5,
+   "plain_threshold_never_fires_in": 4
+  },
+  "iec/S3": {
+   "plant": "iec",
+   "scenario": "S3",
+   "fault": "unbalance",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 0.0,
+   "delay_h_max": 0.0,
+   "lead_vs_plain_threshold_h_median": 0.0,
+   "plain_threshold_never_fires_in": 0
+  },
+  "iec/S4a": {
+   "plant": "iec",
+   "scenario": "S4a",
+   "fault": "oil_leak",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 16.8,
+   "delay_h_max": 16.8,
+   "lead_vs_plain_threshold_h_median": 48.2,
+   "plain_threshold_never_fires_in": 0
+  },
+  "iec/S4b": {
+   "plant": "iec",
+   "scenario": "S4b",
+   "fault": "oil_theft",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 0.2,
+   "delay_h_max": 0.2,
+   "lead_vs_plain_threshold_h_median": 0.0,
+   "plain_threshold_never_fires_in": 0
+  },
+  "iec/S5": {
+   "plant": "iec",
+   "scenario": "S5",
+   "fault": "through_fault",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 0.0,
+   "delay_h_max": 0.0,
+   "lead_vs_plain_threshold_h_median": null,
+   "plain_threshold_never_fires_in": 5
+  },
+  "detailed/S1": {
+   "plant": "detailed",
+   "scenario": "S1",
+   "fault": "overload",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 0.5,
+   "delay_h_max": 0.5,
+   "lead_vs_plain_threshold_h_median": 0.0,
+   "plain_threshold_never_fires_in": 0
+  },
+  "detailed/S2": {
+   "plant": "detailed",
+   "scenario": "S2",
+   "fault": "cooling_degradation",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 71.2,
+   "delay_h_max": 72.2,
+   "lead_vs_plain_threshold_h_median": null,
+   "plain_threshold_never_fires_in": 5
+  },
+  "detailed/S3": {
+   "plant": "detailed",
+   "scenario": "S3",
+   "fault": "unbalance",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 0.0,
+   "delay_h_max": 0.0,
+   "lead_vs_plain_threshold_h_median": 0.0,
+   "plain_threshold_never_fires_in": 0
+  },
+  "detailed/S4a": {
+   "plant": "detailed",
+   "scenario": "S4a",
+   "fault": "oil_leak",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 16.8,
+   "delay_h_max": 16.8,
+   "lead_vs_plain_threshold_h_median": 48.2,
+   "plain_threshold_never_fires_in": 0
+  },
+  "detailed/S4b": {
+   "plant": "detailed",
+   "scenario": "S4b",
+   "fault": "oil_theft",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 0.2,
+   "delay_h_max": 0.2,
+   "lead_vs_plain_threshold_h_median": 0.0,
+   "plain_threshold_never_fires_in": 0
+  },
+  "detailed/S5": {
+   "plant": "detailed",
+   "scenario": "S5",
+   "fault": "through_fault",
+   "runs": 5,
+   "missed": 0,
+   "delay_h_median": 0.0,
+   "delay_h_max": 0.0,
+   "lead_vs_plain_threshold_h_median": null,
+   "plain_threshold_never_fires_in": 5
+  }
+ },
+ "T3_diagnosis": {
+  "per_scenario": {
+   "iec/S1": {
+    "plant": "iec",
+    "scenario": "S1",
+    "expected": "overload",
+    "correct": 15,
+    "of": 15,
+    "top1_accuracy": 1.0
+   },
+   "iec/S2": {
+    "plant": "iec",
+    "scenario": "S2",
+    "expected": "cooling",
+    "correct": 15,
+    "of": 15,
+    "top1_accuracy": 1.0
+   },
+   "iec/S3": {
+    "plant": "iec",
+    "scenario": "S3",
+    "expected": "unbalance",
+    "correct": 12,
+    "of": 15,
+    "top1_accuracy": 0.8
+   },
+   "iec/S4a": {
+    "plant": "iec",
+    "scenario": "S4a",
+    "expected": "oil",
+    "correct": 15,
+    "of": 15,
+    "top1_accuracy": 1.0
+   },
+   "iec/S4b": {
+    "plant": "iec",
+    "scenario": "S4b",
+    "expected": "oil",
+    "correct": 15,
+    "of": 15,
+    "top1_accuracy": 1.0
+   },
+   "iec/S5": {
+    "plant": "iec",
+    "scenario": "S5",
+    "expected": "short_circuit",
+    "correct": 15,
+    "of": 15,
+    "top1_accuracy": 1.0
+   },
+   "detailed/S1": {
+    "plant": "detailed",
+    "scenario": "S1",
+    "expected": "overload",
+    "correct": 15,
+    "of": 15,
+    "top1_accuracy": 1.0
+   },
+   "detailed/S2": {
+    "plant": "detailed",
+    "scenario": "S2",
+    "expected": "cooling",
+    "correct": 14,
+    "of": 15,
+    "top1_accuracy": 0.933
+   },
+   "detailed/S3": {
+    "plant": "detailed",
+    "scenario": "S3",
+    "expected": "unbalance",
+    "correct": 12,
+    "of": 15,
+    "top1_accuracy": 0.8
+   },
+   "detailed/S4a": {
+    "plant": "detailed",
+    "scenario": "S4a",
+    "expected": "oil",
+    "correct": 15,
+    "of": 15,
+    "top1_accuracy": 1.0
+   },
+   "detailed/S4b": {
+    "plant": "detailed",
+    "scenario": "S4b",
+    "expected": "oil",
+    "correct": 15,
+    "of": 15,
+    "top1_accuracy": 1.0
+   },
+   "detailed/S5": {
+    "plant": "detailed",
+    "scenario": "S5",
+    "expected": "short_circuit",
+    "correct": 15,
+    "of": 15,
+    "top1_accuracy": 1.0
+   }
+  },
+  "confusion": {
+   "iec/overload": {
+    "overload": 15
+   },
+   "iec/cooling": {
+    "cooling": 15
+   },
+   "iec/unbalance": {
+    "unbalance": 12,
+    "none": 3
+   },
+   "iec/oil": {
+    "oil": 30
+   },
+   "iec/short_circuit": {
+    "short_circuit": 15
+   },
+   "detailed/overload": {
+    "overload": 15
+   },
+   "detailed/cooling": {
+    "cooling": 14,
+    "none": 1
+   },
+   "detailed/unbalance": {
+    "unbalance": 12,
+    "none": 3
+   },
+   "detailed/oil": {
+    "oil": 30
+   },
+   "detailed/short_circuit": {
+    "short_circuit": 15
+   }
+  }
+ },
+ "T5_adapter": {
+  "files": {
+   "F15_organizer_style.xlsx": {
+    "ok": true,
+    "mode": "full",
+    "rows": 672,
+    "capabilities_on": 5,
+    "seconds": 0.48
+   },
+   "F15r_organizer_records_no_time.xlsx": {
+    "ok": true,
+    "mode": "snapshot",
+    "rows": 675,
+    "capabilities_on": 2,
+    "seconds": 0.16
+   },
+   "F1_canonical.csv": {
+    "ok": true,
+    "mode": "full",
+    "rows": 672,
+    "capabilities_on": 10,
+    "seconds": 0.14
+   },
+   "F3_l1l2l3_fahrenheit_ddmm.csv": {
+    "ok": true,
+    "mode": "full",
+    "rows": 672,
+    "capabilities_on": 6,
+    "seconds": 0.15
+   },
+   "F4_excel_trend_events.xlsx": {
+    "ok": true,
+    "mode": "full",
+    "rows": 672,
+    "capabilities_on": 7,
+    "seconds": 0.27
+   },
+   "F6_line_line_kA.csv": {
+    "ok": true,
+    "mode": "full",
+    "rows": 672,
+    "capabilities_on": 6,
+    "seconds": 0.11
+   },
+   "F8_kva_only.csv": {
+    "ok": true,
+    "mode": "meter_only",
+    "rows": 672,
+    "capabilities_on": 3,
+    "seconds": 0.07
+   }
+  },
+  "all_ok": true,
+  "count": 7
+ },
+ "T6_api": {
+  "endpoints": {
+   "GET /api/datasets": 200,
+   "GET /api/datasets/N/run": 200,
+   "GET /api/datasets/N/state": 200,
+   "GET /api/datasets/N/brief": 200,
+   "GET /api/datasets/N/outlook": 200,
+   "GET /api/datasets/N/report?fmt=html": 200,
+   "GET /api/datasets/N/report?fmt=csv": 200,
+   "GET /api/datasets/N/report?fmt=json": 200,
+   "GET /api/datasets/S2/run": 200,
+   "GET /api/datasets/S2/state": 200,
+   "GET /api/datasets/S2/brief": 200,
+   "GET /api/datasets/S2/outlook": 200,
+   "GET /api/datasets/S2/report?fmt=html": 200,
+   "GET /api/datasets/S2/report?fmt=csv": 200,
+   "GET /api/datasets/S2/report?fmt=json": 200,
+   "GET /api/datasets/kaggle/run": 200,
+   "GET /api/datasets/kaggle/state": 200,
+   "GET /api/datasets/kaggle/brief": 200,
+   "GET /api/datasets/kaggle/outlook": 200,
+   "GET /api/datasets/kaggle/report?fmt=html": 200,
+   "GET /api/datasets/kaggle/report?fmt=csv": 200,
+   "GET /api/datasets/kaggle/report?fmt=json": 200,
+   "GET /api/self-test": 200,
+   "GET /api/presets": 200,
+   "POST /api/profile": 200,
+   "POST /api/physics/chain": 200,
+   "POST /api/physics/step": 200,
+   "POST /api/physics/detailed": 200,
+   "GET /api/physics/ageing-models": 200,
+   "POST /api/datasets/S2/whatif": 200
+  },
+  "all_ok": true,
+  "error_cases": {
+   "unknown dataset -> 404": true,
+   "bad time -> 422": true,
+   "bad report format -> 400": true,
+   "negative rating -> 400": true,
+   "errors carry a readable detail": true
+  },
+  "errors_ok": true
+ },
+ "T7_performance": {
+  "kaggle_rows": 17104,
+  "kaggle_seconds": 2.7,
+  "scenario_rows": 2880,
+  "scenario_seconds": 1.0,
+  "note": "adapter output through twin, analytics and Health Index; excludes the Monte Carlo outlook"
+ },
+ "T_physics": {
+  "max_abs_difference_K": 0.0,
+  "ratings": [
+   250,
+   1000,
+   1250,
+   1600
+  ],
+  "loads_pu": [
+   0.0,
+   0.3,
+   0.7,
+   1.0,
+   1.25
+  ],
+  "meaning": "closed-form IEC 60076-7 equations shown on the Physics page against the thermal library's steady state"
+ },
+ "T10_frontend": {
+  "ran": true,
+  "typecheck_passed": true,
+  "output": "",
+  "build_present": true
+ },
+ "not_measured": [
+  "Field accuracy: there is no field data with known faults.",
+  "Long-run (soak) stability.",
+  "Calibration recovery and hold-out error: the twin is not fitted to data, so there is nothing to recover or hold out."
+ ],
+ "seconds": 113.0
+}

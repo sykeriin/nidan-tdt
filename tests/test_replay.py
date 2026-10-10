@@ -59,3 +59,13 @@ def test_replay_from_adapter_dataset():
     ds = load([ROOT / "data" / "fixtures" / "F3_l1l2l3_fahrenheit_ddmm.csv"], simulated=True)
     rows = list(Replay(ds, speed=None, start="2026-04-02", end="2026-04-02 23:59"))
     assert len(rows) == 96 and all(r["source"] == "replay" for r in rows)
+
+
+def test_start_and_end_accept_tz_aware_and_naive_times():
+    """The HTTP replay endpoint passes tz-aware times; plain naive times mean the data's own zone."""
+    import pandas as pd
+    from dt import api
+    naive = [r.timestamp for r in api.replay("S2", speed=None, start="2026-04-19T00:00:00", end="2026-04-19T06:00:00")]
+    aware = [r.timestamp for r in api.replay("S2", speed=None, start=pd.Timestamp("2026-04-19 00:00", tz="Asia/Kolkata"), end=pd.Timestamp("2026-04-19 00:30", tz="UTC"))]
+    assert len(aware) == 25 and aware[0] == pd.Timestamp("2026-04-19 00:00", tz="Asia/Kolkata")
+    assert len(naive) == 25

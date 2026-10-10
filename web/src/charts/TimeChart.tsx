@@ -85,7 +85,7 @@ export function TimeChart({ traces, range, cursor, height = 260, yTitle, hlines 
             x: s.t.slice(0, end), y: s.v.slice(0, end), name: t.name, type: 'scatter' as const, mode: 'lines' as const,
             line: { color: t.color, width: t.width ?? 1.6, dash: t.dash ?? 'solid' },
             connectgaps: false, fill: t.fillPrev ? ('tonexty' as const) : ('none' as const),
-            fillcolor: 'rgba(100,116,139,0.14)',
+            fillcolor: 'rgba(11,11,12,0.10)',
             hovertemplate: `${t.name}: %{y:.1f}<extra></extra>`,
           }
         }),
@@ -93,28 +93,29 @@ export function TimeChart({ traces, range, cursor, height = 260, yTitle, hlines 
   )
 
   const layout = useMemo(() => {
-    const border = css('--border', '#E2E8F0')
-    const muted = css('--muted', '#64748B')
+    const border = 'rgba(11,11,12,0.07)'
+    const muted = css('--muted', '#8a8d93')
     const shapes: object[] = []
     if (c != null && range && c >= range[0] && c <= range[1]) {
-      shapes.push({ type: 'line', xref: 'x', yref: 'paper', x0: ist(c), x1: ist(c), y0: 0, y1: 1, line: { color: css('--accent', '#0284C7'), width: 1.5 } })
+      shapes.push({ type: 'line', xref: 'x', yref: 'paper', x0: ist(c), x1: ist(c), y0: 0, y1: 1, line: { color: 'rgba(11,11,12,0.55)', width: 1.5 } })
     }
     for (const a of alerts.slice(0, 60)) {
       const t = alertMs(a)
       if (clip && c != null && t > c) continue
-      shapes.push({ type: 'line', xref: 'x', yref: 'paper', x0: ist(t), x1: ist(t), y0: 0, y1: 1, line: { color: '#94A3B8', width: 1, dash: 'dot' } })
+      shapes.push({ type: 'line', xref: 'x', yref: 'paper', x0: ist(t), x1: ist(t), y0: 0, y1: 1, line: { color: 'rgba(11,11,12,0.28)', width: 1, dash: 'dot' } })
     }
     for (const h of hlines) {
-      shapes.push({ type: 'line', xref: 'paper', yref: 'y', x0: 0, x1: 1, y0: h.y, y1: h.y, line: { color: '#B45309', width: 1, dash: 'dash' } })
+      shapes.push({ type: 'line', xref: 'paper', yref: 'y', x0: 0, x1: 1, y0: h.y, y1: h.y, line: { color: '#8a8d93', width: 1, dash: 'dash' } })
     }
     return {
       height, margin: { l: 48, r: 12, t: 8, b: 30 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { family: 'Inter, system-ui, sans-serif', size: 11, color: muted },
+      font: { family: 'Barlow, system-ui, sans-serif', size: 12, color: muted },
       xaxis: { type: 'date' as const, range: range ? [ist(range[0]), ist(range[1])] : undefined, gridcolor: border, linecolor: border },
       yaxis: { title: { text: yTitle }, gridcolor: border, zerolinecolor: border },
       legend: { orientation: 'h' as const, y: 1.14, x: 0 },
+      hoverlabel: { bgcolor: '#ffffff', bordercolor: '#d9dadd', font: { color: '#0b0b0c' } },
       shapes, hovermode: 'x unified' as const,
-      annotations: hlines.map((h) => ({ xref: 'paper' as const, x: 1, xanchor: 'right' as const, yref: 'y' as const, y: h.y, text: h.label, showarrow: false, font: { color: '#B45309', size: 10 }, yshift: 8 })),
+      annotations: hlines.map((h) => ({ xref: 'paper' as const, x: 1, xanchor: 'right' as const, yref: 'y' as const, y: h.y, text: h.label, showarrow: false, font: { color: '#8a8d93', size: 10 }, yshift: 8 })),
     }
   }, [c, range, height, yTitle, hlines, alerts, clip])
 

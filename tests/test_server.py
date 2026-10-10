@@ -166,3 +166,17 @@ def test_openapi_lists_every_facade_endpoint(client):
               "/api/datasets/{dataset_id}/replay", "/api/self-test", "/api/datasets/{dataset_id}/snapshot",
               "/api/datasets/{dataset_id}/report.pdf"):
         assert p in paths
+
+
+def test_asset_form_field_never_opens_a_server_file(client, tmp_path):
+    """A JSON string in `asset` used to be treated as a YAML path on the server."""
+    f = ("data.csv", (ROOT / "data" / "fixtures" / "F1_canonical.csv").read_bytes(), "text/csv")
+    for bad in ('"config/thresholds.yaml"', '"C:/Windows/win.ini"', "123", '{"rating_kVA": 500, "evil": 1}', '{"name": ["x"]}'):
+        r = client.post("/api/datasets", files={"files": f}, data={"asset": bad})
+        assert r.status_code == 400, (bad, r.text)
+        assert "asset" in r.json()["detail"]
+    ok = client.post("/api/datasets", files={"files": f}, data={"asset": '{"rating_kVA": 500, "lv_voltage_V": 415}'})
+    assert ok.status_code == 201
+    import shutil
+    shutil.rmtree(appmod.ROOT / "data" / "cache" / "runs" / ok.json()["dataset_id"], ignore_errors=True)
+    shutil.rmtree(appmod.UPLOADS / ok.json()["dataset_id"], ignore_errors=True)

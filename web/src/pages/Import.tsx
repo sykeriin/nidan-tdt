@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { inspectFiles, useLoadDataset, type InspectResult, type LoadArgs } from '../api/client'
+import { fetchReplayRows, ingestReadings, inspectFiles, useLoadDataset, type InspectResult, type LoadArgs } from '../api/client'
+import { useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { Card, DataTable, Note, PageTitle } from '../components/ui'
+import { useProfile } from '../context/Profile'
 import { useSession } from '../context/Session'
 
 // Canonical channels a column can be mapped to (contracts/canonical.py).
@@ -24,9 +27,68 @@ interface Proposal {
   unit_options: string[]
 }
 interface Row { to: string; unit: string }
-type Assetmode = 'default' | 'custom' | 'estimate'
+type Assetmode = 'profile' | 'estimate'
 
 const LOW = 0.6
+
+const DEVICE_COLUMNS = ['IR', 'IY', 'IB', 'VR', 'VY', 'VB', 'OTI_C', 'amb_C', 'OLI_pct', 'PF', 'freq_Hz']
+
+function DeviceCard() {
+  const s = useSession()
+  const nav = useNavigate()
+  const qc = useQueryClient()
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function stream() {
+    setBusy(true)
+    setErr(null)
+    setMsg(null)
+    try {
+      const rows = (await fetchReplayRows('S2', '2026-04-19T00:00:00', 384)).map((r) => {
+        const out: Record<string, unknown> = { timestamp: r.timestamp, simulated: true }
+        for (const c of DEVICE_COLUMNS) if (r[c] != null) out[c] = r[c]
+        return out
+      })
+      let last = null
+      for (let i = 0; i < rows.length; i += 96) {
+        last = await ingestReadings('demo-gateway', rows.slice(i, i + 96))
+        setMsg(`Received ${last.rows_total} readings…`)
+      }
+      await qc.invalidateQueries({ queryKey: ['datasets'] })
+      qc.removeQueries({ queryKey: ['run', 'u-live-demo-gateway'] })
+      s.setDatasetId('u-live-demo-gateway')
+      nav('/')
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card title="Connect a device">
+      <p className="muted">
+        Real sensors plug in the same way a file does. A gateway (an ESP32 or PLC over HTTP, a GPRS modem, a script reading Modbus) posts readings to
+        <code> POST /api/ingest</code>; they are cleaned, mapped and analysed exactly like an upload, and the feed appears in the dataset list as
+        <code> u-live-&lt;session&gt;</code>. Column names are mapped automatically.
+      </p>
+      <pre className="codeblock">{`curl -X POST http://localhost:8000/api/ingest -H "Content-Type: application/json" -d '{
+  "session": "my-transformer",
+  "asset": { "rating_kVA": 630, "lv_voltage_V": 415 },
+  "rows": [ { "timestamp": "2026-04-01T09:00:00+05:30", "IR": 412, "IY": 408, "IB": 415,
+              "VR": 238.9, "VY": 240.2, "VB": 239.5, "OTI_C": 61.4, "amb_C": 31.2 } ]
+}'`}</pre>
+      <div className="row" style={{ marginTop: 10 }}>
+        <button className="btn" type="button" onClick={stream} disabled={busy}>{busy ? 'Streaming…' : 'Stream a 4-day sample as a device would'}</button>
+        <span className="muted">Posts four days of the cooling-fault scenario in four batches (labelled SIMULATED), then opens the feed.</span>
+      </div>
+      {msg && <p className="muted" style={{ marginTop: 8 }}>{msg}</p>}
+      {err && <div style={{ marginTop: 8 }}><Note tone="error">{err}</Note></div>}
+    </Card>
+  )
+}
 
 export default function ImportPage() {
   const nav = useNavigate()
@@ -39,21 +101,17 @@ export default function ImportPage() {
   const [err, setErr] = useState<string | null>(null)
   const [over, setOver] = useState(false)
   const [name, setName] = useState('')
-  const [assetMode, setAssetMode] = useState<Assetmode>('default')
-  const [kvaText, setKvaText] = useState('1000')
-  const [voltsText, setVoltsText] = useState('415')
+  const profile = useProfile()
+  const [assetMode, setAssetMode] = useState<Assetmode>('profile')
   const latest = useRef(0)
   const [interval, setIntervalText] = useState('15min')
   const [assignTime, setAssignTime] = useState(false)
 
   const proposals = (info?.proposals ?? []) as unknown as Proposal[]
   const noTime = info ? (info.timestamp as { column?: string | null }).column == null : false
-  const kva = Number(kvaText)
-  const volts = Number(voltsText)
-  const ratingOk = Number.isFinite(kva) && kva > 0 && Number.isFinite(volts) && volts > 0
-  const iRated = ratingOk ? Math.round((kva * 1000) / (Math.sqrt(3) * volts)) : null
+  const ratingOk = profile.ready
   const assignOk = !(noTime && assignTime) || interval.trim() !== ''
-  const canSubmit = files.length > 0 && !load.isPending && !busy && assignOk && (assetMode !== 'custom' || ratingOk)
+  const canSubmit = files.length > 0 && !load.isPending && !busy && assignOk && (assetMode !== 'profile' || ratingOk)
 
   async function pick(list: FileList | File[]) {
     const f = Array.from(list)
@@ -86,7 +144,7 @@ export default function ImportPage() {
     for (const [src, r] of Object.entries(rows)) if (r.to !== 'ignore') mapping[src] = { to: r.to, ...(r.unit ? { unit: r.unit } : {}) }
     const args: LoadArgs = {
       files, name: name || undefined, mapping,
-      asset: assetMode === 'estimate' ? 'estimate' : assetMode === 'custom' ? { rating_kVA: kva, lv_voltage_V: volts } : undefined,
+      asset: assetMode === 'estimate' ? 'estimate' : (profile.body?.values as LoadArgs['asset']),
       interval: noTime && assignTime && interval ? interval : undefined,
     }
     try {
@@ -117,6 +175,8 @@ export default function ImportPage() {
         </label>
         {files.length > 0 && <p className="muted" style={{ marginTop: 8 }}>{files.map((f) => f.name).join(', ')}</p>}
       </div>
+
+      <DeviceCard />
 
       {busy && <Note tone="info">Reading and mapping the file…</Note>}
       {err && <Note tone="error">{err}</Note>}
@@ -182,20 +242,21 @@ export default function ImportPage() {
             </div>
           </Card>
 
-          <Card title="Transformer rating">
+          <Card title="Which transformer is this?">
             <div className="row">
-              {([['default', 'Transformer-1 (asset.yaml)'], ['custom', 'Enter rating'], ['estimate', 'Estimate from data']] as [Assetmode, string][]).map(([id, label]) => (
-                <label key={id} className="row" style={{ gap: 6 }}>
-                  <input type="radio" name="asset" checked={assetMode === id} onChange={() => setAssetMode(id)} /> {label}
-                </label>
-              ))}
+              <label className="row" style={{ gap: 6 }}>
+                <input type="radio" name="asset" checked={assetMode === 'profile'} onChange={() => setAssetMode('profile')} />
+                My transformer profile: <strong>{profile.typed.name || 'unnamed'}{profile.typed.rating_kVA ? `, ${profile.typed.rating_kVA} kVA` : ''}</strong>
+              </label>
+              <label className="row" style={{ gap: 6 }}>
+                <input type="radio" name="asset" checked={assetMode === 'estimate'} onChange={() => setAssetMode('estimate')} /> Estimate the rating from the data
+              </label>
             </div>
-            {assetMode === 'custom' && (
-              <div className="row" style={{ marginTop: 12 }}>
-                <label className="muted">Rated kVA <input type="number" value={kvaText} min={1} onChange={(e) => setKvaText(e.target.value)} aria-invalid={!ratingOk} /></label>
-                <label className="muted">LV voltage (V) <input type="number" value={voltsText} min={1} onChange={(e) => setVoltsText(e.target.value)} aria-invalid={!ratingOk} /></label>
-                <span className="muted">Rated current: <strong className="num">{iRated == null ? '— (enter a positive rating)' : `${iRated} A`}</strong></span>
-              </div>
+            {assetMode === 'profile' && (
+              <p className="muted" style={{ marginTop: 8 }}>
+                Edit the rating, losses and thermal parameters on the <Link to="/profile">Transformer profile</Link> page. Anything not entered uses a tagged standard default.
+                {!ratingOk && <strong> Enter a rating there first.</strong>}
+              </p>
             )}
             {assetMode === 'estimate' && <p className="muted" style={{ marginTop: 8 }}>The rating is estimated from the data and shown with a red banner: rating-dependent values become assumptions.</p>}
           </Card>

@@ -4,9 +4,9 @@ import { alertMs, nowAt, sortedAlerts, type Now } from '../lib/derive'
 
 /** Data seconds per wall-clock second. */
 export const SPEEDS = [
-  { label: '1 day / min', value: 1440 },
-  { label: '1 day / 15 s', value: 5760 },
-  { label: '1 day / s', value: 86400 },
+  { label: 'Slow', hint: '1 day per minute', value: 1440 },
+  { label: 'Medium', hint: '1 day per 15 s', value: 5760 },
+  { label: 'Fast', hint: '1 day per second', value: 86400 },
 ] as const
 
 interface Session {
@@ -28,6 +28,8 @@ interface Session {
   speed: number
   setSpeed: (v: number) => void
   nextAlert: () => void
+  prevAlert: () => void
+  stepBy: (deltaMs: number) => void
   now: Now | null
   simulated: boolean
   label: string
@@ -121,6 +123,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (next) setCursorState(alertMs(next))
   }, [alerts])
 
+  const prevAlert = useCallback(() => {
+    const b = boundsRef.current
+    if (!b) return
+    const from = cursorRef.current ?? b.end
+    const earlier = alerts.filter((a) => alertMs(a) < from - 1000)
+    if (earlier.length) setCursorState(alertMs(earlier[earlier.length - 1]))
+  }, [alerts])
+
+  const stepBy = useCallback((deltaMs: number) => {
+    const b = boundsRef.current
+    if (!b) return
+    setCursorState(Math.min(b.end, Math.max(b.start, (cursorRef.current ?? b.end) + deltaMs)))
+  }, [])
+
   const now = useMemo(() => (run && cursor != null ? nowAt(run, alerts, cursor) : null), [run, alerts, cursor])
 
   const setDatasetId = useCallback((id: string) => {
@@ -137,7 +153,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     loading: dsQuery.isLoading || runQuery.isLoading,
     empty: dsQuery.isSuccess && datasets.length === 0,
     error: (dsQuery.error ?? runQuery.error) as Error | null,
-    alerts, bounds, cursor, setCursor, playing, togglePlay, speed, setSpeed, nextAlert, now,
+    alerts, bounds, cursor, setCursor, playing, togglePlay, speed, setSpeed, nextAlert, prevAlert, stepBy, now,
     simulated: info?.simulated ?? false,
     label: run?.name ?? '',
   }

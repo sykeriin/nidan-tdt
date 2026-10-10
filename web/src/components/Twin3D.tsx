@@ -1,6 +1,6 @@
 // React host for the vendored three.js scene (src/twin3d). The scene and overlay are imperative and created once;
 // every new TwinView only changes looks, labels and detail boxes, never the model.
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createOverlay } from '../twin3d/overlay.js'
 import { PART_MAP } from '../twin3d/partMap.js'
 import { createScene } from '../twin3d/scene.js'
@@ -8,6 +8,8 @@ import type { TwinView } from '../lib/twinView'
 import '../styles/twin3d.css'
 
 const SEVERITY_RANK: Record<string, number> = { critical: 0, warning: 1, info: 2 }
+export const HEAT_MIN = 20
+export const HEAT_MAX = 140
 
 interface Handles {
   scene: Awaited<ReturnType<typeof createScene>> | null
@@ -24,6 +26,9 @@ export function Twin3D({ view, height = 620, onSelect }: { view: TwinView | null
   const h = useRef<Handles | null>(null)
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
+  const [heat, setHeat] = useState(false)
+  const heatRef = useRef(false)
+  heatRef.current = heat
 
   // Alert ids already shown for the current dataset: an id opens its box once. Closing the box does not bring it
   // back, only a new alert id does.
@@ -50,13 +55,9 @@ export function Twin3D({ view, height = 620, onSelect }: { view: TwinView | null
       for (const id of parts.reverse()) s.overlay.openBox(id)   // worst one opened last
       s.scene.focusPart(fresh[0].part)
     }
-    // A new windings alert switches X-ray on once, so the coloured coils are visible.
     const alerting = ['yellow', 'red'].includes(view.parts.windings.status)
-    if (alerting && !s.windingsAlerting) {
-      s.scene.setXray(true)
-      s.overlay.setXray(true)
-    }
     s.windingsAlerting = alerting
+    s.scene.setHeat(heatRef.current, view.heat, HEAT_MIN, HEAT_MAX)
   }
 
   useEffect(() => {
@@ -130,18 +131,26 @@ export function Twin3D({ view, height = 620, onSelect }: { view: TwinView | null
       apply()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view])
+  }, [view, heat])
 
   return (
     <div className="stage" ref={stageRef} style={{ height }}>
       <p className="stage__message" id="message" role="status">Loading 3D model…</p>
       <div className="toolbar">
         <button className="toggle" id="reset-view" type="button">Reset view</button>
+        <button className="toggle" type="button" aria-pressed={heat} onClick={() => setHeat((v) => !v)}>Heat map</button>
         <button className="toggle" id="xray" type="button" aria-pressed="false">X-ray</button>
       </div>
       <svg className="leaders" id="leaders" aria-hidden="true" />
       <div className="badges" id="badges" />
       <div className="boxes" id="boxes" />
+      {heat && (
+        <div className="heat-legend" aria-label="Heat map scale">
+          <span className="heat-legend__bar" />
+          <span className="heat-legend__ticks"><span>{HEAT_MIN} °C</span><span>98 ageing reference</span><span>{HEAT_MAX} °C</span></span>
+          <span className="heat-legend__note">Measured where there is a sensor, otherwise the twin's estimate. Grey: no temperature estimate.</span>
+        </div>
+      )}
       <div className="tooltip glass status" id="tooltip" data-status="grey" hidden>
         <strong className="tooltip__label" />
         <span className="tooltip__status">

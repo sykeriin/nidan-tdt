@@ -20,6 +20,7 @@ from transformer_thermal_model.transformer import DistributionTransformer
 
 from contracts.canonical import TREND_COLUMNS, TZ, empty_events
 from ingest.enrich import load_weather, read_asset, weather_at
+from twin import profile
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "generated"
@@ -35,13 +36,25 @@ def _smooth_step(h, on, off, width=0.5):
     return 1 / (1 + np.exp(-(h - on) / width)) * 1 / (1 + np.exp(-(off - h) / width))
 
 
+PLANTS = ("iec", "detailed")
+
+
 def run_plant(amps: np.ndarray, amb: np.ndarray, idx: pd.DatetimeIndex, asset: dict,
-              rise_mult: float = 1.0, hot_spot_fac: float | None = None) -> pd.DataFrame:
-    """Library run. amps = LV amps (never per-unit)."""
+              rise_mult: float = 1.0, hot_spot_fac: float | None = None, plant: str = "iec") -> pd.DataFrame:
+    """The "real" transformer. plant="iec": the thermal library with perturbed parameters (default, the shipped data).
+    plant="detailed": the independent heat-balance model (twin/detailed.py), so the twin faces a different physics, not
+    just different numbers. amps = LV amps (never per-unit)."""
+    if plant == "detailed":
+        from twin.detailed import DetailedModel
+        dt = pd.Series(idx).diff().dt.total_seconds().fillna(0.0).to_numpy() / 60.0     # minutes between samples
+        out = DetailedModel(asset).simulate(amps, amb, dt, float(asset["i_rated_A"]), rise_mult, hot_spot_fac)
+        return pd.DataFrame({"oil": out["top_oil_C"], "hs": out["hot_spot_C"]})
+    thermal = profile.thermal_kwargs(asset)       # the asset's own rise, time constants, gradient, exponents
+    thermal["top_oil_temp_rise"] = asset.get("top_oil_rise_K", 60.0) * rise_mult
+    thermal["hot_spot_fac"] = hot_spot_fac if hot_spot_fac is not None else thermal.get("hot_spot_fac")
     specs = UserTransformerSpecifications(
         load_loss=asset["load_loss_W"], no_load_loss=asset["no_load_loss_W"],
-        nom_load_sec_side=asset["i_rated_A"],
-        top_oil_temp_rise=60.0 * rise_mult, hot_spot_fac=hot_spot_fac)
+        nom_load_sec_side=asset["i_rated_A"], **thermal)
     prof = InputProfile.create(datetime_index=idx.tz_localize(None), load_profile=amps,
                                ambient_temperature_profile=amb)
     out = Model(temperature_profile=prof, transformer=DistributionTransformer(user_specs=specs),
@@ -51,12 +64,19 @@ def run_plant(amps: np.ndarray, amb: np.ndarray, idx: pd.DatetimeIndex, asset: d
 
 
 def generate(scenario_id: str = "N", seed: int = 0, cfg: dict | None = None,
-             weather: pd.DataFrame | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Canonical trend + events for one scenario (FINAL_PRD.md §12.2)."""
+             weather: pd.DataFrame | None = None, asset: dict | None = None,
+             plant: str = "iec") -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Canonical trend + events for one scenario (FINAL_PRD.md §12.2) on any transformer profile.
+
+    asset: a profile dict (twin/profile.py); default is config/asset.yaml (Transformer-1). Load is generated in
+    per-unit and converted to the asset's own amps, so the same scenarios run for any rating.
+    """
     if scenario_id not in SCENARIO_IDS:
         raise ValueError(f"unknown scenario {scenario_id}")
+    if plant not in PLANTS:
+        raise ValueError(f"unknown plant model {plant!r}; choose from {', '.join(PLANTS)}")
     cfg = cfg or load_config()
-    asset = read_asset(ROOT / "config" / "asset.yaml")
+    asset = profile.complete(asset if asset is not None else read_asset(ROOT / "config" / "asset.yaml"))
     i_rated = asset["i_rated_A"]
     w = cfg["window"]
     idx = pd.date_range(pd.Timestamp(w["start"], tz=TZ), periods=w["days"] * 96, freq=w["freq"])
@@ -88,7 +108,7 @@ def generate(scenario_id: str = "N", seed: int = 0, cfg: dict | None = None,
     static -= static.mean()
     phase_noise = rng.normal(0, L["phase_noise"], (n, 3))
     rise_mult = rng.uniform(*P["top_oil_rise_mult"])
-    hsf = rng.uniform(*P["hot_spot_fac"])
+    hsf = rng.uniform(*P["hot_spot_fac"]) * asset["hot_spot_factor"] / 1.2   # plant centred on this asset's nominal H
     nt = P["noise_temp_C"]
     noise_oti, noise_wti, noise_ati, noise_oli = (rng.normal(0, s, n) for s in (nt, nt, 0.3, 0.3))
     noise_vi = rng.normal(0, P["noise_vi_frac"], (n, 6))
@@ -156,15 +176,15 @@ def generate(scenario_id: str = "N", seed: int = 0, cfg: dict | None = None,
     # ---- currents (amps), thermal plant, sensors ----
     i_true = pu[:, None] * i_rated * (1 + static) * phase_mult * (1 + phase_noise)
     i_mean_true = i_true.mean(axis=1)
-    base = run_plant(i_mean_true, amb_true, idx, asset, rise_mult, hsf)
+    base = run_plant(i_mean_true, amb_true, idx, asset, rise_mult, hsf, plant)
     oil, hs = base["oil"].to_numpy(), base["hs"].to_numpy()
     if scenario_id == "S2":
-        deg = run_plant(i_mean_true, amb_true, idx, asset, rise_mult * sc["rise_mult"], hsf)
+        deg = run_plant(i_mean_true, amb_true, idx, asset, rise_mult * sc["rise_mult"], hsf, plant)
         oil = oil + rise_ramp * (deg["oil"].to_numpy() - oil)
         hs = hs + rise_ramp * (deg["hs"].to_numpy() - hs)
 
     meas_i = i_true * (1 + noise_vi[:, :3])
-    v_ln = 415 / np.sqrt(3) * (1.005 - 0.01 * pu)[:, None] * (1 + v_offset) * (1 + noise_vi[:, 3:])
+    v_ln = float(asset["lv_voltage_V"]) / np.sqrt(3) * (1.005 - 0.01 * pu)[:, None] * (1 + v_offset) * (1 + noise_vi[:, 3:])
     ang = np.deg2rad([0, -120, 120])
     i_n = np.abs((meas_i * np.exp(1j * ang)).sum(axis=1))
     s_kva = (v_ln * meas_i).sum(axis=1) / 1000
@@ -188,9 +208,9 @@ def generate(scenario_id: str = "N", seed: int = 0, cfg: dict | None = None,
     trend = trend[[c for c in TREND_COLUMNS if c in trend] + ["gt_fault", "gt_type"]]
     num = trend.select_dtypes("number").columns
     trend[num] = trend[num].round(3)
-    trend.attrs["meta"] = {"scenario": scenario_id, "name": sc["name"], "seed": seed,
+    trend.attrs["meta"] = {"scenario": scenario_id, "name": sc["name"], "seed": seed, "plant_model": plant,
                            "plant": {"top_oil_rise_mult": round(rise_mult, 4), "hot_spot_fac": round(hsf, 4)},
-                           "twin_nominal": {"top_oil_rise_K": 60.0, "hot_spot_fac": 1.2},
+                           "twin_nominal": {"top_oil_rise_K": asset["top_oil_rise_K"], "hot_spot_fac": asset["hot_spot_factor"]},
                            "i_rated_A": i_rated, **meta}
     return trend, events
 

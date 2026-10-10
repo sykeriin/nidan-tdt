@@ -4,15 +4,15 @@ import { Card, Note, PageTitle, Unavailable } from '../components/ui'
 import { useSession } from '../context/Session'
 import { fmt } from '../lib/series'
 
-const MEASURED = '#0F172A'
-const TWIN = '#0284C7'
+const MEASURED = '#0b0b0c'
+const TWIN = '#8a8d93'
 
 export default function Temps() {
   const s = useSession()
   const range: [number, number] | null = s.bounds ? [s.bounds.start, s.bounds.end] : null
   return (
     <>
-      <PageTitle title="Loading & Temperatures" sub="Measured values in dark, twin predictions in blue dashed." />
+      <PageTitle title="Loading & Temperatures" sub="Solid black is what the sensors measure, grey is what the twin predicts, and the gap between them is what the analytics watch." />
       <Gate>
         {(run, now) => {
           if (!now) return null
@@ -27,7 +27,7 @@ export default function Temps() {
             <div className="grid grid--2">
               <Card title="Loading">
                 {chart(
-                  [{ name: 'Loading', series: run.series.loading_pct, color: MEASURED }],
+                  [{ name: 'Loading', series: run.series.loading_pct, color: '#0b0b0c' }],
                   '% of rated',
                   [{ y: 90, label: 'warning 90 %' }, { y: 100, label: 'alarm 100 %' }],
                 )}
@@ -35,9 +35,9 @@ export default function Temps() {
               <Card title="Phase currents R / Y / B">
                 {chart(
                   [
-                    { name: 'R', series: run.series.IR, color: '#0F172A', width: 1.2 },
-                    { name: 'Y', series: run.series.IY, color: '#0891B2', width: 1.2 },
-                    { name: 'B', series: run.series.IB, color: '#7C3AED', width: 1.2 },
+                    { name: 'R', series: run.series.IR, color: '#0b0b0c', width: 1.2 },
+                    { name: 'Y', series: run.series.IY, color: '#55595f', width: 1.2 },
+                    { name: 'B', series: run.series.IB, color: '#a9acb1', width: 1.2 },
                   ],
                   'A',
                 )}
@@ -47,9 +47,9 @@ export default function Temps() {
                 {c.voltage_quality ? (
                   chart(
                     [
-                      { name: 'R', series: run.series.VR, color: '#0F172A', width: 1.2 },
-                      { name: 'Y', series: run.series.VY, color: '#0891B2', width: 1.2 },
-                      { name: 'B', series: run.series.VB, color: '#7C3AED', width: 1.2 },
+                      { name: 'R', series: run.series.VR, color: '#0b0b0c', width: 1.2 },
+                      { name: 'Y', series: run.series.VY, color: '#55595f', width: 1.2 },
+                      { name: 'B', series: run.series.VB, color: '#a9acb1', width: 1.2 },
                     ],
                     'V',
                   )
@@ -78,7 +78,7 @@ export default function Temps() {
                 {!(measured && run.series.WTI_C) && <p className="muted">No winding sensor: hot spot is estimated by the twin.</p>}
               </Card>
               <Card title="Ambient">
-                {chart([{ name: 'Ambient', series: run.series.amb_C, color: '#64748B' }], '°C')}
+                {chart([{ name: 'Ambient', series: run.series.amb_C, color: '#8a8d93' }], '°C')}
               </Card>
               <Card title="Residual (measured − twin)">
                 {c.residual_fidelity ? (

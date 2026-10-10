@@ -16,15 +16,21 @@ import pandas as pd
 from contracts.models import Dataset
 
 
+def _aware(x, tz) -> pd.Timestamp:
+    """x as a Timestamp in the data's zone, whether it arrived naive (taken as that zone) or already tz-aware."""
+    ts = pd.Timestamp(x)
+    return ts.tz_localize(tz) if ts.tzinfo is None else ts.tz_convert(tz)
+
+
 class Replay:
     def __init__(self, ds: Dataset | pd.DataFrame, speed: float | None = 60.0, seed: int = 0,
                  dropout: float = 0.0, start=None, end=None, sleep: Callable[[float], None] = time.sleep):
         trend = ds.trend if isinstance(ds, Dataset) else ds
         t = trend.sort_values("timestamp").reset_index(drop=True)
         if start is not None:
-            t = t[t["timestamp"] >= pd.Timestamp(start, tz=t["timestamp"].dt.tz)]
+            t = t[t["timestamp"] >= _aware(start, t["timestamp"].dt.tz)]
         if end is not None:
-            t = t[t["timestamp"] <= pd.Timestamp(end, tz=t["timestamp"].dt.tz)]
+            t = t[t["timestamp"] <= _aware(end, t["timestamp"].dt.tz)]
         self.trend = t.reset_index(drop=True)
         self.speed, self.seed, self.dropout, self._sleep = speed, seed, dropout, sleep
         self.mode = ds.mode if isinstance(ds, Dataset) else None

@@ -5,17 +5,17 @@ export const PART_MAP = {
   // prefixes: mesh-name prefixes in transformer_parts.glb (windings and core are built in code)
   // view: direction from the model towards the camera when the part is focused
   // noData: shown when Python marks the part unavailable for this dataset
-  windings:    { label: 'Windings',    prefixes: ['winding'],     view: [0.55, 0.75, 0.85], internal: true,
+  windings:    { label: 'Windings',    prefixes: ['winding'],     view: [-0.15, 0.35, 1.0],
                  noData: 'current not in this dataset' },
-  tank:        { label: 'Tank',        prefixes: ['tank'],        view: [1.0, 0.4, 0.7],
+  tank:        { label: 'Tank',        prefixes: ['tank'],        view: [0.95, 0.35, 0.8],
                  noData: 'oil temperature not in this dataset' },
-  radiators:   { label: 'Radiators',   prefixes: ['radiator'],    view: [-0.25, 0.3, 1.0],
+  radiators:   { label: 'Radiators',   prefixes: ['radiator'],    view: [1.0, 0.25, 0.55],
                  noData: 'cooling check needs measured oil temperature' },
-  conservator: { label: 'Conservator', prefixes: ['conservator'], view: [-1.0, 0.5, 0.6],
+  conservator: { label: 'Conservator', prefixes: ['conservator'], view: [0.5, 0.45, 1.0],
                  noData: 'oil level not in this dataset' },
-  bushings:    { label: 'Bushings',    prefixes: ['bushing'],     view: [0.5, 0.95, 0.7],
+  bushings:    { label: 'Bushings',    prefixes: ['bushing'],     view: [-0.2, 0.75, 1.0],
                  noData: 'voltage not in this dataset' },
-  core:        { label: 'Core',        prefixes: ['core'],        view: [0.55, 0.75, 0.85], internal: true },
+  core:        { label: 'Core',        prefixes: ['core'],        view: [-0.15, 0.35, 1.0] },
 };
 
 export const PART_IDS = Object.keys(PART_MAP);

@@ -101,6 +101,29 @@ def ground_truth(sid: str) -> list[dict]:
     return [{"fault": fault, "onset": onset, "end": end, "expect": list(EXPECT[fault])}]
 
 
+_BASELINE_KEYS = ("i_rated_A", "lv_voltage_V", "load_loss_W", "no_load_loss_W", "insulation")
+
+
+@lru_cache(maxsize=32)
+def _baseline(key: str, plant: str) -> dict:
+    from analytics import residual
+    from analytics.common import load_thresholds, strip_quarantined
+    from sim.generator import generate
+    asset = {k: v for k, v in json.loads(key).items() if v is not None}
+    trend, _ = generate("N", seed=0, asset=asset, plant=plant)
+    twin = TwinEngine(asset).run(trend)
+    return residual.calibrate(strip_quarantined(twin), load_thresholds(asset=asset))
+
+
+def normal_reference_for(asset: dict, plant: str = "iec") -> dict:
+    """Residual baseline for any transformer profile: the generator's healthy Normal month on THIS asset (its own
+    rating, losses and thermal parameters), run through the twin. Replaces the Transformer-1-only reference."""
+    from twin import profile
+    a = profile.complete(asset)
+    key = json.dumps({k: a.get(k) for k in (*_BASELINE_KEYS, *profile.THERMAL)}, sort_keys=True, default=float)
+    return _baseline(key, plant)
+
+
 def normal_reference(thresholds: dict) -> dict:
     from analytics import residual
     from analytics.common import strip_quarantined

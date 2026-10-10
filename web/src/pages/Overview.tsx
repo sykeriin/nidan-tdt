@@ -1,181 +1,161 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Alert, Run } from '../api/client'
-import { TimeChart, type TraceSpec } from '../charts/TimeChart'
+import type { Run } from '../api/client'
+import { useBrief, useOutlook } from '../api/client'
+import { GapChart, type GapWindow } from '../charts/GapChart'
 import { Gate } from '../components/Gate'
 import { Twin3D } from '../components/Twin3D'
-import { AlertItem, Card, HealthGauge, PageTitle, StatusChip, SubScoreBars, Unavailable } from '../components/ui'
+import { AlertItem, Card, PageTitle, StatusChip, SubScoreBars, Unavailable } from '../components/ui'
+import { DiagnosisBars, HealthDial, Instrument, RulFan, WorkOrder, useTween } from '../components/viz'
 import { useSession } from '../context/Session'
 import type { Band, Now } from '../lib/derive'
-import { fmt } from '../lib/series'
+import { fmt, slice } from '../lib/series'
 import { buildTwinView } from '../lib/twinView'
 
-const MODULES: [string, string, string][] = [
-  ['overloading', 'Overloading', 'thermal_twin'],
-  ['insulation', 'Insulation', 'ageing_rul'],
-  ['short_circuit', 'Short circuit', 'through_fault'],
-  ['oil', 'Oil level', 'oil_leak_theft'],
-]
+const HOUR = 3600_000
 
-/** Worst asset-origin severity among active alerts of a module; sensor alerts never colour a module. */
-function moduleBand(active: Alert[], module: string): Band {
-  const mine = active.filter((a) => a.module === module && a.origin === 'asset')
-  if (mine.some((a) => a.severity === 'critical')) return 'red'
-  if (mine.some((a) => a.severity === 'warning')) return 'yellow'
-  return 'green'
+function Hero({ run, now }: { run: Run; now: Now }) {
+  const s = useSession()
+  const brief = useBrief(s.datasetId, now.ms)
+  const b = brief.data
+  const measured = run.mode === 'full'
+  const resid = measured ? now.at('residual_oil_C') : null
+  const gap = useTween(resid)
+  const level = b?.level ?? 'nodata'
+  const label = { good: 'All clear', watch: 'Watch', critical: 'Needs attention', nodata: 'No data' }[level]
+  return (
+    <section className="hero" data-level={level} aria-live="polite">
+      <div>
+        <div className="hero__meta"><span className="pulse" aria-hidden /><strong>{label}</strong></div>
+        <p className={`hero__sentence ${b ? '' : 'hero__sentence--loading'}`}>{b ? b.sentence : 'Reading the transformer…'}</p>
+      </div>
+      <div className="gap-meter">
+        <div className="gap-meter__label">{measured ? 'Gap, measured minus twin' : 'Oil temperature (twin estimate)'}</div>
+        <div className="gap-meter__value">
+          {measured ? (gap == null ? '—' : `${gap >= 0 ? '+' : ''}${gap.toFixed(1)}`) : fmt(now.at('twin_oil_C'), 0)}
+          <small>{measured ? 'K' : '°C'}</small>
+        </div>
+        <div className="gap-meter__sub">{measured ? (b?.kpis.residual_pct != null ? `${b.kpis.residual_pct >= 0 ? '+' : ''}${b.kpis.residual_pct} % of the twin's rise` : 'Twin and sensor agree') : 'No oil sensor to compare with'}</div>
+      </div>
+    </section>
+  )
 }
 
-const unbalancePct = (now: Now): number | null => {
-  const i = ['IR', 'IY', 'IB'].map(now.at)
-  if (i.some((x) => x == null)) return null
-  const v = i as number[]
-  const mean = v.reduce((a, b) => a + b, 0) / 3
-  return mean ? (Math.max(...v.map((x) => Math.abs(x - mean))) / mean) * 100 : null
+const stateOf = (v: number | null | undefined, warn: number, crit: number): 'ok' | 'watch' | 'critical' => (v == null ? 'ok' : v >= crit ? 'critical' : v >= warn ? 'watch' : 'ok')
+
+function Instruments({ run, now }: { run: Run; now: Now }) {
+  const s = useSession()
+  const brief = useBrief(s.datasetId, now.ms)
+  const k = brief.data?.kpis
+  const measured = run.mode === 'full'
+  const from = now.ms - 48 * HOUR
+  const spark = (col: string) => slice(run.series[col], from, now.ms).v
+  const hasWti = measured && now.at('WTI_C') != null
+  const hs = hasWti ? now.at('WTI_C') : now.at('twin_hs_C')
+  const oil = measured ? now.at('OTI_C') : now.at('twin_oil_C')
+  const load = now.at('loading_pct')
+  const rate = k?.ageing_rate ?? now.at('aging_rate_actual') ?? now.at('aging_rate')
+  const life = (run.summary.life_consumed_days ?? {}) as { expected?: number; actual?: number }
+  const caps = run.capabilities
+  const ttl = k?.time_to_limit
+  const head = k?.headroom
+  return (
+    <div className="insts">
+      <Instrument name={`Hot spot ${hasWti ? '(measured)' : '(twin estimate)'}`} value={fmt(hs, 0)} unit="°C" tone="twin"
+        state={stateOf(hs, 98, 120)} spark={spark(hasWti ? 'WTI_C' : 'twin_hs_C')}
+        sub={<>Ageing reference <strong>98 °C</strong>, limit <strong>120 °C</strong></>} />
+      <Instrument name="Top oil" value={fmt(oil, 0)} unit="°C" tone={measured ? 'measured' : 'twin'} state={stateOf(oil, 85, 95)} spark={spark(measured ? 'OTI_C' : 'twin_oil_C')}
+        sub={measured ? <>Twin says <strong>{fmt(now.at('twin_oil_C'), 0)} °C</strong></> : 'Estimated from load and ambient'} />
+      <Instrument name="Load" value={fmt(load, 0)} unit="% of rating" state={stateOf(load, 90, 100)} spark={spark('loading_pct')}
+        sub={caps.unbalance ? <>Phase unbalance <strong>{fmt(k?.unbalance_pct, 0)} %</strong></> : 'Per-phase currents not available'} />
+      <Instrument name="Ageing speed" value={fmt(rate, 2)} unit="× design" state={stateOf(rate, 1.5, 5)}
+        spark={spark(measured && run.series.aging_rate_actual ? 'aging_rate_actual' : 'aging_rate')}
+        sub={caps.ageing_rul ? <>Life used this period <strong>{fmt(measured ? life.actual : life.expected, 1)} days</strong></> : 'Needs load and ambient over time'} />
+      <Instrument name="Spare capacity" value={head ? fmt(head.pu * 100, 0) : '—'} unit="% of rating" tone="twin"
+        state={head && load != null && load > head.pu * 100 ? 'critical' : 'ok'}
+        sub={head ? <>Largest steady load within limits at {fmt(head.ambient_C, 0)} °C, set by the <strong>{head.limiting ?? 'limits'}</strong></> : 'Needs load and ambient'} />
+      <Instrument name="Time to a limit" value={!ttl ? '—' : ttl.status === 'reaches_limit' ? fmt(ttl.hours, 1) : ttl.status === 'already_reached' ? '0' : 'Not'}
+        unit={!ttl ? undefined : ttl.status === 'not_reached' ? 'reached' : 'hours'}
+        state={ttl?.status === 'already_reached' ? 'critical' : ttl?.status === 'reaches_limit' && (ttl.hours ?? 99) < 6 ? 'watch' : 'ok'}
+        sub={ttl ? (ttl.status === 'not_reached' ? <>Oil settles near <strong>{fmt(ttl.steady_state_oil_C, 0)} °C</strong> at this load</> : <>At the present load, until the oil reaches <strong>{fmt(ttl.target_oil_C, 0)} °C</strong></>) : 'Needs load and ambient'} />
+    </div>
+  )
 }
 
 function OverviewBody({ run, now }: { run: Run; now: Now }) {
   const s = useSession()
+  const [win, setWin] = useState<GapWindow>('7d')
   const view = useMemo(() => buildTwinView(run, now, run.name, s.simulated), [run, now, s.simulated])
+  const brief = useBrief(s.datasetId, now.ms)
+  const outlook = useOutlook(s.datasetId, now.ms, !s.playing)
   const caps = run.capabilities
-  const measured = run.mode === 'full'
-  const rated = Number(run.asset.i_rated_A) || null
-  const life = (run.summary.life_consumed_days ?? {}) as { expected?: number; actual?: number }
-  const rul = run.analysis.rul
-  const range: [number, number] | null = s.bounds ? [s.bounds.start, s.bounds.end] : null
-  const latest = [...now.active].reverse().slice(0, 5)
-
-  const traces: TraceSpec[] = [
-    { name: 'Twin (predicted)', series: run.series.twin_oil_C, color: '#0284C7', dash: 'dash' },
-    ...(measured ? [{ name: 'Measured', series: run.series.OTI_C, color: '#0F172A', fillPrev: true }] : []),
-  ]
-  const unb = caps.unbalance ? unbalancePct(now) : null
+  const latest = [...now.active].reverse().slice(0, 4)
+  const health = now.health
+  const bounds = s.bounds!
+  const rul = outlook.data?.rul
+  const risk = outlook.data?.trip_risk_30d
 
   return (
     <>
+      <Hero run={run} now={now} />
+
       <div className="overview">
+        <Card className="card--hero">
+          <Twin3D view={view} height={560} />
+        </Card>
         <div className="stack">
-          <Card title="Transformer-1, live 3D twin">
-            <Twin3D view={view} />
-            <p className="muted" style={{ marginTop: 8 }}>
-              Representative 3D model (power-transformer style). Hover a part for its status, click for readings and the
-              recommended test. Parts turn yellow or red from the analytics; sensor faults get a badge instead.
-            </p>
+          <Card title="Health" aside={health.band && <StatusChip band={health.band as Band} />}>
+            <HealthDial score={health.score} band={health.band} capped={health.capped} />
+            <SubScoreBars components={health.components} weights={health.weights} />
           </Card>
-          <Card title={measured ? 'Top-oil temperature: measured vs twin' : 'Top-oil temperature: estimated by the twin'}>
-            {!measured && <p className="muted">Running on meter data only: temperatures are estimated from load and ambient.</p>}
-            <TimeChart traces={traces} range={range} cursor={now.ms} yTitle="°C" alerts={now.raised.filter((a) => a.origin === 'asset')} />
-          </Card>
-        </div>
-
-        <div className="stack">
-          <Card title="Health Index" aside={now.health.band && <StatusChip band={now.health.band} />}>
-            <HealthGauge score={now.health.score} band={now.health.band} capped={now.health.capped} />
-            <SubScoreBars components={now.health.components} weights={now.health.weights} />
-            <p className="muted" style={{ marginTop: 8 }}>A transparent engineering score, not a trained one. Weights renormalise over the sub-scores this dataset can support.</p>
-          </Card>
-
-          <Card title="Remaining life">
-            {caps.ageing_rul ? (
-              <>
-                <div className="big">{String(run.summary.rul_display ?? '—')}</div>
-                <dl className="kv" style={{ marginTop: 8 }}>
-                  <dt>Risk class</dt><dd>{rul?.risk ?? '—'}</dd>
-                  <dt>Ageing rate now</dt><dd>{fmt(now.at('aging_rate_actual') ?? now.at('aging_rate'), 2)} × normal</dd>
-                  <dt>Life used, expected</dt><dd>{fmt(life.expected, 2)} days</dd>
-                  <dt>Life used, actual</dt><dd>{measured ? `${fmt(life.actual, 2)} days` : '—'}</dd>
-                </dl>
-              </>
-            ) : (
-              <Unavailable>ageing needs current and ambient temperature over time.</Unavailable>
-            )}
-          </Card>
-
-          <Card title="Active alerts" aside={<Link to="/alerts">All alerts</Link>}>
-            {latest.length ? (
-              <ul className="alerts">
-                {latest.map((a) => <AlertItem key={a.id} alert={a} onClick={() => s.setCursor(Date.parse(a.timestamp))} />)}
-              </ul>
-            ) : (
-              <p className="muted">No alerts in the last 24 h of the replay.</p>
-            )}
+          <Card title="What the evidence points to">
+            <DiagnosisBars diagnosis={brief.data?.diagnosis ?? []} />
           </Card>
         </div>
       </div>
 
-      <div className="grid grid--4">
-        <Card title="Top oil">
-          <div className="big">{fmt(measured ? now.at('OTI_C') : now.at('twin_oil_C'))} °C</div>
-          <dl className="kv" style={{ marginTop: 8 }}>
-            <dt>{measured ? 'Twin' : 'Source'}</dt><dd>{measured ? `${fmt(now.at('twin_oil_C'))} °C` : 'estimated by twin'}</dd>
-            <dt>Residual</dt><dd>{measured && caps.residual_fidelity ? `${fmt(now.at('residual_oil_C'))} K` : '—'}</dd>
-            <dt>Hot spot {measured && now.at('WTI_C') != null ? '(measured)' : '(twin)'}</dt>
-            <dd>{fmt(measured && now.at('WTI_C') != null ? now.at('WTI_C') : now.at('twin_hs_C'))} °C</dd>
-            <dt>Fidelity RMSE</dt><dd>{caps.residual_fidelity ? `${fmt(now.at('fidelity_rmse_C'))} K` : '—'}</dd>
-          </dl>
-          {!caps.residual_fidelity && <p className="muted" style={{ marginTop: 6 }}>Residual and fidelity need a measured oil temperature.</p>}
-        </Card>
-
-        <Card title="Loading">
-          <div className="big">{fmt(now.at('loading_pct'), 0)} %</div>
-          <dl className="kv" style={{ marginTop: 8 }}>
-            <dt>Load</dt><dd>{fmt(now.at('load_pu'), 2)} pu</dd>
-            {(['IR', 'IY', 'IB'] as const).map((c, i) => (
-              <Frag key={c} label={`Phase ${'RYB'[i]}`} value={`${fmt(now.at(c), 0)} A${rated ? ` · ${fmt(((now.at(c) ?? NaN) / rated) * 100, 0)} %` : ''}${caps.voltage_quality ? ` · ${fmt(now.at(`V${'RYB'[i]}`), 0)} V` : ''}`} />
+      <Card
+        title="The gap between physics and data"
+        aside={(
+          <div className="tabs" role="tablist" aria-label="Chart window" style={{ border: 0 }}>
+            {(['2d', '7d', 'all'] as GapWindow[]).map((w) => (
+              <button key={w} role="tab" aria-selected={win === w} onClick={() => setWin(w)}>{w === 'all' ? 'Whole run' : `${w.replace('d', '')} days`}</button>
             ))}
-            <dt>Current unbalance</dt><dd>{caps.unbalance ? `${fmt(unb)} %` : '—'}</dd>
-            <dt>Power factor</dt><dd>{fmt(now.at('PF'), 2)}</dd>
-          </dl>
-        </Card>
-
-        <Card title="Failure modules">
-          <ul className="caps" style={{ gridTemplateColumns: '1fr' }}>
-            {MODULES.map(([key, label, cap]) => (
-              <li key={key} style={{ justifyContent: 'space-between' }}>
-                {label}
-                {caps[cap] ? <StatusChip band={moduleBand(now.active, key)} /> : <StatusChip band="grey" text="No data" />}
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card title="Report">
-          <p className="muted">Summary of this run with a Data Health appendix.</p>
-          <p style={{ marginTop: 8 }}>
-            <Link className="btn" to="/reports">Open reports</Link>
-          </p>
-        </Card>
-      </div>
-
-      <Card title="Recommended maintenance">
-        {run.analysis.recommendations.length ? (
-          <ul className="alerts">
-            {run.analysis.recommendations
-              .filter((r) => now.raised.some((a) => a.id === r.alert_id))
-              .slice(-4)
-              .reverse()
-              .map((r) => (
-                <li className="alert" key={r.id}>
-                  <div className="alert__btn" style={{ cursor: 'default' }}>
-                    <span className="alert__top"><strong>{r.action}</strong><span className="chip chip--mode">{r.urgency}</span></span>
-                    {r.test && <span>Test: {r.test}</span>}
-                    {r.standard_ref && <span className="muted">Ref: {r.standard_ref}</span>}
-                  </div>
-                </li>
-              ))}
-          </ul>
-        ) : (
-          <p className="muted">No maintenance actions recommended for this run.</p>
+          </div>
         )}
+      >
+        <GapChart run={run} cursor={now.ms} bounds={bounds} alerts={s.alerts} forecast={s.playing ? undefined : outlook.data?.forecast} window={win} />
+        <p className="muted" style={{ marginTop: 6 }}>
+          {run.mode === 'full'
+            ? 'The black line is the oil-temperature sensor, the grey line is what the physics predicts for the same load and weather, and the hatched band is the gap the analytics watch.'
+            : 'No oil sensor: the grey line is the twin\'s estimate from load and ambient temperature.'}
+          {outlook.data?.forecast.available && !s.playing ? ` The dashed grey line continues the twin 24 hours ahead (band: ${outlook.data.forecast.band_basis}).` : ''}
+        </p>
       </Card>
-    </>
-  )
-}
 
-function Frag({ label, value }: { label: string; value: string }) {
-  return (
-    <>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
+      <Instruments run={run} now={now} />
+
+      <div className="grid grid--3">
+        <Card className="card--ink" title="Maintenance work order"><WorkOrder advice={brief.data?.advice ?? null} /></Card>
+        <Card title="Active alerts" aside={<Link to="/alerts">All alerts</Link>}>
+          {latest.length ? (
+            <ul className="alerts">{latest.map((a) => <AlertItem key={a.id} alert={a} onClick={() => s.setCursor(Date.parse(a.timestamp))} />)}</ul>
+          ) : <p className="muted">No alerts in the last 24 h of the replay.</p>}
+        </Card>
+        <Card title="Remaining insulation life">
+          {!caps.ageing_rul ? <Unavailable>ageing needs load and ambient temperature over time.</Unavailable> : rul ? (
+            <>
+              <RulFan rul={rul} />
+              {risk && (
+                <p className="muted" style={{ marginTop: 8 }}>
+                  Chance of reaching a temperature limit in the next 30 days: <strong style={{ color: 'var(--text)' }}>{(risk.probability * 100).toFixed(risk.probability > 0 && risk.probability < 0.1 ? 1 : 0)} %</strong> ({risk.runs} simulated months).
+                </p>
+              )}
+              <p className="muted" style={{ marginTop: 6 }}>{rul.note}</p>
+            </>
+          ) : <p className="muted">{s.playing ? 'Paused while replaying; the projection updates when you stop.' : 'Running 500 simulations…'}</p>}
+        </Card>
+      </div>
     </>
   )
 }
@@ -183,7 +163,7 @@ function Frag({ label, value }: { label: string; value: string }) {
 export default function Overview() {
   return (
     <>
-      <PageTitle title="Overview" sub="Physics says what should happen, data says what is happening, the AI watches the gap." />
+      <PageTitle title="Overview" />
       <Gate>{(run, now) => (now ? <OverviewBody run={run} now={now} /> : null)}</Gate>
     </>
   )

@@ -100,9 +100,9 @@ function createChart(canvas) {
     data: {
       labels: [],
       datasets: [
-        { data: [], borderColor: token('--accent'), borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 },
-        { data: [], borderColor: token('--text'), borderWidth: 1.5, pointRadius: 0,
-          fill: '-1', backgroundColor: 'rgba(15, 23, 42, 0.08)' },   // gap to the twin = residual
+        { data: [], borderColor: '#9aa0a6', borderDash: [5, 4], borderWidth: 1.6, pointRadius: 0 },
+        { data: [], borderColor: '#ffffff', borderWidth: 1.6, pointRadius: 0,
+          fill: '-1', backgroundColor: 'rgba(255, 255, 255, 0.16)' },   // gap to the twin = residual
       ],
     },
     options: {
@@ -115,7 +115,7 @@ function createChart(canvas) {
         x: { display: false },
         y: {
           border: { display: false },
-          grid: { color: token('--border') },
+          grid: { color: 'rgba(255, 255, 255, 0.07)' },
           ticks: { maxTicksLimit: 4, color: token('--muted'), font: { family: 'JetBrains Mono', size: 10 } },
         },
       },
@@ -190,7 +190,8 @@ export function createOverlay(container, handlers = {}) {
 
   function openBox(id) {
     if (!PART_MAP[id] || boxes.some((b) => b.id === id)) return;
-    if (boxes.length >= MAX_BOXES) removeBox(boxes[0]);        // a third replaces the oldest
+    const room = container.clientWidth < 900 ? 1 : MAX_BOXES;   // a narrow stage has room for one box without hiding the model
+    while (boxes.length >= room) removeBox(boxes[0]);          // a new box replaces the oldest
     const slot = boxes.some((b) => b.slot === 'left') ? 'right' : 'left';
 
     const el = document.createElement('article');

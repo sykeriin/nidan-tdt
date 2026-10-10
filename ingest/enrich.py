@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from twin import profile as _profile
+
 from contracts.canonical import TZ
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -170,7 +172,7 @@ def resolve_asset(asset, trend: pd.DataFrame | None = None) -> dict:
             a["nameplate_source"] = "estimated"
             a.setdefault("tags", {}).update(i_rated_A="Assumed - estimated from data (p99 I_mean / 0.8)",
                                             rating_kVA="Assumed - estimated from data")
-    return a
+    return _profile.complete(a)
 
 
 if __name__ == "__main__":
