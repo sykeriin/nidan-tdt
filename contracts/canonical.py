@@ -5,6 +5,7 @@ TZ = "Asia/Kolkata"
 
 # column -> unit. Order is the order written to disk.
 TREND_COLUMNS = {
+    "record_id": "-",        # snapshot mode only (per-record files without time)
     "timestamp": "tz-aware",
     "IR": "A", "IY": "A", "IB": "A", "I_mean": "A", "IN": "A",
     "VR": "V", "VY": "V", "VB": "V",            # phase-neutral
@@ -46,9 +47,12 @@ def is_canonical(col: str) -> bool:
 def validate(trend: pd.DataFrame, events: pd.DataFrame | None = None) -> list[str]:
     """Return a list of contract violations (empty = valid)."""
     p = []
+    snapshot = "record_id" in trend.columns and "timestamp" not in trend.columns
     for c in REQUIRED:
-        if c not in trend.columns:
+        if c not in trend.columns and not (snapshot and c == "timestamp"):
             p.append(f"missing required column {c}")
+    if snapshot and trend["record_id"].duplicated().any():
+        p.append("duplicate record_id")
     for c in trend.columns:
         if not is_canonical(c):
             p.append(f"non-canonical column {c}")

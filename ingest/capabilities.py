@@ -13,6 +13,36 @@ def _measured(df, col):
     return _present(df, col) and not flags.str.contains(f"DERIVED_{col}(?:;|$)", regex=True).any()
 
 
+SNAPSHOT_DISABLED = {
+    "ageing_rul": "needs a time axis: ageing accumulates over time (per-record ageing rate at the operating point is shown)",
+    "residual_fidelity": "rolling fidelity needs a time series (per-record residual is shown)",
+    "lead_time_eval": "lead time needs time",
+    "replay": "nothing to replay without time",
+    "oil_leak_theft": "leak vs theft needs the oil level over time",
+    "breathing_index": "needs daily temperature swing",
+    "through_fault": "needs an event log",
+}
+
+
+def compute_snapshot(records: pd.DataFrame) -> tuple[dict[str, bool], str, pd.DataFrame, dict]:
+    """Dataset-level capabilities, per-record capability matrix and disabled-feature messages for snapshot mode."""
+    def has(c):
+        return records[c].notna() if c in records else pd.Series(False, index=records.index)
+    flags = records["dq_flags"] if "dq_flags" in records else pd.Series("", index=records.index)
+    per = pd.DataFrame({
+        "record_id": records["record_id"],
+        "thermal_twin": has("I_mean") & has("amb_C"),
+        "residual": has("I_mean") & has("amb_C") & has("OTI_C"),
+        "unbalance": has("IR") & has("IY") & has("IB") & ~flags.str.contains("DERIVED_IR"),
+        "voltage_quality": has("VR") & has("VY") & has("VB"),
+        "oil_level": has("OLI_pct"),
+    })
+    caps = {k: bool(per[k].mean() >= MIN_COVERAGE) for k in per.columns if k != "record_id"}
+    caps.update({k: False for k in SNAPSHOT_DISABLED})
+    mode = "snapshot" if caps["thermal_twin"] else "data_only"
+    return caps, mode, per, dict(SNAPSHOT_DISABLED)
+
+
 def compute(trend: pd.DataFrame, events: pd.DataFrame) -> tuple[dict[str, bool], str]:
     has_current = _present(trend, "I_mean")
     has_amb = _present(trend, "amb_C")

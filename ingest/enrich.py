@@ -115,6 +115,19 @@ def fill_ambient(df: pd.DataFrame, weather: pd.DataFrame) -> tuple[pd.DataFrame,
     return df, log
 
 
+def fill_ambient_static(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """Snapshot mode (no time, so no weather lookup): valid ATI, else median of valid ATI, else constant."""
+    df = df.copy()
+    bad = df.get("__dq_RANGE_ATI_C", pd.Series(False, index=df.index)).astype(bool)
+    amb = df["ATI_C"].where(~bad) if "ATI_C" in df else pd.Series(np.nan, index=df.index)
+    need = amb.isna()
+    fill = float(amb.median()) if amb.notna().any() else FALLBACK_AMBIENT_C
+    amb[need] = fill
+    df["__dq_ASSUMED_AMBIENT"] = need
+    df["amb_C"] = amb.astype(float)
+    return df, ([f"amb_C assumed {fill:.1f} C for {int(need.sum())} records (ASSUMED_AMBIENT)"] if need.any() else [])
+
+
 def ati_mismatch(df: pd.DataFrame, weather: pd.DataFrame, limit_C=8.0, hours=6) -> pd.Series:
     """ATI vs Open-Meteo differs > limit for > hours (spec §2.8)."""
     if "ATI_C" not in df or weather.empty:

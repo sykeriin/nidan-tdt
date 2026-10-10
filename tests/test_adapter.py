@@ -167,8 +167,8 @@ def test_hv_voltage_set_aside(tmp_path):
     assert ds.trend["I_mean"].iloc[0] == pytest.approx(600)
 
 
-def test_records_without_timestamp_get_clear_error(tmp_path):
+def test_records_without_timestamp_load_as_snapshot(tmp_path):
     f = tmp_path / "records.csv"
     pd.DataFrame({"Test_ID": ["TRN-0001", "TRN-0002"], "Load_Current_A": [50.0, 60.0]}).to_csv(f, index=False)
-    with pytest.raises(ValueError, match="per-test records keyed by 'Test_ID'"):
-        load([f])
+    ds = load([f], asset=None)
+    assert ds.mode == "snapshot" and list(ds.trend["record_id"]) == ["TRN-0001", "TRN-0002"]

@@ -72,12 +72,14 @@ def build(out=FIX) -> dict[str, Path]:
 
     paths["F15"] = out / "F15_organizer_style.xlsx"
     _organizer_style(n, paths["F15"])
+    paths["F15r"] = out / "F15r_organizer_records_no_time.xlsx"
+    _organizer_style(n, paths["F15r"], with_time=False)
 
     paths["F2"] = ROOT / "data" / "raw" / "kaggle"
     return paths
 
 
-def _organizer_style(n: pd.DataFrame, path: Path) -> None:
+def _organizer_style(n: pd.DataFrame, path: Path, with_time: bool = True) -> None:
     """Naming/layout of the CPRI screening workbook (structure only, no records reused): README sheet,
     Title_Case_unit headers, record ID, anonymous Sensor_S1..S4, Validity_Label, blank cells, duplicate pairs.
     Adds a timestamp (the screening file has none; the twin needs time)."""
@@ -105,6 +107,8 @@ def _organizer_style(n: pd.DataFrame, path: Path) -> None:
     dup = trend.iloc[[100, 200, 300]].copy()                                        # duplicate measurement pairs
     dup["Record_ID"] = [f"REC-{k + i + 1:04d}" for i in range(3)]
     trend = pd.concat([trend, dup]).reset_index(drop=True)
+    if not with_time:                       # F15r: the screening file's real shape - records, no time axis
+        trend = trend.drop(columns=["Timestamp"])
     readme = pd.DataFrame({"Item": ["Records", "Data quality", "Note"],
                            "Details": [len(trend), "Noise, missing values, sensor faults, duplicate measurement pairs",
                                        "SIMULATED fixture in organizer naming style"]})

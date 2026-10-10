@@ -68,6 +68,8 @@ class TwinEngine:
     # ---------------- batch ----------------
     def run(self, ds: Dataset | pd.DataFrame) -> pd.DataFrame:
         trend = ds.trend if isinstance(ds, Dataset) else ds
+        if (isinstance(ds, Dataset) and ds.mode == "snapshot") or "timestamp" not in trend:
+            return self.run_snapshot(trend)
         t = trend.reset_index(drop=True).copy()
         n = len(t)
         has_oti = "OTI_C" in t and t["OTI_C"].notna().any()
@@ -139,6 +141,41 @@ class TwinEngine:
                 "fidelity_rmse_C_last": float(res["fidelity_rmse_C"].dropna().iloc[-1]) if res["fidelity_rmse_C"].notna().any() else None,
                 "drift_message": DRIFT_MESSAGE if drift else None,
                 "first_drift_alert": res.loc[res["fidelity_alert"], "timestamp"].min() if drift else None}
+
+    # ---------------- snapshot (records without time) ----------------
+    def run_snapshot(self, records: pd.DataFrame) -> pd.DataFrame:
+        """Each record = steady state at its load and ambient (IEC 60076-7 without time constants, via the
+        library's own steady-state functions). Time-dependent outputs are absent by design."""
+        t = records.reset_index(drop=True).copy()
+        n = len(t)
+        amps = t["I_mean"].to_numpy(float) if "I_mean" in t else np.full(n, np.nan)
+        amb = t["amb_C"].to_numpy(float)
+        oti = t["OTI_C"].to_numpy(float) if "OTI_C" in t else np.full(n, np.nan)
+        cols = {c: np.full(n, np.nan) for c in ("twin_oil_C", "twin_hs_C", "rise_low_K", "rise_high_K")}
+        st, bst = thermal.Stepper(self.tr), {k: thermal.Stepper(tr) for k, tr in self.bands.items()}
+        for i in np.flatnonzero(~np.isnan(amps) & ~np.isnan(amb)):
+            cols["twin_oil_C"][i], cols["twin_hs_C"][i] = st.reset(amps[i], amb[i])
+            for k, s in bst.items():
+                cols[f"rise_{k}_K"][i] = s.reset(amps[i], amb[i])[0] - amb[i]
+        out = pd.DataFrame(cols)
+        out["load_pu"] = amps / self.i_rated
+        out["residual_oil_C"] = oti - out["twin_oil_C"]
+        out["aging_rate_point"] = ageing.rate(out["twin_hs_C"].to_numpy(), self.insulation)
+        flags = t["dq_flags"].fillna("") if "dq_flags" in t else pd.Series("", index=t.index)
+        rise = oti - amb
+        ok = ~np.isnan(rise) & out["rise_low_K"].notna().to_numpy() & ~flags.map(_bad_temp).to_numpy()
+        tol = plausibility.TOL_K
+        out["implausible_rise"] = ok & ((rise < out["rise_low_K"] - tol) | (rise > out["rise_high_K"] + tol))
+        res = pd.concat([t, out], axis=1)
+        n_ev = int(ok.sum())
+        frac = float(res["implausible_rise"][ok].mean()) if n_ev else np.nan
+        verdict = "not checked" if not n_ev else "suspect" if frac > plausibility.SUSPECT_FRACTION else "plausible"
+        from ingest.capabilities import SNAPSHOT_DISABLED
+        res.attrs.update({"mode": "snapshot", "rul": None, "rul_display": "RUL: not available in snapshot mode",
+                          "life_consumed_days": None, "drift_message": None, "first_drift_alert": None,
+                          "fidelity_rmse_C_last": None, "disabled": dict(SNAPSHOT_DISABLED),
+                          "plausibility": {"OTI_C": verdict, "implausible_fraction": frac, "evaluable_rows": n_ev}})
+        return res
 
     # ---------------- streaming ----------------
     def _reset_stream(self):

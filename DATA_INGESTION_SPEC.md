@@ -307,6 +307,7 @@ Build with `python -m sim.fixtures` → `data/fixtures/`. Tests: `tests/test_ada
 | F4 | **Excel, 2 sheets** (Trend, Events), DD/MM/YYYY, peak current in A | `F4_excel_trend_events.xlsx` | Sheet roles, Indian dates, events → `peak_pu` | full |
 | F6 | **Line-line voltages only, kA currents** | `F6_line_line_kA.csv` | kA → A, L-L → L-N | full |
 | F8 | **kVA only**, no temperatures, no ambient | `F8_kva_only.csv` | Derive amps from kVA at nameplate V; Open-Meteo ambient; unbalance off | meter_only |
+| F15r | F15 **without the Timestamp column** (the screening file's real shape) | `F15r_organizer_records_no_time.xlsx` | Snapshot mode, per-record capabilities, duplicate pairs flagged and kept, `interval=` → `ASSUMED_TIME` | snapshot |
 | F15 | **Organizer style** (CPRI screening-workbook naming): README sheet + `Trend_Data`, `Title_Case_unit` headers, `Record_ID`, anonymous `Sensor_S1..S4`, `Validity_Label`, blank cells, duplicate pairs, DD-MM-YYYY | `F15_organizer_style.xlsx` | Unit-suffix mapping, single current/voltage, label → `gt_*`, sensors → `extra_*`, `DUP_IDENT` | full |
 
 Also tested: `map_row()` == batch on F3, `inspect()` proposals, A/B/C vs R/Y/B `ib` resolution, header unit hints,
@@ -335,7 +336,7 @@ the organizers' own file, so its conventions are our best guess at the finale fo
 | Voltages in kV at **HV/test levels** (≈ 8–31 kV) | Any voltage with median > 1000 V is set aside as `extra_<col>_hv` with a warning, never used as LV voltage |
 | **Anonymous sensors** `Sensor_S1..S4`; README: "not every sensor is useful" | Not guessed: kept as `extra_sensor_s*`, viewable, unused by the twin |
 | Hidden outputs `Reference_Parameter`, `Validity_Label` (Valid/Invalid) | Added to ground-truth synonyms → `gt_*`, quarantined from detectors |
-| Record IDs `TRN-0001` / `TST-0001`, **no timestamp at all**; `Test_Duration_min` instead | If a finale file has no time column, load fails with a specific message ("per-test records keyed by 'Test_ID' … the twin needs a time series") instead of a generic one. A records mode is **not built** [Open] |
+| Record IDs `TRN-0001` / `TST-0001`, **no timestamp at all**; `Test_Duration_min` instead | **Snapshot mode** (built): a record-ID table without time loads with `mode="snapshot"`, each row a steady-state operating point (`record_id` replaces `timestamp`). Time-dependent features are off with a reason (`health_report["disabled"]`), plus a per-record capability matrix. With `load(..., interval="15min", assumed_start=...)` rows get synthetic timestamps instead, flagged `ASSUMED_TIME`. A file with neither time nor ID still fails |
 | README sheet + data sheets + submission template in one workbook | README/template sheets classify as `other` and are listed, not loaded. A `duration` column no longer makes a big trend sheet look like an event log |
 | Data quality: noise, blank cells, sensor faults, duplicate measurement pairs, an embedded regime change | Blanks → NaN; duplicates → `DUP_*`; regime change: not detected by the adapter (analytics/twin concern) |
 

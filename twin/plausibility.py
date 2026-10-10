@@ -40,9 +40,10 @@ class PlausibilityResult:
 
 
 def steady_rise(load_pu, top_oil_temp_rise, R, amb_temp_surcharge, x=0.8):
-    """IEC 60076-7 steady-state top-oil rise over ambient (incl. enclosure surcharge)."""
+    """IEC 60076-7 steady-state top-oil rise over ambient, in the library's form for distribution transformers:
+    (rated rise + enclosure surcharge) x loss-ratio^x."""
     k = np.asarray(load_pu, dtype=float)
-    return top_oil_temp_rise * ((1 + R * k ** 2) / (1 + R)) ** x + amb_temp_surcharge
+    return (top_oil_temp_rise + amb_temp_surcharge) * ((1 + R * k ** 2) / (1 + R)) ** x
 
 
 def _segments(ts: pd.Series, ok: pd.Series, gap=pd.Timedelta("1h")) -> list[np.ndarray]:

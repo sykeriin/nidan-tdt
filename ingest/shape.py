@@ -23,7 +23,18 @@ def classify(df: pd.DataFrame) -> str:
         return "events"
     if tcol is not None and df.select_dtypes("number").shape[1] >= 1:
         return "trend"
+    if record_id_column(df) is not None and df.select_dtypes("number").shape[1] >= 1 and len(df) >= 2:
+        return "records"          # per-test records without time (CPRI screening style) -> snapshot mode
     return "other"
+
+
+def record_id_column(df: pd.DataFrame) -> str | None:
+    for c in df.columns:
+        n = normalize(c)
+        if (n == "id" or n.endswith("_id") or n in ("record", "test_no", "sample_no")) and df[c].notna().all() \
+                and df[c].nunique() >= 0.9 * len(df):
+            return c
+    return None
 
 
 def merge(frames: list[pd.DataFrame]) -> tuple[pd.DataFrame, dict]:

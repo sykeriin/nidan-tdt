@@ -17,12 +17,9 @@ def _or(df, code, mask):
     df[col] = (df[col] if col in df else False) | mask.fillna(False).astype(bool)
 
 
-def validate(df: pd.DataFrame, interval: pd.Timedelta, i_rated: float | None = None) -> pd.DataFrame:
+def validate_static(df: pd.DataFrame, i_rated: float | None = None) -> pd.DataFrame:
+    """Checks that need no time axis: RANGE_*, NEG_* (also used by snapshot mode)."""
     df = df.copy()
-    dt = df["timestamp"].diff()
-    gap = dt > 3 * interval
-    _or(df, "GAP", gap)
-
     for col, (lo, hi) in RANGES.items():
         if col in df and df[col].notna().any():
             x = df[col]
@@ -34,6 +31,18 @@ def validate(df: pd.DataFrame, interval: pd.Timedelta, i_rated: float | None = N
         for col in ("IR", "IY", "IB"):
             if col in df:
                 _or(df, f"RANGE_{col}", df[col] > 5 * i_rated)
+
+    for col in NEG_COLS:
+        if col in df:
+            _or(df, f"NEG_{col}", df[col] < 0)
+    return df
+
+
+def validate(df: pd.DataFrame, interval: pd.Timedelta, i_rated: float | None = None) -> pd.DataFrame:
+    df = validate_static(df, i_rated)
+    dt = df["timestamp"].diff()
+    gap = dt > 3 * interval
+    _or(df, "GAP", gap)
 
     # jumps: change over max(dt, 15 min) scaled to 15 min; not across gaps
     win = dt.where(dt > pd.Timedelta("15min"), pd.Timedelta("15min"))
@@ -54,9 +63,6 @@ def validate(df: pd.DataFrame, interval: pd.Timedelta, i_rated: float | None = N
             mark = end[::-1].astype(float).rolling(STUCK_SAMPLES, min_periods=1).max()[::-1] > 0
             _or(df, f"STUCK_{col.split('_')[0]}", mark)
 
-    for col in NEG_COLS:
-        if col in df:
-            _or(df, f"NEG_{col}", df[col] < 0)
     return df
 
 

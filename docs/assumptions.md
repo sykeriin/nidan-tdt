@@ -74,6 +74,12 @@ expected because the generated plant is deliberately slightly cooler than the no
 **A15. RUL display capped at "> 40 years"**; the raw value (numeric guard 1000 y) stays in reports. Primary figures on the
 dashboard are life consumed in the period (days, expected vs actual) and the ageing rate. [Assumed]
 
+**A16. Snapshot mode treats each record as a steady state** (library steady-state functions, no time constants).
+Valid for real steady-state test records (e.g. heat-run results). On data that is really a time series with the
+time removed (fixture F15r), thermal lag makes the residual spread wide (±7 K, 7 % of records outside the physics band)
+— use `interval=` for such files. Missing ambient in snapshot mode = median of the file's valid ATI, else 27 °C,
+flagged ASSUMED_AMBIENT. Duplicate measurement pairs are flagged but both records kept (they have distinct IDs). [Assumed]
+
 ## Weather
 
 **A11. Site point for Transformer-1 weather: Bengaluru city (12.97 N, 77.59 E)**, Open-Meteo archive, cached

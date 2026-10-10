@@ -93,8 +93,13 @@ def inspect(paths, synonyms=None) -> InspectResult:
 
 
 def load(paths, schema=None, asset="config/asset.yaml", source: str | None = None,
-         simulated: bool | None = None, start=None, end=None, weather: pd.DataFrame | None = None) -> Dataset:
-    """Full pipeline. schema=None -> auto-map (confidence >= 0.6). asset: yaml path | dict | None (estimate)."""
+         simulated: bool | None = None, start=None, end=None, weather: pd.DataFrame | None = None,
+         interval=None, assumed_start="2000-01-01 00:00") -> Dataset:
+    """Full pipeline. schema=None -> auto-map (confidence >= 0.6). asset: yaml path | dict | None (estimate).
+
+    Files without time but with a record ID -> mode "snapshot" (each row a steady-state operating point), unless
+    `interval` is given: then rows get synthetic timestamps from `assumed_start` in file order, flagged ASSUMED_TIME.
+    """
     paths = [paths] if isinstance(paths, (str, Path)) else list(paths)
     sch = _load_schema(schema) or {}
     rep = {"files": [str(p) for p in paths], "warnings": []}
@@ -104,6 +109,16 @@ def load(paths, schema=None, asset="config/asset.yaml", source: str | None = Non
     simulated = sch.get("simulated", False) if simulated is None else simulated
     if "asset" in sch:
         asset = sch["asset"]
+    synthetic_time = False
+    if not any(r == "trend" for *_, r in tables) and any(r == "records" for *_, r in tables):
+        if interval is None:
+            return _load_snapshot(tables, sch, asset, source, simulated, rep)
+        step = pd.Timedelta(interval)
+        tables = [(n, _assign_time(d, assumed_start, step), i, "trend") if r == "records" else (n, d, i, r)
+                  for n, d, i, r in tables]
+        synthetic_time = True
+        rep["warnings"].append(f"No timestamps: synthetic times assigned from {assumed_start} every {step} in file "
+                               f"order (ASSUMED_TIME on every row)")
     a = enrich.resolve_asset(asset)
 
     # per trend table: time -> map/units -> dedupe
@@ -164,6 +179,8 @@ def load(paths, schema=None, asset="config/asset.yaml", source: str | None = Non
     trend = derive.add_loading(trend, a.get("i_rated_A"))
 
     # finalise
+    if synthetic_time:
+        trend["__dq_ASSUMED_TIME"] = True
     trend["dq_flags"] = validate.flags_to_string(trend)
     flag_counts = validate.flag_counts(trend)
     if "source" not in trend or trend["source"].isna().all():
@@ -186,6 +203,69 @@ def load(paths, schema=None, asset="config/asset.yaml", source: str | None = Non
         "nameplate_source": a.get("nameplate_source"), "events": len(events),
     })
     return Dataset(trend=trend, events=events, capabilities=caps, mode=mode, health_report=rep, asset=a)
+
+
+def _assign_time(df: pd.DataFrame, start, step: pd.Timedelta) -> pd.DataFrame:
+    out = df.copy()
+    out.insert(0, "timestamp", pd.date_range(pd.Timestamp(start), periods=len(df), freq=step))
+    return out
+
+
+def _load_snapshot(tables, sch, asset, source, simulated, rep) -> Dataset:
+    """Per-record files without time (CPRI screening style): each row is a steady-state operating point."""
+    frames, mapping, conversions, dropped = [], [], [], []
+    for name, df, _, role in tables:
+        if role != "records":
+            continue
+        idc = shape.record_id_column(df)
+        body = df.drop(columns=[idc])
+        if "columns" in sch:
+            cols = sch["columns"]
+            mapping += [{"table": name, "source": str(k), "canonical": v.get("to"), "unit": v.get("unit", "-"),
+                         "confidence": "schema"} for k, v in cols.items() if k in body.columns]
+        else:
+            props = cmap.propose(body)
+            cols = cmap.schema_from_proposals(props)
+            mapping += [{"table": name, **{k: p[k] for k in ("source", "canonical", "proposed", "confidence", "unit")}}
+                        for p in props]
+        m, drop, conv = cmap.apply(body, cols)
+        m = _split_existing_flags(m)
+        m.insert(0, "record_id", df[idc].astype(str).to_numpy())
+        frames.append(m)
+        dropped += [f"{name}:{d}" for d in drop]
+        conversions += conv
+        rep.setdefault("record_id_column", {})[name] = str(idc)
+    trend = pd.concat(frames, ignore_index=True)
+    data_cols = [c for c in trend.columns if c != "record_id" and not c.startswith("__dq_")]
+    trend["__dq_DUP_IDENT"] = trend.duplicated(subset=data_cols, keep=False)   # duplicate pairs: flagged, both kept
+    a = enrich.resolve_asset(asset)
+    trend, derive_log = derive.derive(trend, a)
+    if not a.get("i_rated_A"):
+        a = enrich.resolve_asset(None if a.get("nameplate_source") == "estimated" else a, trend)
+        if a.get("nameplate_source") == "estimated":
+            rep["warnings"].append(f"Rating unknown: estimated I_rated {a.get('i_rated_A')} A from data "
+                                   f"[Assumed - estimated from data]")
+    trend = validate.validate_static(trend, a.get("i_rated_A"))
+    trend, enrich_log = enrich.fill_ambient_static(trend)
+    trend = derive.add_loading(trend, a.get("i_rated_A"))
+    trend["dq_flags"] = validate.flags_to_string(trend)
+    flag_counts = validate.flag_counts(trend)
+    if "source" not in trend or trend["source"].isna().all():
+        trend["source"] = source
+    trend["simulated"] = bool(simulated)
+    order = ["record_id"] + [c for c in TREND_COLUMNS if c in trend and c not in ("record_id", "timestamp")]
+    extras = sorted(c for c in trend if c.startswith(("alarm_", "gt_", "extra_")))
+    trend = trend[order + extras]
+    caps, mode, per_record, disabled = capabilities.compute_snapshot(trend)
+    rep.update({
+        "rows_after_cleaning": len(trend), "mapping": mapping, "unit_conversions": conversions,
+        "derived": derive_log, "enrichment": enrich_log, "dropped_columns": dropped, "flag_counts": flag_counts,
+        "capabilities": caps, "mode": mode, "nameplate_source": a.get("nameplate_source"), "events": 0,
+        "record_capabilities": per_record, "disabled": disabled,
+    })
+    rep["warnings"].append("Snapshot mode: no time axis. Each record is a steady-state operating point; "
+                           "pass interval= to treat rows as a time series instead (ASSUMED_TIME).")
+    return Dataset(trend=trend, events=empty_events(), capabilities=caps, mode=mode, health_report=rep, asset=a)
 
 
 def map_row(raw: dict, schema: dict, asset: dict, weather: pd.DataFrame | None = None) -> dict:
