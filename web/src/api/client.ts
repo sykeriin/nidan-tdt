@@ -93,13 +93,27 @@ export async function uploadDataset(files: File[], estimateRating: boolean): Pro
 export type WhatIf = components["schemas"]["WhatIfModel"];
 export type Findings = components["schemas"]["FindingsModel"];
 export type Finding = components["schemas"]["FindingModel"];
-export interface WhatIfInput { load: number; ambient: number; cooling: number }
+export type LoadProfile = "steady" | "daily";
+export interface WhatIfInput {
+  load: number; ambient: number; cooling: number; voltage: number; pf: number; unbalance: number; profile: LoadProfile;
+}
 // Simulate: one steady-state answer per slider position (the approach starts from the twin state at `t`).
+// Thermal only, so voltage, PF and unbalance are not part of its key.
 export const useWhatIf = (inp: WhatIfInput | null, dataset: string, t: string | null) =>
   useQuery({
     queryKey: ["whatif", dataset, t, inp?.load, inp?.ambient, inp?.cooling], enabled: !!inp, staleTime: Infinity,
     queryFn: () => get<WhatIf>("/whatif", { load_pu: inp!.load, ambient_C: inp!.ambient, cooling: inp!.cooling,
       dataset_id: dataset, t: t ?? undefined }),
+    placeholderData: (prev) => prev,
+  });
+export type WhatIfDay = components["schemas"]["WhatIfDayModel"];
+// Simulate: the what-if through plant, twin, analytics and Health Index (frames for every panel). Slower: debounce the input.
+export const useWhatIfDay = (inp: WhatIfInput | null, dataset: string, t: string | null) =>
+  useQuery({
+    queryKey: ["whatif-day", dataset, t, inp], enabled: !!inp, staleTime: Infinity, retry: false,
+    queryFn: () => get<WhatIfDay>(`/datasets/${dataset}/whatif-day`, { load_pu: inp!.load, ambient_C: inp!.ambient,
+      cooling: inp!.cooling, voltage_pu: inp!.voltage, pf: inp!.pf, unbalance_pct: inp!.unbalance, load_profile: inp!.profile,
+      t: t ?? undefined }),
     placeholderData: (prev) => prev,
   });
 // Diagnose: findings up to the replay cursor.

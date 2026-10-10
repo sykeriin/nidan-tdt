@@ -4,10 +4,10 @@ import { PART, type PartId } from "./twin/parts";
 import { HeatScale } from "./twin/HeatScale";
 import { DataIn, Frame, SectionToggle, SheetTabs, TitleBlock, TwinState, type TwinMode } from "./sheet/Sheet";
 import { Timeline } from "./sheet/Timeline";
-import { useDatasets, useFindings, useFramesQuery, useRunSummary, useThermalParams, useWhatIf, type Alert, type WhatIfInput } from "./api/client";
+import { useDatasets, useFindings, useFramesQuery, useRunSummary, useThermalParams, useWhatIf, useWhatIfDay, type Alert, type WhatIfInput } from "./api/client";
 import { DiagnosePanel, findingMarks } from "./sheet/Diagnose";
 import { TourCaption, tour, useTourStep } from "./twin/Tour";
-import { SimControls, SimInputs, whatIfFrames } from "./sheet/Simulate";
+import { SimControls, SimInputs, useSettled, whatIfDayFrames, whatIfFrames } from "./sheet/Simulate";
 import { ThermalDiagram } from "./sheet/ThermalDiagram";
 import { LagTraces } from "./sheet/LagTraces";
 import { LayerList } from "./sheet/LayerList";
@@ -24,7 +24,7 @@ import "./workbench/compact.css";
 import "./stage/stage.css";
 import { LifeClock } from "./twin/LifeClock";
 import { ALL_ON, type Layers } from "./twin/layers";
-import { player, usePlayerIndex, type Frames } from "./player/player";
+import { player, usePlayerIndex, type Cell, type Frames } from "./player/player";
 
 // URL parameters make any view reproducible: ?ds=S2&t=2026-04-25T12:00&pin=winding-Y,oti&cut=0&play=1&mode=simulate
 const q = new URLSearchParams(window.location.search);
@@ -69,19 +69,37 @@ export default function App() {
   const [simIn, setSimIn] = useState<WhatIfInput | null>(null);
   const [simFrom, setSimFrom] = useState<string | null>(null);
   const replayT = useRef<number | null>(null);
+  const simHeld = useRef<Record<string, Cell>>({}); // the cursor's measured row when Simulate opened, then the last day's
+  const dayFor = useRef(""); // the inputs whose what-if day is in the player
   const wq = useWhatIf(sim ? simIn : null, dataset, simFrom);
-  useEffect(() => { if (sim && wq.data) player.load(whatIfFrames(wq.data, dataset)); }, [sim, wq.data, dataset]);
+  const settled = useSettled(simIn);
+  const dq = useWhatIfDay(sim ? settled : null, dataset, simFrom);
+  // while a ruler moves: the instant steady answer as a one-row frame, so the 3D follows the hand
+  useEffect(() => {
+    if (sim && wq.data && !wq.isPlaceholderData && dayFor.current !== JSON.stringify(simIn))
+      player.load(whatIfFrames(wq.data, dataset, simHeld.current));
+  }, [sim, wq.data, wq.isPlaceholderData, dataset]); // eslint-disable-line react-hooks/exhaustive-deps
+  // once the rulers rest: the what-if day (health, trends, power flow, alerts) replaces it
+  useEffect(() => {
+    if (!sim || !dq.data || dq.isPlaceholderData || JSON.stringify(settled) !== JSON.stringify(simIn)) return;
+    player.load(whatIfDayFrames(dq.data, dataset), Date.parse(dq.data.cursor));
+    dayFor.current = JSON.stringify(settled);
+    simHeld.current = player.row();
+  }, [sim, dq.data, dq.isPlaceholderData, dataset]); // eslint-disable-line react-hooks/exhaustive-deps
   const clamp = (v: unknown, lo: number, hi: number, dflt: number) =>
     typeof v === "number" ? Math.min(hi, Math.max(lo, v)) : dflt;
   const switchMode = (m: TwinMode) => {
     if (m === mode) return;
     if (m === "simulate") {
       const r = player.frames && !player.frames.dataset.endsWith("#sim") ? player.row() : {};
+      simHeld.current = r;
+      dayFor.current = "";
       replayT.current = player.t;
       setSimFrom(frames && player.index >= 0 ? frames.iso[player.index] : null);
       // start from what the transformer is doing at the cursor (cooling: the measured radiator effectiveness)
       setSimIn({ load: Math.round(clamp(r.load_pu, 0.3, 1.4, 0.75) * 100) / 100, ambient: Math.round(clamp(r.amb_C, 15, 50, 30) * 2) / 2,
-        cooling: Math.round(clamp(r.radiator_effectiveness, 0.5, 1, 1) * 100) / 100 });
+        cooling: Math.round(clamp(r.radiator_effectiveness, 0.5, 1, 1) * 100) / 100,
+        voltage: 1, pf: Math.round(clamp(r.PF, 0.7, 1, 0.95) * 100) / 100, unbalance: 0, profile: "steady" });
       setPinned([]);
     }
     if (m === "diagnose") setLayers((l) => ({ ...l, electrical: true }));
@@ -99,11 +117,16 @@ export default function App() {
     switchMode(m);
     if (m === "simulate") {
       const n = (k: string) => (q.get(k) === null ? undefined : Number(q.get(k)));
-      setSimIn((cur) => cur && { load: n("load") ?? cur.load, ambient: n("amb") ?? cur.ambient, cooling: n("cool") ?? cur.cooling });
+      setSimIn((cur) => cur && { load: n("load") ?? cur.load, ambient: n("amb") ?? cur.ambient, cooling: n("cool") ?? cur.cooling,
+        voltage: n("volt") ?? cur.voltage, pf: n("pf") ?? cur.pf, unbalance: n("unbal") ?? cur.unbalance,
+        profile: q.get("profile") === "daily" ? "daily" : cur.profile });
     }
   }, [frames]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const i = usePlayerIndex();
+  const simDay = sim && (player.frames?.t.length ?? 0) > 1; // the what-if day (not the one-row steady frame) is loaded
+  const simDayState = { data: dq.data, busy: dq.isFetching || JSON.stringify(settled) !== JSON.stringify(simIn),
+    error: dq.error ? (dq.error as Error).message : null };
   const params = useThermalParams(dataset, frames?.iso[0] ?? null).data;
   const ratedW = params ? params.P0_W + params.Pk_W : null; // arrow-width scale only
   // ---- DIAGNOSE: findings up to the cursor, numbered on the parts they concern
@@ -165,7 +188,8 @@ export default function App() {
         )}
         <aside className="margin-left">
           {V2 ? <V2Left row={row} simulated={sim || !!info?.simulated} /> : (<>
-            {sim ? <SimInputs w={wq.data} /> : <DataIn row={row} otiSuspect={otiSuspect} meterOnly={meterOnly} />}
+            {sim ? <SimInputs w={wq.data} inp={simIn} onChange={setSimIn} dayLoaded={simDay} day={simDayState} />
+              : <DataIn row={row} otiSuspect={otiSuspect} meterOnly={meterOnly} />}
             <LayerList layers={layers} onToggle={(id) => setLayers((l) => ({ ...l, [id]: !l[id] }))} />
             {frames && !sim && layers.lag && <LagTraces />}
             {live && layers.thermometer && <ThermalDiagram meterOnly={meterOnly && !sim} otiSuspect={otiSuspect} />}
@@ -210,12 +234,13 @@ export default function App() {
             {meterOnly && !sim && <p className="field-note side-note">Meter-only data: no oil-temperature sensor. Temperatures are estimated by the twin.</p>}
             {snapshot && !sim && <p className="field-note side-note">This dataset is a set of records with no time axis: there is nothing to replay.</p>}
             <p className="side-note hint">Hover a part to read it. Click to pin. Drag to turn. Space plays, arrows step.</p>
-            {live && layers.lifeclock && <LifeClock meterOnly={meterOnly && !sim} perDay={sim} />}
+            {live && layers.lifeclock && <LifeClock meterOnly={meterOnly && !sim} perDay={sim && !simDay} />}
           </>)}
         </aside>
         <footer className="strip-bottom">
           {sim && simIn
-            ? <SimControls inp={simIn} onChange={setSimIn} w={wq.data} busy={wq.isFetching} error={wq.error ? (wq.error as Error).message : null} />
+            ? <SimControls inp={simIn} onChange={setSimIn} w={wq.data} busy={wq.isFetching} error={wq.error ? (wq.error as Error).message : null}
+                dayBusy={simDayState.busy} />
             : <Timeline frames={frames} alerts={alerts} events={events} meterOnly={meterOnly} />}
           {!V2 && <TitleBlock run={run.data} time={sim ? "simulated" : frames && i >= 0 ? frames.iso[i] : null}
             simulated={info?.simulated ?? false} />}

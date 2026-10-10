@@ -198,6 +198,12 @@ def test_whatif_and_findings(client):
     assert j["hot_spot_C"] > j["top_oil_C"] > 40 and len(j["curve"]["t_min"]) == len(j["curve"]["top_oil_C"])
     assert j["start"]["from"] == "cold (ambient)"
     assert client.get("/api/whatif", params={"load_pu": 5, "ambient_C": 40}).status_code == 422
+    d = client.get("/api/datasets/S2/whatif-day", params={"load_pu": 0.8, "ambient_C": 35, "load_profile": "daily",
+                                                           "t": "2026-04-16T12:00"})
+    assert d.status_code == 200
+    j = d.json()
+    assert j["rows"] == len(j["timestamp"]) == len(j["columns"]["health_score"]) and ISO.match(j["cursor"])
+    assert client.get("/api/datasets/S2/whatif-day", params={"load_pu": 0.8, "ambient_C": 35, "pf": 2}).status_code == 422
     f = client.get("/api/datasets/S5/findings").json()
     assert f["stress"]["triggered"] and any(g["cause"] == "Short circuit" for g in f["findings"])
     assert "class" in f["stress"]["last_event"]

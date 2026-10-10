@@ -6,7 +6,7 @@ Timestamps serialise as ISO 8601 with offset (e.g. 2026-04-01T00:00:00+05:30), N
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -132,6 +132,22 @@ class FramesModel(BaseModel):
     rows: int
     timestamp: list[datetime]
     columns: dict[str, list[Any]]
+
+
+class WhatIfAlertModel(BaseModel):
+    timestamp: datetime
+    type: str
+    severity: str
+    origin: str
+    explanation: str
+
+
+class WhatIfDayModel(FramesModel):
+    """A what-if day through the full pipeline: frame columns as /frames (incl. health_*), where to put the cursor,
+    and the alerts the analytics raised on it."""
+    cursor: datetime
+    load_profile: Literal["steady", "daily"]
+    alerts: list[WhatIfAlertModel]
 
 
 class ValueModel(BaseModel):

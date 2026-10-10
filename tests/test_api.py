@@ -191,6 +191,33 @@ def test_whatif_cooling_and_start():
         api.whatif(0.8, 30, 0.0)
 
 
+def test_whatif_day_agrees_with_steady_and_scores_health():
+    """The what-if day ends where the steady answer says (any cooling), carries health columns, and raises nothing
+    at a healthy operating point (no sensor artefacts from the simulated meter)."""
+    t = "2026-04-16T12:00"
+    for load, amb, cool in ((0.62, 35, 1.0), (1.0, 35, 0.6)):
+        s, d = api.whatif(load, amb, cool, "S2", t), api.whatif_day("S2", t, load, amb, cool)
+        end = d["frames"].iloc[-1]
+        assert end["twin_oil_C"] == pytest.approx(s["top_oil_C"], abs=1.0)
+        assert end["twin_hs_C"] == pytest.approx(s["hot_spot_C"], abs=1.0)
+        assert {"health_score", "health_electrical", "VR", "PF", "OLI_pct"} <= set(d["frames"].columns)
+    ok = api.whatif_day("S2", t, 0.62, 35)
+    assert ok["alerts"] == [] and ok["frames"]["health_band"].iloc[-1] == "Green"
+    daily = api.whatif_day("S2", t, 0.62, 35, load_profile="daily")
+    assert len(daily["frames"]) == 2 * 96 and daily["alerts"] == []
+    assert daily["frames"]["load_pu"].max() == pytest.approx(0.62, abs=0.02)
+
+
+def test_whatif_day_electrical_inputs():
+    d = api.whatif_day("S2", "2026-04-16T12:00", 0.62, 30, voltage_pu=0.9, pf=0.8, unbalance_pct=20)
+    types = {a["type"] for a in d["alerts"]}
+    assert {"current_unbalance", "voltage_low"} <= types
+    end = d["frames"].iloc[-1]
+    assert end["PF"] == pytest.approx(0.8, abs=0.02) and end["health_electrical"] < 60
+    with pytest.raises(ValueError):
+        api.whatif_day("S2", None, 0.62, 30, load_profile="weekly")
+
+
 def test_findings_groups_and_parts():
     f = api.findings("S2", "2026-04-28T00:00")
     causes = {g["cause"] for g in f["findings"]}

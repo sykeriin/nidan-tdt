@@ -188,6 +188,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/datasets/{dataset_id}/whatif-day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whatif Day
+         * @description api.whatif_day() — the what-if through plant, twin, analytics and Health Index; frames plus cursor and alerts.
+         */
+        get: operations["whatif_day_api_datasets__dataset_id__whatif_day_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/datasets/{dataset_id}/findings": {
         parameters: {
             query?: never;
@@ -537,6 +557,66 @@ export interface paths {
         };
         /** Healthcheck */
         get: operations["healthcheck_api_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/companion/test-alert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Companion Test Alert
+         * @description Queue a TEST alert. Companion apps that are listening (they poll GET /api/companion/test-alerts) show it as a notification.
+         */
+        post: operations["companion_test_alert_api_companion_test_alert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/companion/test-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Companion Test Alerts
+         * @description Test alerts queued from the dashboard. A client calls once without `since` to learn `latest`, then polls with since=latest.
+         */
+        get: operations["companion_test_alerts_api_companion_test_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/companion/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Companion Responses
+         * @description The pre-written response for every alert type (companion/content/responses.json), for the dashboard's anomaly tests.
+         */
+        get: operations["companion_responses_api_companion_responses_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1428,6 +1508,17 @@ export interface components {
             /** Digits */
             digits: number;
         };
+        /** TestAlertIn */
+        TestAlertIn: {
+            /** Type */
+            type: string;
+            /**
+             * Severity
+             * @default warning
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "critical";
+        };
         /**
          * ThermalProfileModel
          * @description IEC 60076-7 thermal diagram and heat flow at one instant (twin/thermal_profile.py).
@@ -1485,6 +1576,51 @@ export interface components {
              * @description measured | twin | model
              */
             source: string;
+        };
+        /** WhatIfAlertModel */
+        WhatIfAlertModel: {
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Type */
+            type: string;
+            /** Severity */
+            severity: string;
+            /** Origin */
+            origin: string;
+            /** Explanation */
+            explanation: string;
+        };
+        /**
+         * WhatIfDayModel
+         * @description A what-if day through the full pipeline: frame columns as /frames (incl. health_*), where to put the cursor,
+         *     and the alerts the analytics raised on it.
+         */
+        WhatIfDayModel: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Rows */
+            rows: number;
+            /** Timestamp */
+            timestamp: string[];
+            /** Columns */
+            columns: {
+                [key: string]: unknown[];
+            };
+            /**
+             * Cursor
+             * Format: date-time
+             */
+            cursor: string;
+            /**
+             * Load Profile
+             * @enum {string}
+             */
+            load_profile: "steady" | "daily";
+            /** Alerts */
+            alerts: components["schemas"]["WhatIfAlertModel"][];
         };
         /** WhatIfIn */
         WhatIfIn: {
@@ -2075,6 +2211,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WhatIfModel"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    whatif_day_api_datasets__dataset_id__whatif_day_get: {
+        parameters: {
+            query: {
+                load_pu: number;
+                ambient_C: number;
+                /** @description 1 = radiators as designed */
+                cooling?: number;
+                voltage_pu?: number;
+                pf?: number;
+                /** @description R +x %, Y nominal, B −x % */
+                unbalance_pct?: number;
+                /** @description steady: one day at constant inputs; daily: two days of this dataset's hour-of-day shape, peaks = load_pu, ambient_C */
+                load_profile?: "steady" | "daily";
+                /** @description oil level and humidity from the replay row at t */
+                t?: string | null;
+            };
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatIfDayModel"];
                 };
             };
             /** @description Bad Request */
@@ -2875,6 +3073,109 @@ export interface operations {
         };
     };
     healthcheck_api_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    companion_test_alert_api_companion_test_alert_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestAlertIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    companion_test_alerts_api_companion_test_alerts_get: {
+        parameters: {
+            query?: {
+                /** @description return alerts with seq > since; omit to learn the latest seq */
+                since?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    companion_responses_api_companion_responses_get: {
         parameters: {
             query?: never;
             header?: never;

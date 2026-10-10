@@ -256,7 +256,8 @@ function Ageing() {
   const i = usePlayerIndex();
   const r = i >= 0 ? player.row(i) : {};
   const rate = num(r.aging_rate_actual) ?? num(r.aging_rate);
-  const used = num(r.days_aged_actual_cum) ?? num(r.days_aged_cum);
+  // a one-row frame (Simulate's instant steady answer) has no history, so nothing has been "used so far"
+  const used = (player.frames?.t.length ?? 0) > 1 ? num(r.days_aged_actual_cum) ?? num(r.days_aged_cum) : null;
   return (
     <Card title="Insulation ageing">
       <div className="st-age">

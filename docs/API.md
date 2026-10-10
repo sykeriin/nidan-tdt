@@ -269,6 +269,21 @@ Returns the thermal-profile fields at steady state (`top_oil_C`, `hot_spot_C`, `
 within 1 K), `curve {t_min[], top_oil_C[], hot_spot_C[]}` (IEC 60076-7 exponential approach), `start`, `params` and
 `estimated` (the field names that rest on estimates). Reduced cooling scales the top-oil rise by cooling^(−x) (A32).
 
+### `whatif_day(dataset_id, t, load_pu, ambient_C, cooling, voltage_pu, pf, unbalance_pct, load_profile)` / `GET /api/datasets/{id}/whatif-day?load_pu=&ambient_C=&cooling=&voltage_pu=&pf=&unbalance_pct=&load_profile=&t=`
+
+The what-if through the full pipeline, for Simulate's health index, trends, power flow and alerts. The plant
+(`sim/generator.py run_plant`, this dataset's asset, the generator's seeded sensor noise) runs at the chosen load
+(0–2 pu), ambient, cooling (scales rise + surcharge by cooling^(−x), as `whatif`, for plant and twin alike), voltage
+(0.8–1.2 pu), power factor (0.5–1) and phase unbalance (0–50 %: R +x %, Y nominal, B −x %); its readings go through the
+adapter, twin and analytics like an uploaded file. `load_profile`: `steady` = one day at constant inputs (ends at the
+`whatif` steady state, within 1 K); `daily` = two days of this dataset's own hour-of-day load and ambient shape, scaled
+so the peaks equal `load_pu` and `ambient_C` (day 1 warms the plant up). Oil level and humidity start from the replay
+row at `t`. About 0.3–0.5 s (the first call per dataset also loads the healthy residual reference).
+
+Returns the `/frames` shape (`dataset_id`, `rows`, `timestamp[]`, `columns{}` incl. `health_*`) plus `cursor` (steady:
+the last sample; daily: the hot-spot peak of day 2), `load_profile` and `alerts[] {timestamp, type, severity, origin,
+explanation}`.
+
 ### `findings(dataset_id, t)` / `GET /api/datasets/{id}/findings?t=`
 
 Findings up to `t` (omit = whole run): one per alert type, origin and part set (the latest, with `count`, `first`,

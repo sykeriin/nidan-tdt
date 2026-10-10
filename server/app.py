@@ -296,6 +296,23 @@ def whatif(load_pu: Annotated[float, Query(ge=0, le=2)], ambient_C: Annotated[fl
     return plain(api.whatif(load_pu, ambient_C, cooling, dataset_id=dataset_id, t=_local(t)))
 
 
+@app.get("/api/datasets/{dataset_id}/whatif-day", response_model=S.WhatIfDayModel, responses=ERRORS, tags=["simulate"])
+def whatif_day(dataset_id: str, load_pu: Annotated[float, Query(gt=0, le=2)], ambient_C: Annotated[float, Query(ge=-10, le=60)],
+               cooling: Annotated[float, Query(ge=0.05, le=1.5, description="1 = radiators as designed")] = 1.0,
+               voltage_pu: Annotated[float, Query(ge=0.8, le=1.2)] = 1.0,
+               pf: Annotated[float, Query(ge=0.5, le=1.0)] = 0.95,
+               unbalance_pct: Annotated[float, Query(ge=0, le=50, description="R +x %, Y nominal, B −x %")] = 0.0,
+               load_profile: Annotated[Literal["steady", "daily"], Query(description="steady: one day at constant inputs; daily: two days of this dataset's hour-of-day shape, peaks = load_pu, ambient_C")] = "steady",
+               t: Annotated[datetime | None, Query(description="oil level and humidity from the replay row at t")] = None):
+    """api.whatif_day() — the what-if through plant, twin, analytics and Health Index; frames plus cursor and alerts."""
+    _known(dataset_id)
+    r = api.whatif_day(dataset_id, _local(t), load_pu, ambient_C, cooling, voltage_pu, pf, unbalance_pct, load_profile)
+    df = r["frames"]
+    return {"dataset_id": dataset_id, "rows": len(df), "timestamp": plain(df["timestamp"]),
+            "columns": {c: plain(df[c].round(4) if df[c].dtype.kind == "f" else df[c]) for c in df.columns if c != "timestamp"},
+            "cursor": r["cursor"], "load_profile": r["load_profile"], "alerts": plain(r["alerts"])}
+
+
 @app.get("/api/datasets/{dataset_id}/findings", response_model=S.FindingsModel, response_model_by_alias=True,
          responses=ERRORS, tags=["run"])
 def findings(dataset_id: str, t: Annotated[datetime | None, Query(description="findings up to t; omit = whole run")] = None):
