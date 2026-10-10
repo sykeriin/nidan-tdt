@@ -61,7 +61,7 @@ def make_mock(scenario: str = "N", seed: int = 0, days: int = 30) -> tuple[pd.Da
     amb = 27 + 7 * np.sin((h - 9) / 24 * 2 * np.pi) + rng.normal(0, 0.3, n)
 
     rise_mult = np.ones(n)
-    pf = np.array([1.0, 1.0, 1.0])
+    pf = np.ones((n, 3))  # per-sample phase scaling, only changed by the unbalance scenario
     oil_level = np.full(n, 100.0)
     gt = np.array([""] * n, dtype=object)
 
@@ -73,7 +73,7 @@ def make_mock(scenario: str = "N", seed: int = 0, days: int = 30) -> tuple[pd.Da
         rise_mult = 1 + 0.25 * np.clip((day - 20) / 8, 0, 1)
         gt[day >= 20] = "cooling_degradation"
     if scenario == "S3":  # unbalance from day 25
-        pf = np.array([1.15, 0.92, 1.0])
+        pf[day >= 25] = [1.15, 0.92, 1.0]
         gt[day >= 25] = "unbalance"
     if scenario == "S4":  # slow leak days 20-25, theft step day 27 02:30
         oil_level = 100 - 22 * np.clip((day - 20) / 5, 0, 1)
@@ -84,7 +84,7 @@ def make_mock(scenario: str = "N", seed: int = 0, days: int = 30) -> tuple[pd.Da
 
     # Phase currents (A): small natural imbalance plus scenario imbalance
     nat = np.array([1.0, 1.0, 1.0]) * (1 + rng.normal(0, 0.01, (n, 3)))
-    ph = (load[:, None] * I_RATED) * nat * pf[None, :]
+    ph = (load[:, None] * I_RATED) * nat * pf
     ph += rng.normal(0, 0.003 * I_RATED * 0.5, ph.shape)
     i_mean = ph.mean(axis=1)
     k = i_mean / I_RATED  # per-unit load seen by the twin

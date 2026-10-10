@@ -42,6 +42,14 @@ def test_each_fault_leaves_its_signature():
     assert abs(s5["I_mean"].max() - n["I_mean"].max()) / n["I_mean"].max() < 0.05
 
 
+def test_s3_unbalance_starts_at_its_ground_truth_onset():
+    s3, _ = make_mock("S3")
+    unb = (s3[["IR", "IY", "IB"]].sub(s3["I_mean"], axis=0).abs().max(axis=1) / s3["I_mean"]) * 100
+    day = np.arange(len(s3)) / 96.0
+    assert unb[day < 25].max() < 10  # healthy until the labelled onset
+    assert unb[day >= 25].mean() > 10
+
+
 def test_ground_truth_shape():
     assert ground_truth("N") == []
     for s in SCENARIOS[1:]:
