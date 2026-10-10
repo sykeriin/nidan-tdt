@@ -1913,6 +1913,137 @@
      }
     }
    }
+  },
+  "/api/companion/test-alert": {
+   "post": {
+    "tags": [
+     "companion"
+    ],
+    "summary": "Companion Test Alert",
+    "description": "Queue a TEST alert. Companion apps that are listening (they poll GET /api/companion/test-alerts) show it as a notification.",
+    "operationId": "companion_test_alert_api_companion_test_alert_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TestAlertIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/companion/test-alerts": {
+   "get": {
+    "tags": [
+     "companion"
+    ],
+    "summary": "Companion Test Alerts",
+    "description": "Test alerts queued from the dashboard. A client calls once without `since` to learn `latest`, then polls with since=latest.",
+    "operationId": "companion_test_alerts_api_companion_test_alerts_get",
+    "parameters": [
+     {
+      "name": "since",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "return alerts with seq > since; omit to learn the latest seq",
+       "title": "Since"
+      },
+      "description": "return alerts with seq > since; omit to learn the latest seq"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/companion/responses": {
+   "get": {
+    "tags": [
+     "companion"
+    ],
+    "summary": "Companion Responses",
+    "description": "The pre-written response for every alert type (companion/content/responses.json), for the dashboard's anomaly tests.",
+    "operationId": "companion_responses_api_companion_responses_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
@@ -3985,6 +4116,29 @@
      "digits"
     ],
     "title": "TermModel"
+   },
+   "TestAlertIn": {
+    "properties": {
+     "type": {
+      "type": "string",
+      "title": "Type"
+     },
+     "severity": {
+      "type": "string",
+      "enum": [
+       "info",
+       "warning",
+       "critical"
+      ],
+      "title": "Severity",
+      "default": "warning"
+     }
+    },
+    "type": "object",
+    "required": [
+     "type"
+    ],
+    "title": "TestAlertIn"
    },
    "ThermalProfileModel": {
     "properties": {

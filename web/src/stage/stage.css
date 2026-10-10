@@ -1,0 +1,122 @@
+/* The stage: a blank sheet (no grid, no frame) with the 3D model in the middle and visual cards around it. */
+.compact.page, .compact { background-image: none; background-color: #F8F7F3; }
+.compact .frame { display: none; }
+.compact .sheet { inset: 0; border: 0; grid-template-columns: 290px minmax(0, 1fr) 290px; background: transparent; }
+.compact .strip-top, .compact .strip-bottom { background: #FFFFFF; }
+.compact .margin-left, .compact .margin-right { background: #FFFFFF; }
+.stage-v2 { display: contents; }
+.stage {
+  grid-area: field; min-height: 0; min-width: 0; padding: 10px; display: grid; gap: 10px; overflow: auto;
+  grid-template-columns: 188px minmax(0, 1fr) 188px; grid-template-rows: minmax(440px, 1fr) auto;
+}
+.stage > .field { grid-area: auto; grid-column: 2; grid-row: 1; position: relative; width: auto; height: auto; align-self: stretch; justify-self: stretch; margin: 0; min-height: 440px;
+  border: 1px solid var(--rule); border-radius: 12px; background: #FFFFFF; overflow: hidden; }
+.stage > .st-trends { grid-column: 1 / -1; }
+.st-col:first-child { grid-column: 1; grid-row: 1; }
+.st-col:nth-child(3) { grid-column: 3; grid-row: 1; }
+.st-col { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.st-card { background: #FFFFFF; border: 1px solid var(--rule); border-radius: 12px; padding: 8px 10px 9px; min-width: 0; box-shadow: 0 1px 2px rgba(27, 27, 24, 0.04); }
+.st-card h3 { margin: 0 0 8px; font: 600 12px var(--cond); font-variant-caps: small-caps; letter-spacing: 0.05em; color: var(--ink-2); }
+.st-note { margin: 6px 0 0; font-size: 10px; color: var(--ink-3); }
+.st-modes { position: absolute; z-index: 6; top: 10px; left: 10px; display: flex; background: #EFEDE6; border-radius: 999px; padding: 3px; gap: 2px; }
+.st-modes button { border: 0; background: transparent; padding: 5px 14px; border-radius: 999px; font: 600 12px var(--cond); cursor: pointer; }
+.st-modes button.on { background: var(--ink); color: #FFFFFF; }
+.st-modes button:not(.on):hover { background: #E2DFD5; }
+/* thermometers */
+.st-thermo { display: flex; justify-content: space-between; gap: 4px; }
+.st-th { display: grid; justify-items: center; gap: 1px; flex: 1; }
+.st-th svg { width: 48px; height: 118px; }
+.st-th .tube { fill: #ECEAE2; }
+.st-th .mark { stroke: var(--ink-2); stroke-dasharray: 2 2; stroke-width: 1; }
+.st-th .meas { fill: var(--measured); }
+.st-th b { font: 600 14px var(--mono); }
+.st-th b small { font: 500 10px var(--cond); color: var(--ink-3); margin-left: 2px; }
+.st-th span { font: 500 10.5px var(--cond); color: var(--ink-2); }
+/* load dial */
+.st-dial { width: 100%; height: auto; display: block; }
+.st-dial .track { fill: none; stroke: #ECEAE2; stroke-width: 11; stroke-linecap: round; }
+.st-dial .val { fill: none; stroke-width: 11; stroke-linecap: round; }
+.st-dial .mk { stroke: var(--ink-2); stroke-width: 1.5; }
+.st-dial .big { font: 600 26px var(--mono); fill: var(--ink); }
+.st-dial .sm { font: 500 9px var(--cond); fill: var(--ink-3); }
+.st-spark { width: 100%; height: 24px; display: block; margin-top: 4px; }
+/* health ring */
+.st-health { display: grid; justify-items: center; gap: 8px; }
+.st-health ul { width: 100%; }
+.st-health svg { width: 76px; height: 76px; }
+.st-health .track { fill: none; stroke: #ECEAE2; stroke-width: 10; }
+.st-health .arc { fill: none; stroke-width: 10; stroke-linecap: round; }
+.st-health .big { font: 600 28px var(--mono); fill: var(--ink); }
+.st-health ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font: 500 10px var(--cond); }
+.st-health li { display: grid; grid-template-columns: 58px 1fr; gap: 6px; align-items: center; color: var(--ink-2); }
+.st-health i { height: 5px; background: #ECEAE2; border-radius: 99px; overflow: hidden; }
+.st-health u { display: block; height: 100%; border-radius: 99px; }
+/* flow */
+.st-flow { display: grid; gap: 8px; }
+.st-flow > div { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: baseline; }
+.st-flow span { font: 500 11px var(--cond); color: var(--ink-2); }
+.st-flow b { font: 600 15px var(--mono); }
+.st-flow b small { font: 500 10px var(--cond); color: var(--ink-3); margin-left: 3px; }
+.st-flow u { grid-column: 1 / -1; display: block; height: 6px; background: #ECEAE2; border-radius: 99px; overflow: hidden; }
+.st-flow s { display: block; height: 100%; border-radius: 99px; text-decoration: none; }
+.st-flow s.in { background: var(--twin); }
+.st-flow s.out { background: var(--measured); }
+.st-flow .sw { display: inline-block; width: 9px; height: 9px; border-radius: 50% 50% 0 0; margin-right: 5px; }
+.st-flow .sw.in { background: var(--twin); }
+.st-flow .sw.out { background: var(--measured); }
+.st-flow p { grid-column: 1 / -1; margin: 0; font-size: 10px; color: var(--ink-3); line-height: 1.5; }
+/* trends */
+.st-trends { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.st-chart { width: 100%; height: auto; display: block; }
+.st-chart text { font: 9px var(--mono); fill: var(--ink-3); }
+.st-chart .g { stroke: #ECEAE2; }
+.st-chart .ln { fill: none; stroke-width: 1.6; }
+.st-chart .ln.ink, .st-spark .ln.ink { stroke: var(--ink); fill: none; stroke-width: 1.4; }
+.st-chart .ln.twin { stroke: var(--twin); }
+.st-chart .ln.meas { stroke: var(--measured); }
+.st-chart .ln.grey { stroke: var(--ink-3); }
+.st-chart .ln.dash { stroke-dasharray: 5 3; }
+.st-chart .now { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 2 2; }
+.st-chart .ax { fill: var(--ink-3); }
+.st-legend { margin: 2px 0 0; font: 500 10px var(--cond); color: var(--ink-2); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.st-legend i { display: inline-block; width: 14px; border-top: 2px solid; margin-right: 4px; vertical-align: middle; }
+.st-legend i.twin { border-color: var(--twin); } .st-legend i.meas { border-color: var(--measured); } .st-legend i.ink { border-color: var(--ink); } .st-legend i.grey { border-color: var(--ink-3); }
+@media (max-width: 1300px) {
+  .stage { grid-template-columns: 1fr; grid-template-rows: auto; }
+  .st-trends { grid-template-columns: 1fr; }
+}
+
+/* the side columns no longer repeat what the stage cards show */
+.compact .margin-right .health { display: none; }
+
+.st-note { display: none; }
+.st-flow p { font-size: 9.5px; }
+.stage .st-chart { max-height: 120px; }
+.st-chart .ln.fut { opacity: 0.3; }
+.stage .st-chart { max-height: 84px; }
+.st-trends .st-card { padding-bottom: 6px; }
+.st-legend { margin-top: 0; }
+
+/* side cards share the full height of the model box: no empty strip under them */
+.stage > .st-col { grid-template-rows: auto auto minmax(0, 1fr); align-content: stretch; }
+.st-col .st-card { display: flex; flex-direction: column; }
+.st-col .st-card h3 + * { margin-top: auto; }
+.st-col .st-card > *:last-child { margin-bottom: auto; }
+.st-col .st-card h3 { margin-bottom: 4px; }
+.stage > .field { min-height: 520px; }
+
+.st-bars { display: grid; gap: 14px; }
+.st-bar { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; align-items: baseline; }
+.st-bar span { font: 500 11px var(--cond); color: var(--ink-2); }
+.st-bar b { font: 600 17px var(--mono); }
+.st-bar b small { font: 500 10px var(--cond); color: var(--ink-3); margin-left: 3px; }
+.st-bar u { grid-column: 1 / -1; display: block; height: 7px; background: #ECEAE2; border-radius: 99px; overflow: hidden; }
+.st-bar s { display: block; height: 100%; border-radius: 99px; text-decoration: none; background: var(--ink); }
+.st-bar s.twin { background: var(--twin); } .st-bar s.meas { background: var(--measured); }
+.st-age { display: grid; gap: 1px; }
+.st-age b { font: 600 24px var(--mono); }
+.st-age b.hot { color: var(--bad); }
+.st-age b small { font: 500 10px var(--cond); color: var(--ink-3); margin-left: 4px; }
+.st-age span { font: 500 10.5px var(--cond); color: var(--ink-3); margin-bottom: 8px; }
+.st-health svg { width: 92px; height: 92px; }
+.st-dial { max-width: 190px; margin: 0 auto; }

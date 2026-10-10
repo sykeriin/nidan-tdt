@@ -13,7 +13,7 @@ let CONTENT = null, swReg = null, abort = null, running = false;
 let alerts = store.get("alerts", []);          // newest first; {a: backend alert, ds, test, acked}
 const seen = new Set(alerts.map(x => x.a.id));
 const snoozed = store.get("snoozed", {});      // type -> epoch ms
-const cfg = Object.assign({backend: "http://localhost:8000", dataset: "S2", speed: 100000, minsev: "info", mutesensor: false}, store.get("cfg", {}));
+const cfg = Object.assign({backend: (location.protocol.startsWith("http") && location.port !== "5173" ? location.origin : "http://localhost:8000"), dataset: "S2", speed: 100000, minsev: "info", mutesensor: false}, store.get("cfg", {}));
 
 // ---------------------------------------------------------------- content
 const resp = type => CONTENT.types[type] || {
@@ -182,6 +182,20 @@ async function start() {
   } finally { running = false; $("toggle").textContent = "Start monitoring"; }
 }
 const stop = () => abort && abort.abort();
+
+// ---------------------------------------------------------------- test alerts sent from the dashboard
+let testSince = null;
+async function pollTests() {
+  try {
+    const r = await fetch(api("/api/companion/test-alerts" + (testSince == null ? "" : `?since=${testSince}`)));
+    if (r.ok) {
+      const j = await r.json();
+      if (testSince != null) j.items.forEach(t => addAlert(t.alert, "test", true));
+      testSince = j.latest;
+    }
+  } catch { /* backend unreachable: try again on the next tick */ }
+}
+setInterval(pollTests, 2500);
 
 // ---------------------------------------------------------------- wiring
 function permState() {

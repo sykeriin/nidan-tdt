@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
+
+from pydantic import BaseModel
 
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
@@ -431,7 +434,64 @@ def healthcheck():
     return {"status": "ok", "web_build": WEB_DIST.is_dir()}
 
 
+# ---------------------------------------------------------------- companion app: alert responses and the PWA itself
+COMPANION = ROOT / "companion"
+
+
+_TESTS: list[dict] = []          # newest last; {"seq", "alert"}. Kept in memory: a test alert is only useful for a few seconds.
+_TEST_LOCK = threading.Lock()
+_TEST_KEEP = 50
+
+
+class TestAlertIn(BaseModel):
+    type: str
+    severity: Literal["info", "warning", "critical"] = "warning"
+
+
+@app.post("/api/companion/test-alert", tags=["companion"], responses=ERRORS)
+def companion_test_alert(body: TestAlertIn):
+    """Queue a TEST alert. Companion apps that are listening (they poll GET /api/companion/test-alerts) show it as a notification."""
+    from analytics.common import ALERT_MODULES
+    from datetime import datetime
+    if body.type not in ALERT_MODULES:
+        raise HTTPException(400, f"Unknown alert type {body.type!r}. Known types: {sorted(ALERT_MODULES)}")
+    with _TEST_LOCK:
+        seq = (_TESTS[-1]["seq"] + 1) if _TESTS else 1
+        now = datetime.now().astimezone()
+        sensor = ALERT_MODULES[body.type] == "data"
+        alert = {"id": f"test-{body.type}-{seq}-{int(now.timestamp() * 1000)}", "timestamp": now.isoformat(), "type": body.type,
+                 "module": ALERT_MODULES[body.type], "severity": body.severity, "origin": "sensor" if sensor else "asset",
+                 "detector": "test", "explanation": "Test alert sent from the dashboard. Not from the transformer.",
+                 "simulated": False, "value": None, "threshold": None, "lead_time_h": None}
+        _TESTS.append({"seq": seq, "alert": alert})
+        del _TESTS[:-_TEST_KEEP]
+    return {"queued": True, "seq": seq, "alert": alert}
+
+
+@app.get("/api/companion/test-alerts", tags=["companion"])
+def companion_test_alerts(since: Annotated[int | None, Query(ge=0, description="return alerts with seq > since; omit to learn the latest seq")] = None):
+    """Test alerts queued from the dashboard. A client calls once without `since` to learn `latest`, then polls with since=latest."""
+    with _TEST_LOCK:
+        latest = _TESTS[-1]["seq"] if _TESTS else 0
+        items = [] if since is None else [t for t in _TESTS if t["seq"] > since]
+    return {"latest": latest, "items": items}
+
+
+@app.get("/api/companion/responses", tags=["companion"])
+def companion_responses():
+    """The pre-written response for every alert type (companion/content/responses.json), for the dashboard's anomaly tests."""
+    import json
+    try:
+        return json.loads((COMPANION / "content" / "responses.json").read_text(encoding="utf-8"))
+    except OSError:
+        raise HTTPException(404, "companion/content/responses.json is missing")
+
+
 # ---------------------------------------------------------------- React production build (same origin)
+# The companion PWA is served from the same origin, so it reaches the backend without CORS: http://localhost:8000/companion/
+if COMPANION.is_dir():
+    app.mount("/companion", StaticFiles(directory=COMPANION, html=True), name="companion")
+
 if WEB_DIST.is_dir():
     app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")
 else:

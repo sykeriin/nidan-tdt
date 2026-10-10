@@ -32,6 +32,7 @@ public class MonitorService extends Service {
     private volatile boolean stop;
     private volatile HttpURLConnection conn;
     private Thread worker;
+    private Thread tester;
     private PowerManager.WakeLock wake;
 
     @Override public IBinder onBind(Intent i) { return null; }
@@ -59,6 +60,10 @@ public class MonitorService extends Service {
             worker = new Thread(this::loop, "monitor");
             worker.start();
         }
+        if (tester == null || !tester.isAlive()) {
+            tester = new Thread(this::pollTests, "tests");
+            tester.start();
+        }
         return START_STICKY;
     }
 
@@ -77,6 +82,38 @@ public class MonitorService extends Service {
         Store.status = text;
         getSystemService(NotificationManager.class).notify(NOTE_ID, Notifier.monitor(this, text));
         Store.changed();
+    }
+
+    /** Test alerts sent from the dashboard's Anomaly tests page: GET /api/companion/test-alerts, shown as TEST notifications. */
+    private void pollTests() {
+        long since = -1;
+        while (!stop) {
+            try {
+                URL url = new URL(Store.backend(this) + "/api/companion/test-alerts" + (since < 0 ? "" : "?since=" + since));
+                HttpURLConnection c = (HttpURLConnection) url.openConnection();
+                c.setConnectTimeout(6000);
+                c.setReadTimeout(8000);
+                if (c.getResponseCode() == 200) {
+                    StringBuilder sb = new StringBuilder();
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream(), StandardCharsets.UTF_8))) {
+                        String line;
+                        while ((line = br.readLine()) != null) sb.append(line);
+                    }
+                    JSONObject j = new JSONObject(sb.toString());
+                    JSONArray items = j.optJSONArray("items");
+                    if (since >= 0 && items != null) {
+                        for (int i = 0; i < items.length(); i++) {
+                            JSONObject a = items.getJSONObject(i).getJSONObject("alert");
+                            JSONObject entry = Store.add(this, a, "-", true);
+                            if (entry != null) Notifier.post(this, entry);
+                        }
+                    }
+                    since = j.optLong("latest", since < 0 ? 0 : since);
+                }
+                c.disconnect();
+            } catch (Exception ignored) { /* backend unreachable: the replay loop reports it; try again shortly */ }
+            try { Thread.sleep(2500); } catch (InterruptedException ie) { return; }
+        }
     }
 
     private void loop() {
@@ -117,10 +154,8 @@ public class MonitorService extends Service {
             }
         } finally { c.disconnect(); }
         if (stop) return false;
-        Store.put(this, "monitoring", "0");
-        shutdown("Replay of " + ds + " finished (" + n + " samples)");
-        stopForeground(STOP_FOREGROUND_REMOVE);
-        stopSelf();
+        // The replay is over, but the service stays up so test alerts from the dashboard still arrive. Stop ends it.
+        status("Replay of " + ds + " finished (" + n + " samples). Listening for test alerts.");
         return true;
     }
 

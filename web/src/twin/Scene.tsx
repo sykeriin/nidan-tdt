@@ -8,6 +8,7 @@ import { AnchorTracker, CalloutLayer, type Anchors, type CalloutData } from "./C
 import { ThermalDriver, ThermalMarkers, TwinGhost } from "./Thermal";
 import { OilFlow } from "./OilFlow";
 import { Electrical, ThroughFaults } from "./Electrical";
+import { PowerFlow } from "./PowerFlow";
 import { CameraTour } from "./Tour";
 import { HeatFlow } from "./HeatFlow";
 import { ALL_ON, type Layers } from "./layers";
@@ -16,14 +17,14 @@ import type { PartId } from "./parts";
 function FitZoom() {
   const { camera, size } = useThree();
   useEffect(() => {
-    camera.zoom = Math.min(size.width / 4.6, size.height / 3.3);
+    camera.zoom = Math.min(size.width / 4.2, size.height / 3.0);
     camera.updateProjectionMatrix();
   }, [camera, size]);
   return null;
 }
 
 export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = false, meterOnly = false, otiSuspect = false,
-  layers = ALL_ON, ratedW = null, reserveRight = 0, bubbles, bubbleClass, highlight = [], markers = true, iRated = null, events = [] }: {
+  layers = ALL_ON, ratedW = null, reserveRight = 0, xray = false, bubbles, bubbleClass, highlight = [], markers = true, iRated = null, events = [] }: {
   bubbleClass?: Partial<Record<PartId, string>>;
   highlight?: PartId[];
   markers?: boolean;
@@ -34,6 +35,7 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
   layers?: Layers;
   ratedW?: number | null;
   reserveRight?: number;
+  xray?: boolean;
   thermal?: boolean;
   meterOnly?: boolean;
   cut: boolean;
@@ -65,7 +67,8 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
     onOver: (id: PartId) => setHovered(id),
     onOut: (id: PartId) => setHovered((h) => (h === id ? null : h)),
     onClick: (id: PartId) => setPinned(pinned.includes(id) ? pinned.filter((p) => p !== id) : [...pinned, id]),
-  }), [active, pinned, setPinned]);
+    xray,
+  }), [active, pinned, setPinned, xray]);
   const bubbleKey = Object.keys(bubbles ?? {}).join(",");
   const shown = useMemo(() => [...new Set([...pinned, ...(hovered ? [hovered] : [])])], [pinned, hovered]);
   const tracked = useMemo(() => [...new Set([...shown, ...(bubbleKey ? bubbleKey.split(",") as PartId[] : [])])], [shown, bubbleKey]);
@@ -92,12 +95,13 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
           {markers && <ThermalMarkers meterOnly={meterOnly} otiSuspect={otiSuspect} />}
           {layers.oilflow && <OilFlow cut={cut || active.has("tank")} otiSuspect={otiSuspect} />}
           {layers.heatflow && markers && <HeatFlow ratedW={ratedW} />}
+          {layers.powerflow && <PowerFlow iRated={iRated} />}
           {layers.electrical && <Electrical iRated={iRated} />}
           {layers.faults && events.length > 0 && <ThroughFaults events={events} />}
         </>}
         <AnchorTracker ids={tracked} onChange={setAnchors} />
         <CameraTour />
-        <OrbitControls makeDefault target={[0.1, 1.1, 0]} enableDamping dampingFactor={0.12} minZoom={60} maxZoom={600}
+        <OrbitControls makeDefault target={[0.1, 1.6, 0]} enableDamping dampingFactor={0.12} minZoom={60} maxZoom={600}
           maxPolarAngle={Math.PI * 0.49} />
       </Canvas>
       <CalloutLayer shown={shown} pinned={pinned} anchors={anchors} data={data} width={Math.max(0, dims.w - reserveRight)} height={dims.h}

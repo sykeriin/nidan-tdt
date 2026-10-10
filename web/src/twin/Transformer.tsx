@@ -50,6 +50,7 @@ interface TwinCtx {
   onOver: (id: PartId) => void;
   onOut: (id: PartId) => void;
   onClick: (id: PartId) => void;
+  xray?: boolean; // see-through steel: the oil, windings and core show through the tank walls
 }
 export const TwinContext = createContext<TwinCtx>({ active: new Set(), onOver: () => {}, onOut: () => {}, onClick: () => {} });
 const PartCtx = createContext<PartId | null>(null);
@@ -81,7 +82,8 @@ function Mesh({ geo, m, p = [0, 0, 0], r = [0, 0, 0], edges = 25, hit = true, vi
   const id = useContext(PartCtx);
   const { active } = useContext(TwinContext);
   const on = id !== null && active.has(id);
-  const glass = id === "tank" && m === "tank" && on;
+  const { xray } = useContext(TwinContext);
+  const glass = m === "tank" && (xray === true || (id === "tank" && on));
   return (
     <mesh geometry={geo} material={override ?? (glass ? TANK_GLASS : on ? ACTIVE[m] : M[m])} position={p} rotation={r} visible={visible}
       raycast={hit ? undefined : () => null}>

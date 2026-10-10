@@ -215,3 +215,25 @@ def test_frames(client, dataset_id):
                       params={"fields": "OTI_C", "start": j["timestamp"][10], "end": j["timestamp"][19], "every": 3}).json()
     assert part["rows"] == 4 and part["timestamp"][0] == j["timestamp"][10]
     assert client.get(f"/api/datasets/{dataset_id}/frames", params={"fields": "nope"}).status_code == 400
+
+
+def test_companion_responses_cover_every_alert_type(client):
+    from analytics.common import ALERT_MODULES
+    j = client.get("/api/companion/responses").json()
+    assert set(j["types"]) == set(ALERT_MODULES)
+    assert {"info", "warning", "critical"} <= set(j["severity_label"])
+
+
+def test_dashboard_test_alert_reaches_a_listening_companion(client):
+    first = client.get("/api/companion/test-alerts").json()          # a new client learns the latest seq, gets nothing
+    assert first["items"] == []
+    r = client.post("/api/companion/test-alert", json={"type": "loading_high", "severity": "critical"})
+    assert r.status_code == 200, r.text
+    j = client.get("/api/companion/test-alerts", params={"since": first["latest"]}).json()
+    assert [t["alert"]["type"] for t in j["items"]] == ["loading_high"]
+    a = j["items"][0]["alert"]
+    assert a["severity"] == "critical" and a["origin"] == "asset" and a["id"].startswith("test-") and a["timestamp"]
+    assert client.get("/api/companion/test-alerts", params={"since": j["latest"]}).json()["items"] == []   # delivered once
+    sensor = client.post("/api/companion/test-alert", json={"type": "stuck_sensor", "severity": "warning"}).json()["alert"]
+    assert sensor["origin"] == "sensor"
+    assert client.post("/api/companion/test-alert", json={"type": "nope", "severity": "info"}).status_code == 400

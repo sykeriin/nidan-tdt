@@ -1,0 +1,97 @@
+/* Workbench (profile, physics, outlook, report, self-test): the sheet's ink-on-paper look, colour only for the twin line. */
+.wb { position: absolute; inset: 0; z-index: 40; background: var(--paper); display: flex; flex-direction: column; }
+.wb-head { display: flex; align-items: stretch; gap: 18px; height: 56px; border-bottom: 1px solid var(--ink); flex: none; }
+.wb-ds { align-self: center; margin-left: auto; font: 500 11px var(--cond); color: var(--ink-2); letter-spacing: .04em; }
+.wb-close { align-self: center; margin-right: 14px; padding: 7px 12px; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; font: 600 11px var(--cond); }
+.wb-close:hover { background: var(--ink); color: var(--paper); }
+.wb-scroll { overflow: auto; padding: 16px 20px 40px; display: grid; gap: 14px; align-content: start; max-width: 1180px; width: 100%; margin: 0 auto; }
+.wb-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; }
+.wb-sec { border: 1px solid var(--ink); background: rgba(255, 255, 255, .35); }
+.wb-body { padding: 10px 12px 12px; display: grid; gap: 10px; }
+.wb-body h3 { margin: 6px 0 0; font: 600 11px var(--cond); color: var(--ink-2); }
+.wb-note { margin: 0; color: var(--ink-2); max-width: 90ch; }
+.wb-note.err { color: var(--bad); }
+.wb-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wb-btn, .wb select, .wb input[type="text"], .wb input[type="number"] { font: 500 12px var(--mono); border: 1px solid var(--ink); background: var(--paper); padding: 6px 9px; color: var(--ink); text-decoration: none; cursor: pointer; }
+.wb input[type="number"], .wb input[type="text"] { cursor: text; width: 100%; }
+.wb-btn:hover { background: var(--paper-deep); }
+.wb-btn.on { background: var(--ink); color: var(--paper); }
+.wb-btn:disabled { opacity: .45; cursor: default; }
+.wb-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 12px; }
+.wb-field { display: grid; gap: 3px; align-content: start; }
+.wb-field > span { font: 600 11px var(--cond); }
+.wb-field em { font-style: normal; font-weight: 400; color: var(--ink-3); }
+.wb-field small { color: var(--ink-3); min-height: 14px; }
+.wb-tag { display: inline-block; padding: 0 5px; border: 1px solid var(--rule); font: 500 10px var(--cond); color: var(--ink-2); }
+.wb-tag.given { border-color: var(--twin); color: var(--twin); }
+.wb-tag.calc { border-style: dashed; border-color: var(--ink-2); }
+.wb-tag.assumed { color: var(--ink-3); }
+.wb-kv, .wb-table { border-collapse: collapse; width: 100%; }
+.wb-kv th { text-align: left; font-weight: 500; color: var(--ink-2); width: 40%; }
+.wb-kv th, .wb-kv td, .wb-table th, .wb-table td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--grid-major); vertical-align: top; }
+.wb-table th { text-align: left; font: 600 10px var(--cond); color: var(--ink-2); }
+.wb-table td.num { text-align: right; }
+.wb-table td.ok { color: var(--ok); font-weight: 600; }
+.wb-table td.bad { color: var(--bad); font-weight: 600; }
+.wb-notes { margin: 0; padding-left: 18px; color: var(--ink-2); }
+.wb-sliders { display: grid; gap: 6px; max-width: 620px; }
+.wb-slider { display: grid; grid-template-columns: 110px 1fr 90px; gap: 10px; align-items: center; }
+.wb-slider input { accent-color: var(--twin); }
+.wb-slider output { text-align: right; }
+.wb-chain { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.wb-chain li { border: 1px solid var(--rule); padding: 8px 10px; display: grid; gap: 4px; align-content: start; }
+.wb-chain b { font: 600 10px var(--cond); color: var(--ink-3); }
+.wb-chain h4 { margin: 0; font: 600 12px var(--cond); }
+.wb-chain code { font: 400 11px var(--mono); color: var(--ink-2); overflow-wrap: anywhere; }
+.wb-chain code.w { color: var(--twin); }
+.wb-chain .val { font: 600 18px var(--mono); }
+.wb-chain .val em, .wb-chain small { font-style: normal; font-size: 11px; color: var(--ink-3); font-weight: 400; }
+.wb-chart { width: 100%; height: auto; max-height: 300px; }
+.wb-chart text { font: 400 10px var(--mono); fill: var(--ink-2); }
+.wb-chart .g { stroke: var(--grid-major); }
+.wb-chart .axis { stroke: var(--ink); }
+.wb-chart .lab { font: 500 10px var(--cond); fill: var(--ink-3); }
+.wb-chart .ln { fill: none; stroke-width: 1.8; }
+.wb-chart .ln.ink { stroke: var(--ink); }
+.wb-chart .ln.twin { stroke: var(--twin); }
+.wb-chart .ln.faint { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 2 3; }
+.wb-chart .ln.dash { stroke-dasharray: 6 4; }
+.wb-chart .vl { stroke: var(--ink-3); stroke-dasharray: 3 3; }
+.wb-chart .key.twin { fill: var(--twin); }
+.wb-chart .key.ink { fill: var(--ink); }
+.wb-sentence { margin: 0; font: 500 16px/1.35 var(--cond); max-width: 70ch; }
+.wb-sentence.lv-critical { color: var(--bad); }
+.wb-sentence.lv-watch { color: var(--warn); }
+.wb-bar { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+.wb-bar i { grid-column: 1 / -1; height: 5px; background: var(--grid-major); }
+.wb-bar b { display: block; height: 100%; background: var(--ink); }
+.wb-bar small { grid-column: 1 / -1; color: var(--ink-3); }
+.wb-prio { display: inline-block; padding: 0 6px; border: 1px solid var(--ink); font: 600 11px var(--cond); }
+.wb-prio.p-Immediate, .wb-prio.p-Urgent { border-color: var(--bad); color: var(--bad); }
+.wb-actions { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.wb-actions small { display: block; color: var(--ink-3); }
+.wb-frame { width: 100%; height: 760px; border: 1px solid var(--ink); background: #fff; }
+
+/* The top strip gained the Workbench button: let the dataset picker and tabs give way so Import and the section toggle stay on screen. */
+.strip-top { gap: 12px; min-width: 0; }
+.strip-top .tab { min-width: 118px; padding-left: 12px; padding-right: 12px; }
+.strip-top .dataset { min-width: 0; flex: 0 1 auto; }
+.strip-top .dataset select { max-width: 190px; text-overflow: ellipsis; }
+.strip-top .import { flex: 0 1 auto; min-width: 0; }
+.strip-top .section-toggle { flex: none; }
+.strip-top .import-row { flex-wrap: wrap; row-gap: 2px; }
+
+/* anomaly tests */
+.at { display: grid; gap: 10px; }
+.at-banner { position: sticky; top: 0; z-index: 3; padding: 8px 12px; border: 1px solid var(--ink); background: var(--paper); font-weight: 600; }
+.at-banner.sev-critical { border-color: var(--bad); color: var(--bad); }
+.at-banner.sev-warning { border-color: var(--warn); color: var(--warn); }
+.at-sev { display: inline-flex; gap: 6px; align-items: center; font: 600 11px var(--cond); }
+.at-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.at-card { border: 1px solid var(--rule); padding: 8px 10px; background: rgba(255, 255, 255, .4); }
+.at-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.at-head h4 { margin: 0; font: 600 13px var(--cond); }
+.at-head small { color: var(--ink-3); }
+.at-push { margin: 4px 0 0; color: var(--ink-2); }
+.at-body { margin-top: 8px; border-top: 1px solid var(--rule); padding-top: 8px; display: grid; gap: 6px; }
+.at-body p { margin: 0; } .at-body ol, .at-body ul { margin: 4px 0 0; padding-left: 18px; }

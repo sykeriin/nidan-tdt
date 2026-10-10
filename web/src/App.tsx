@@ -14,12 +14,21 @@ import { LayerList } from "./sheet/LayerList";
 import { Detail, detailLetter } from "./sheet/Detail";
 import { HeatBalance } from "./sheet/HeatBalance";
 import { ImportData } from "./sheet/ImportData";
+import { PowerFlowReadout } from "./twin/PowerFlow";
+import { StageLeft, StageRight, StageTrends, ViewModes, type ViewMode } from "./stage/Stage";
+import { Workbench } from "./workbench/Workbench";
+import "./workbench/workbench.css";
+import { V2Layers, V2Left, V2Right } from "./v2/V2";
+import "./v2/v2.css";
+import "./workbench/compact.css";
+import "./stage/stage.css";
 import { LifeClock } from "./twin/LifeClock";
 import { ALL_ON, type Layers } from "./twin/layers";
 import { player, usePlayerIndex, type Frames } from "./player/player";
 
 // URL parameters make any view reproducible: ?ds=S2&t=2026-04-25T12:00&pin=winding-Y,oti&cut=0&play=1&mode=simulate
 const q = new URLSearchParams(window.location.search);
+const V2 = q.get("ui") === "clean"; // ?ui=clean: the simplified light layout (the drawing sheet is the default)
 const DETAIL_W = 330; // px, must match .detail width in index.css
 const INITIAL_PINS = (q.get("pin") ?? "").split(",").filter((p): p is PartId => p in PART);
 
@@ -28,7 +37,9 @@ export default function App() {
   const [cut, setCut] = useState(q.get("cut") !== "0");
   const [mode, setMode] = useState<TwinMode>("mirror");
   const [pinned, setPinned] = useState<PartId[]>(INITIAL_PINS);
-  const [layers, setLayers] = useState<Layers>(ALL_ON);
+  const [layers, setLayers] = useState<Layers>(V2 ? { ...ALL_ON, thermometer: false, lag: false, lifeclock: false } : ALL_ON);
+  const [bench, setBench] = useState(false);
+  const [xray, setXray] = useState(false);
   const touring = useTourStep() >= 0;
 
   const datasets = useDatasets();
@@ -123,14 +134,17 @@ export default function App() {
   const oil = row?.OLI_pct;
 
   return (
-    <div className="page">
-      <Frame />
+    <div className={`page${V2 ? " v2" : " compact"}`}>
+      {!V2 && <Frame />}
       <main className="sheet">
         <header className="strip-top">
           <SheetTabs mode={mode} onMode={switchMode} />
           <button className="explain" disabled={!frames} aria-pressed={touring}
             onClick={() => { if (touring) { tour.stop(); return; } switchMode("mirror"); setPinned([]); setCut(true); setLayers(ALL_ON); tour.start(); }}>
             <span className="tab-label">{touring ? "Stop tour" : "Explain"}</span><span className="tab-hint">60 s guided tour</span>
+          </button>
+          <button className="explain" aria-pressed={bench} onClick={() => setBench(true)}>
+            <span className="tab-label">Workbench</span><span className="tab-hint">Profile, physics</span>
           </button>
           <label className="dataset">
             <span className="dataset-label">Dataset</span>
@@ -141,45 +155,70 @@ export default function App() {
             </select>
           </label>
           <ImportData onLoaded={(id) => { setPinned([]); setMode("mirror"); setDataset(id); }} />
-          <SectionToggle cut={cut} onCut={setCut} />
+          {V2 && <V2Layers layers={layers} onToggle={(id) => setLayers((l) => ({ ...l, [id]: !l[id] }))} />}
+          {V2 && (sim || info?.simulated) && <span className="v2-simpill">Simulated</span>}
+          {V2 && <SectionToggle cut={cut} onCut={setCut} />}
         </header>
+        {bench && (
+          <Workbench dataset={dataset} time={frames && i >= 0 ? frames.iso[i] : null} timeSeries={!!frames && !snapshot} snapshot={snapshot}
+            onClose={() => setBench(false)} onSimulated={(id) => { setPinned([]); setMode("mirror"); setDataset(id); setBench(false); }} />
+        )}
         <aside className="margin-left">
-          {sim ? <SimInputs w={wq.data} /> : <DataIn row={row} otiSuspect={otiSuspect} meterOnly={meterOnly} />}
-          <LayerList layers={layers} onToggle={(id) => setLayers((l) => ({ ...l, [id]: !l[id] }))} />
-          {frames && !sim && layers.lag && <LagTraces />}
+          {V2 ? <V2Left row={row} simulated={sim || !!info?.simulated} /> : (<>
+            {sim ? <SimInputs w={wq.data} /> : <DataIn row={row} otiSuspect={otiSuspect} meterOnly={meterOnly} />}
+            <LayerList layers={layers} onToggle={(id) => setLayers((l) => ({ ...l, [id]: !l[id] }))} />
+            {frames && !sim && layers.lag && <LagTraces />}
+            {live && layers.thermometer && <ThermalDiagram meterOnly={meterOnly && !sim} otiSuspect={otiSuspect} />}
+            {live && <HeatScale meterOnly={meterOnly || sim} otiSuspect={otiSuspect} />}
+          </>)}
         </aside>
+        <div className={V2 ? "stage-v2" : "stage"}>
+          {!V2 && live && <StageLeft />}
         <section className="field" aria-label="Transformer-1, three-dimensional schematic">
+          {!V2 && <ViewModes view={(cut ? "cut" : xray ? "xray" : "normal") as ViewMode} onView={(v) => { setCut(v === "cut"); setXray(v === "xray"); }} />}
           <Scene cut={cut} pinned={diag ? [] : pinned} data={calloutData}
             setPinned={sim ? () => {} : diag ? (ids) => setFocusPart(ids[ids.length - 1] ?? null) : setPinned}
             highlight={diag ? hl ?? (focusPart ? [focusPart] : []) : []} bubbleClass={bubbleClass}
             oilLevelPct={typeof oil === "number" ? oil : null} thermal={live} meterOnly={meterOnly && !sim} otiSuspect={otiSuspect}
-            layers={layers} ratedW={sim ? (wq.data ? wq.data.params.P0_W + wq.data.params.Pk_W : null) : ratedW}
-            reserveRight={panelOpen ? DETAIL_W : 0} bubbles={bubbles} markers={!diag}
+            xray={xray} layers={layers} ratedW={sim ? (wq.data ? wq.data.params.P0_W + wq.data.params.Pk_W : null) : ratedW}
+            reserveRight={panelOpen && V2 ? DETAIL_W : 0} bubbles={bubbles} markers={!diag}
             iRated={sim ? wq.data?.params.I_rated_A ?? null : params?.I_rated_A ?? null}
             events={sim ? [] : events as { timestamp: string }[]} />
-          {live && layers.thermometer && <ThermalDiagram meterOnly={meterOnly && !sim} otiSuspect={otiSuspect} />}
-          {live && layers.heatflow && !panelOpen && <HeatBalance />}
-          {diag && frames && <DiagnosePanel data={fq.data} loading={fq.isFetching} error={fq.error ? (fq.error as Error).message : null}
+          {V2 && live && layers.thermometer && <ThermalDiagram meterOnly={meterOnly && !sim} otiSuspect={otiSuspect} />}
+          {V2 && diag && frames && <DiagnosePanel data={fq.data} loading={fq.isFetching} error={fq.error ? (fq.error as Error).message : null}
             focus={focusPart} onFocus={setHl} />}
-          {frames && !sim && !diag && <Detail dataset={dataset} pinned={pinned} onClose={() => setPinned([])} />}
-          {live && <HeatScale meterOnly={meterOnly || sim} otiSuspect={otiSuspect} />}
+          {V2 && frames && !sim && !diag && <Detail dataset={dataset} pinned={pinned} onClose={() => setPinned([])} />}
+          {V2 && live && <HeatScale meterOnly={meterOnly || sim} otiSuspect={otiSuspect} />}
           {sim && <div className="sim-stamp" aria-label="Simulation, not measured data">Simulation</div>}
-          {meterOnly && !sim && <p className="field-note">Meter-only data: no oil-temperature sensor. Temperatures are estimated by the twin.</p>}
-          {snapshot && !sim && <p className="field-note">This dataset is a set of records with no time axis: there is nothing to replay.</p>}
+          {V2 && meterOnly && !sim && <p className="field-note">Meter-only data: no oil-temperature sensor. Temperatures are estimated by the twin.</p>}
+          {V2 && snapshot && !sim && <p className="field-note">This dataset is a set of records with no time axis: there is nothing to replay.</p>}
           <TourCaption />
-          <p className="field-hint">Hover a part to read it. Click to pin. Drag to turn. Space plays, arrows step.</p>
+          {V2 && <p className="field-hint">Hover a part to read it. Click to pin. Drag to turn. Space plays, arrows step.</p>}
           {error && <p className="field-error" role="alert">{error}</p>}
         </section>
+          {!V2 && live && <StageRight />}
+          {!V2 && live && <StageTrends />}
+        </div>
         <aside className="margin-right">
-          <TwinState row={row} otiSuspect={otiSuspect} />
-          {live && layers.lifeclock && <LifeClock meterOnly={meterOnly && !sim} perDay={sim} />}
+          {V2 ? <V2Right dataset={dataset} iso={frames && i >= 0 ? frames.iso[i] : null} enabled={!!frames && !snapshot && !sim} sim={sim} /> : (<>
+            {diag && frames && <DiagnosePanel data={fq.data} loading={fq.isFetching} error={fq.error ? (fq.error as Error).message : null}
+              focus={focusPart} onFocus={setHl} />}
+            {frames && !sim && !diag && <Detail dataset={dataset} pinned={pinned} onClose={() => setPinned([])} />}
+            <TwinState row={row} otiSuspect={otiSuspect} />
+            {live && layers.heatflow && <HeatBalance />}
+            {V2 && live && layers.powerflow && <PowerFlowReadout />}
+            {meterOnly && !sim && <p className="field-note side-note">Meter-only data: no oil-temperature sensor. Temperatures are estimated by the twin.</p>}
+            {snapshot && !sim && <p className="field-note side-note">This dataset is a set of records with no time axis: there is nothing to replay.</p>}
+            <p className="side-note hint">Hover a part to read it. Click to pin. Drag to turn. Space plays, arrows step.</p>
+            {live && layers.lifeclock && <LifeClock meterOnly={meterOnly && !sim} perDay={sim} />}
+          </>)}
         </aside>
         <footer className="strip-bottom">
           {sim && simIn
             ? <SimControls inp={simIn} onChange={setSimIn} w={wq.data} busy={wq.isFetching} error={wq.error ? (wq.error as Error).message : null} />
             : <Timeline frames={frames} alerts={alerts} events={events} meterOnly={meterOnly} />}
-          <TitleBlock run={run.data} time={sim ? "simulated" : frames && i >= 0 ? frames.iso[i] : null}
-            simulated={info?.simulated ?? false} />
+          {!V2 && <TitleBlock run={run.data} time={sim ? "simulated" : frames && i >= 0 ? frames.iso[i] : null}
+            simulated={info?.simulated ?? false} />}
         </footer>
       </main>
     </div>

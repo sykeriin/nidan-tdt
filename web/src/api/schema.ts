@@ -248,6 +248,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/datasets/{dataset_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Report
+         * @description api.report() — self-contained print-ready HTML (inline SVG charts), the full CSV, or JSON.
+         */
+        get: operations["get_report_api_datasets__dataset_id__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/datasets/{dataset_id}/report.pdf": {
         parameters: {
             query?: never;
@@ -260,6 +280,246 @@ export interface paths {
          * @description api.report_pdf() — not built yet: 501 with the reason.
          */
         get: operations["report_pdf_api_datasets__dataset_id__report_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Presets
+         * @description api.presets() — example profiles (Transformer-1, a nameplate-derived 1250 kVA, generic ratings) with value tags.
+         */
+        get: operations["get_presets_api_presets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve Profile
+         * @description api.resolve_profile() — complete a typed profile: rated current, loss split, IEC defaults, every value tagged.
+         */
+        post: operations["resolve_profile_api_profile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Simulate
+         * @description api.simulate() — generate a SIMULATED scenario for any transformer profile and run the full pipeline.
+         */
+        post: operations["simulate_api_simulate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest
+         * @description api.ingest() — append readings from a device to a live session; it appears as the dataset u-live-<session>.
+         */
+        post: operations["ingest_api_ingest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingest/{session}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * End Live
+         * @description api.end_live() — forget a live session and its cached run.
+         */
+        delete: operations["end_live_api_ingest__session__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/physics/chain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Physics Chain
+         * @description api.physics_chain() — load -> top-oil -> hot-spot -> ageing with the IEC 60076-7 equations and this asset's numbers.
+         */
+        post: operations["physics_chain_api_physics_chain_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/physics/step": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Physics Step
+         * @description api.physics_step() — oil and winding hot-spot after a load step (thermal time constants made visible).
+         */
+        post: operations["physics_step_api_physics_step_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/physics/detailed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Physics Detailed
+         * @description api.physics_detailed() — the IEC model and the detailed heat-balance model on one load step, with loss breakdown.
+         */
+        post: operations["physics_detailed_api_physics_detailed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/physics/ageing-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Physics Ageing Models
+         * @description api.physics_ageing_models() — the 6 K rule and Arrhenius ageing curves side by side.
+         */
+        get: operations["physics_ageing_models_api_physics_ageing_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/datasets/{dataset_id}/whatif": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Physics Whatif
+         * @description api.physics_whatif() — the dataset's own load and weather replayed under changed load, ambient and cooling.
+         */
+        post: operations["physics_whatif_api_datasets__dataset_id__whatif_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/datasets/{dataset_id}/brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Brief
+         * @description api.brief() — status sentence, ranked diagnosis, maintenance work order, headroom and time-to-limit at time t.
+         */
+        get: operations["get_brief_api_datasets__dataset_id__brief_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/datasets/{dataset_id}/outlook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Outlook
+         * @description api.outlook() — Monte Carlo remaining insulation life (P10/P50/P90 and fan), 30-day risk and a 24 h forecast from t.
+         */
+        get: operations["get_outlook_api_datasets__dataset_id__outlook_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -377,6 +637,79 @@ export interface components {
              */
             interval?: string | null;
         };
+        /** ChainIn */
+        ChainIn: {
+            /**
+             * Values
+             * @description Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required.
+             */
+            values: {
+                [key: string]: unknown;
+            };
+            /**
+             * Tags
+             * @description optional source tag per value; untagged values are 'User input'
+             */
+            tags?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * Load Pu
+             * @default 1
+             */
+            load_pu: number;
+            /**
+             * Ambient C
+             * @default 30
+             */
+            ambient_C: number;
+        };
+        /** ChainModel */
+        ChainModel: {
+            /** Steps */
+            steps: components["schemas"]["ChainStepModel"][];
+            /** Inputs */
+            inputs: {
+                [key: string]: number;
+            };
+            /** Top Oil C */
+            top_oil_C: number;
+            /** Hot Spot C */
+            hot_spot_C: number;
+            /** Ageing Rate */
+            ageing_rate: number;
+            /** Hours Per Equivalent Day */
+            hours_per_equivalent_day: number | null;
+            /** Library Check */
+            library_check: {
+                [key: string]: unknown;
+            };
+            /** Parameters */
+            parameters: {
+                [key: string]: number;
+            };
+            /** Tags */
+            tags: {
+                [key: string]: unknown;
+            };
+        };
+        /** ChainStepModel */
+        ChainStepModel: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Formula */
+            formula: string;
+            /** Working */
+            working: string;
+            /** Value */
+            value: number;
+            /** Unit */
+            unit: string;
+            /** Why */
+            why: string;
+        };
         /**
          * ComponentsModel
          * @description Per-part view at one instant; part ids match web/src/twin/parts.ts.
@@ -460,6 +793,55 @@ export interface components {
             asset: {
                 [key: string]: unknown;
             };
+        };
+        /** DetailedIn */
+        DetailedIn: {
+            /**
+             * Values
+             * @description Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required.
+             */
+            values: {
+                [key: string]: unknown;
+            };
+            /**
+             * Tags
+             * @description optional source tag per value; untagged values are 'User input'
+             */
+            tags?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * From Pu
+             * @default 0.4
+             */
+            from_pu: number;
+            /**
+             * To Pu
+             * @default 1.2
+             */
+            to_pu: number;
+            /**
+             * Ambient C
+             * @default 30
+             */
+            ambient_C: number;
+            /**
+             * Minutes
+             * @default 600
+             */
+            minutes: number;
+            /**
+             * K Factor
+             * @description harmonic K-factor; adds eddy and stray loss
+             * @default 1
+             */
+            k_factor: number;
+            /**
+             * Use Mass Capacity
+             * @description use the thermal capacity implied by the nameplate masses
+             * @default false
+             */
+            use_mass_capacity: boolean;
         };
         /** EquationModel */
         EquationModel: {
@@ -555,6 +937,11 @@ export interface components {
                 [key: string]: unknown[];
             };
         };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
         /** HealthModel */
         HealthModel: {
             /**
@@ -580,6 +967,28 @@ export interface components {
             };
             /** Capped */
             capped: boolean;
+        };
+        /** IngestIn */
+        IngestIn: {
+            /**
+             * Session
+             * @description 1 to 40 letters, digits, '-' or '_'; becomes the dataset u-live-<session>
+             */
+            session: string;
+            /**
+             * Rows
+             * @description readings, any column names the adapter can map (timestamp, IR, IY, IB, VR, OTI_C, amb_C ...)
+             */
+            rows: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Asset
+             * @description optional transformer profile values (rating_kVA, lv_voltage_V ...); default is Transformer-1
+             */
+            asset?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** InspectResultModel */
         InspectResultModel: {
@@ -652,6 +1061,66 @@ export interface components {
              * @description oti only: inside | above | suspect
              */
             verdict?: string | null;
+        };
+        /** PhysicsWhatIfModel */
+        PhysicsWhatIfModel: {
+            /** Series */
+            series: {
+                [key: string]: components["schemas"]["SeriesModel"];
+            };
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            };
+        };
+        /** PresetModel */
+        PresetModel: {
+            /** Values */
+            values: {
+                [key: string]: unknown;
+            };
+            /** Tags */
+            tags: {
+                [key: string]: string;
+            };
+            /** Notes */
+            notes: string[];
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Description */
+            description: string;
+        };
+        /** ProfileIn */
+        ProfileIn: {
+            /**
+             * Values
+             * @description Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required.
+             */
+            values: {
+                [key: string]: unknown;
+            };
+            /**
+             * Tags
+             * @description optional source tag per value; untagged values are 'User input'
+             */
+            tags?: {
+                [key: string]: string;
+            } | null;
+        };
+        /** ProfileModel */
+        ProfileModel: {
+            /** Values */
+            values: {
+                [key: string]: unknown;
+            };
+            /** Tags */
+            tags: {
+                [key: string]: string;
+            };
+            /** Notes */
+            notes: string[];
         };
         /** QuantityModel */
         QuantityModel: {
@@ -798,6 +1267,42 @@ export interface components {
             /** V */
             v: (number | null)[];
         };
+        /** SimulateIn */
+        SimulateIn: {
+            /**
+             * Values
+             * @description Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required.
+             */
+            values: {
+                [key: string]: unknown;
+            };
+            /**
+             * Tags
+             * @description optional source tag per value; untagged values are 'User input'
+             */
+            tags?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * Scenario
+             * @description N | S1 | S2 | S3 | S4a | S4b | S5
+             * @default N
+             */
+            scenario: string;
+            /**
+             * Seed
+             * @default 0
+             */
+            seed: number;
+            /** Name */
+            name?: string | null;
+            /**
+             * Plant
+             * @description iec: thermal library with perturbed parameters | detailed: independent heat-balance model
+             * @default iec
+             */
+            plant: string;
+        };
         /** StateAtModel */
         StateAtModel: {
             /**
@@ -820,6 +1325,64 @@ export interface components {
             alerts: components["schemas"]["AlertModel"][];
             /** Simulated */
             simulated: boolean;
+        };
+        /** StepIn */
+        StepIn: {
+            /**
+             * Values
+             * @description Any of: rating_kVA, lv_voltage_V, hv_voltage_V, load_loss_W, no_load_loss_W, total_loss_100_W, total_loss_50_W, top_oil_rise_K, ... (twin/profile.py). Rating or rated current is required.
+             */
+            values: {
+                [key: string]: unknown;
+            };
+            /**
+             * Tags
+             * @description optional source tag per value; untagged values are 'User input'
+             */
+            tags?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * From Pu
+             * @default 0.4
+             */
+            from_pu: number;
+            /**
+             * To Pu
+             * @default 1.2
+             */
+            to_pu: number;
+            /**
+             * Ambient C
+             * @default 30
+             */
+            ambient_C: number;
+            /**
+             * Minutes
+             * @default 480
+             */
+            minutes: number;
+        };
+        /** StepResponseModel */
+        StepResponseModel: {
+            /** T Min */
+            t_min: number[];
+            /** Top Oil C */
+            top_oil_C: number[];
+            /** Hot Spot C */
+            hot_spot_C: number[];
+            /** Final */
+            final: {
+                [key: string]: number;
+            };
+            /** Time Constants Min */
+            time_constants_min: {
+                [key: string]: number;
+            };
+            /** Inputs */
+            inputs: {
+                [key: string]: number;
+            };
         };
         /** StressModel */
         StressModel: {
@@ -867,7 +1430,7 @@ export interface components {
         };
         /**
          * ThermalProfileModel
-         * @description IEC 60076-7 thermal diagram and heat flow at one instant (twin/profile.py).
+         * @description IEC 60076-7 thermal diagram and heat flow at one instant (twin/thermal_profile.py).
          */
         ThermalProfileModel: {
             /** Dataset Id */
@@ -893,6 +1456,19 @@ export interface components {
             /** Simulated */
             simulated: boolean;
         };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
         /** ValueModel */
         ValueModel: {
             /** Value */
@@ -909,6 +1485,36 @@ export interface components {
              * @description measured | twin | model
              */
             source: string;
+        };
+        /** WhatIfIn */
+        WhatIfIn: {
+            /**
+             * Model
+             * @description iec | detailed
+             * @default iec
+             */
+            model: string;
+            /**
+             * K Factor
+             * @default 1
+             */
+            k_factor: number;
+            /**
+             * Load Mult
+             * @default 1
+             */
+            load_mult: number;
+            /**
+             * Ambient Offset C
+             * @default 0
+             */
+            ambient_offset_C: number;
+            /**
+             * Rise Mult
+             * @description >1 models degraded cooling
+             * @default 1
+             */
+            rise_mult: number;
         };
         /**
          * WhatIfModel
@@ -1621,6 +2227,60 @@ export interface operations {
             };
         };
     };
+    get_report_api_datasets__dataset_id__report_get: {
+        parameters: {
+            query?: {
+                /** @description html | csv | json */
+                fmt?: string;
+                /** @description force a file download */
+                download?: boolean;
+            };
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     report_pdf_api_datasets__dataset_id__report_pdf_get: {
         parameters: {
             query?: never;
@@ -1671,6 +2331,540 @@ export interface operations {
             };
             /** @description Not Implemented */
             501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    get_presets_api_presets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetModel"][];
+                };
+            };
+        };
+    };
+    resolve_profile_api_profile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileModel"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    simulate_api_simulate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetModel"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    ingest_api_ingest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    end_live_api_ingest__session__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    physics_chain_api_physics_chain_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChainIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChainModel"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    physics_step_api_physics_step_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepResponseModel"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    physics_detailed_api_physics_detailed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetailedIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    physics_ageing_models_api_physics_ageing_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    physics_whatif_api_datasets__dataset_id__whatif_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatIfIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhysicsWhatIfModel"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    get_brief_api_datasets__dataset_id__brief_get: {
+        parameters: {
+            query: {
+                /** @description ISO 8601; naive = Asia/Kolkata */
+                t: string;
+            };
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    get_outlook_api_datasets__dataset_id__outlook_get: {
+        parameters: {
+            query: {
+                /** @description ISO 8601; naive = Asia/Kolkata */
+                t: string;
+            };
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
