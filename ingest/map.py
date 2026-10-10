@@ -80,6 +80,8 @@ def propose(df: pd.DataFrame, synonyms: dict | None = None, skip=("timestamp",))
             canon, conf = ("VY" if scheme == "abc" else "VB"), 0.85
         elif n in lookup:
             canon, conf = lookup[n], 0.9
+        elif units.split_unit_suffix(n)[1] and units.split_unit_suffix(n)[0] in lookup:
+            canon, conf = lookup[units.split_unit_suffix(n)[0]], 0.85      # organizer style: Load_Current_A
         else:
             close = difflib.get_close_matches(n, list(lookup), n=1, cutoff=0.85)
             if close:

@@ -17,7 +17,9 @@ def classify(df: pd.DataFrame) -> str:
     if len(df) <= 40 and first.str.contains("|".join(NAMEPLATE_KEYS)).sum() >= 2:
         return "nameplate"
     tcol = find_time_column(df)
-    if tcol is not None and any(k in n for n in norms for k in EVENT_KEYS):
+    strong = any(k in n for n in norms for k in ("event", "peak"))
+    weak = any("duration" in n for n in norms) and len(df) < 200   # e.g. Test_Duration_min on a trend is not an event log
+    if tcol is not None and (strong or weak):
         return "events"
     if tcol is not None and df.select_dtypes("number").shape[1] >= 1:
         return "trend"

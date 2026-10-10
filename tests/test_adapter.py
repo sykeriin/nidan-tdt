@@ -22,6 +22,8 @@ FIXTURES = {
     "F8": ([FX / "F8_kva_only.csv"], "meter_only",
            {"thermal_twin": True, "residual_fidelity": False, "unbalance": False, "voltage_quality": False}),
     "F6": ([FX / "F6_line_line_kA.csv"], "full", {"voltage_quality": True, "unbalance": True}),
+    "F15": ([FX / "F15_organizer_style.xlsx"], "full",
+            {"unbalance": False, "voltage_quality": False, "lead_time_eval": True, "residual_fidelity": True}),
 }
 
 
@@ -51,7 +53,7 @@ def test_mode_capabilities_contract(loaded, fid):
     assert ds.trend["amb_C"].notna().all()
 
 
-@pytest.mark.parametrize("fid", ["F1", "F3", "F4", "F8", "F6"])
+@pytest.mark.parametrize("fid", ["F1", "F3", "F4", "F8", "F6", "F15"])
 def test_amps_match_truth_within_1pct(loaded, truth, fid):
     m = loaded[fid].trend.merge(truth[["timestamp", "I_mean"]], on="timestamp", suffixes=("", "_true"))
     assert len(m) == len(loaded[fid].trend)
@@ -129,3 +131,44 @@ def test_unit_hints():
 def test_adapter_offline(no_network):
     ds = load(FIXTURES["F8"][0])
     assert ds.mode == "meter_only" and ds.trend["amb_C"].notna().all()
+
+
+def test_f15_organizer_naming(loaded, truth):
+    """CPRI screening-workbook style: Title_Case_unit headers, anonymous sensors, labels, dupes, blanks."""
+    ds = loaded["F15"]
+    m = {x["source"]: x["canonical"] for x in ds.health_report["mapping"]}
+    assert m["Load_Current_A"] == "I_total" and m["Applied_Voltage_kV"] == "VRY"
+    assert m["Ambient_Temperature_C"] == "ATI_C" and m["Oil_Temperature_C"] == "OTI_C"
+    assert m["Validity_Label"] == "gt_validity_label"                       # hidden output -> quarantined
+    t = ds.trend
+    assert {"extra_sensor_s1", "extra_sensor_s2", "extra_sensor_s3", "extra_sensor_s4"} <= set(t.columns)
+    assert t["dq_flags"].str.contains("DUP_IDENT").sum() == 3                # duplicate measurement pairs
+    assert t["timestamp"].iloc[0] == pd.Timestamp("2026-04-01 00:00", tz="Asia/Kolkata")  # DD-MM-YYYY
+    tr = truth[["timestamp", "VR", "VY", "VB"]].rename(columns={"VR": "VR_t", "VY": "VY_t", "VB": "VB_t"})
+    mm = t[["timestamp", "VR"]].merge(tr, on="timestamp")
+    np.testing.assert_allclose(mm["VR"], mm[["VR_t", "VY_t", "VB_t"]].mean(axis=1), rtol=0.005)  # kV L-L -> V L-N
+
+
+def test_unit_suffix_does_not_break_alarm_or_phase_names():
+    df = pd.DataFrame({"OTI_A": [0.0, 1], "MOG_A": [0.0, 1], "I_C": [10.0, 11], "I_A": [10.0, 11], "I_B": [10.0, 11]})
+    got = {p["source"]: p["canonical"] for p in cmap.propose(df)}
+    assert got["OTI_A"] == "alarm_oti_a" and got["MOG_A"] == "alarm_mog_a"
+    assert got["I_C"] == "IB" and got["I_A"] == "IR" and got["I_B"] == "IY"
+
+
+def test_hv_voltage_set_aside(tmp_path):
+    f = tmp_path / "hv.csv"
+    ts = pd.date_range("2026-04-01", periods=96, freq="15min")
+    pd.DataFrame({"Timestamp": ts.strftime("%Y-%m-%d %H:%M"), "Applied_Voltage_kV": 11.0,
+                  "Load_Current_A": 600.0, "Ambient_Temperature_C": 30.0}).to_csv(f, index=False)
+    ds = load([f])
+    assert "VR" not in ds.trend and "extra_vry_hv" in ds.trend
+    assert any("HV-side" in d for d in ds.health_report["derived"])
+    assert ds.trend["I_mean"].iloc[0] == pytest.approx(600)
+
+
+def test_records_without_timestamp_get_clear_error(tmp_path):
+    f = tmp_path / "records.csv"
+    pd.DataFrame({"Test_ID": ["TRN-0001", "TRN-0002"], "Load_Current_A": [50.0, 60.0]}).to_csv(f, index=False)
+    with pytest.raises(ValueError, match="per-test records keyed by 'Test_ID'"):
+        load([f])

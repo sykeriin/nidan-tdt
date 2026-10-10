@@ -70,8 +70,47 @@ def build(out=FIX) -> dict[str, Path]:
     paths["F6"] = out / "F6_line_line_kA.csv"
     f6.to_csv(paths["F6"], index=False)
 
+    paths["F15"] = out / "F15_organizer_style.xlsx"
+    _organizer_style(n, paths["F15"])
+
     paths["F2"] = ROOT / "data" / "raw" / "kaggle"
     return paths
+
+
+def _organizer_style(n: pd.DataFrame, path: Path) -> None:
+    """Naming/layout of the CPRI screening workbook (structure only, no records reused): README sheet,
+    Title_Case_unit headers, record ID, anonymous Sensor_S1..S4, Validity_Label, blank cells, duplicate pairs.
+    Adds a timestamp (the screening file has none; the twin needs time)."""
+    rng = np.random.default_rng(15)
+    k = len(n)
+    trend = pd.DataFrame({
+        "Record_ID": [f"REC-{i + 1:04d}" for i in range(k)],
+        "Timestamp": _local(n["timestamp"]).dt.strftime("%d-%m-%Y %H:%M"),
+        "Applied_Voltage_kV": (n[["VR", "VY", "VB"]].mean(axis=1) * np.sqrt(3) / 1000).round(4),
+        "Load_Current_A": n["I_mean"].round(2),
+        "Ambient_Temperature_C": n["ATI_C"],
+        "Oil_Temperature_C": n["OTI_C"],
+        "Test_Duration_min": 15.0,
+        "Sensor_S1": (n["WTI_C"] + rng.normal(0, 1, k)).round(3),     # unnamed sensors: not every sensor is useful
+        "Sensor_S2": rng.normal(50, 5, k).round(3),
+        "Sensor_S3": 42.0,
+        "Sensor_S4": n["OLI_pct"],
+        "Validity_Label": "Valid",
+    })
+    bad = rng.choice(k, 6, replace=False)
+    trend.loc[bad, "Sensor_S1"] = -1.0
+    trend.loc[bad, "Validity_Label"] = "Invalid"
+    trend.loc[rng.choice(k, 8, replace=False), "Oil_Temperature_C"] = np.nan        # missing values
+    trend.loc[rng.choice(k, 30, replace=False), "Sensor_S4"] = np.nan
+    dup = trend.iloc[[100, 200, 300]].copy()                                        # duplicate measurement pairs
+    dup["Record_ID"] = [f"REC-{k + i + 1:04d}" for i in range(3)]
+    trend = pd.concat([trend, dup]).reset_index(drop=True)
+    readme = pd.DataFrame({"Item": ["Records", "Data quality", "Note"],
+                           "Details": [len(trend), "Noise, missing values, sensor faults, duplicate measurement pairs",
+                                       "SIMULATED fixture in organizer naming style"]})
+    with pd.ExcelWriter(path) as xw:
+        readme.to_excel(xw, sheet_name="README", index=False)
+        trend.to_excel(xw, sheet_name="Trend_Data", index=False)
 
 
 if __name__ == "__main__":

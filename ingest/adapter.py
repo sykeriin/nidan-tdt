@@ -39,7 +39,7 @@ def _tables(paths) -> list[tuple[str, pd.DataFrame, dict, str]]:
 def _time(df: pd.DataFrame, ts_spec: dict) -> tuple[pd.DataFrame, dict]:
     col = ts_spec.get("column") or ctime.find_time_column(df)
     if col is None:
-        raise ValueError("no timestamp column found; set schema timestamp.column")
+        raise ValueError(f"no timestamp column found.{_records_hint([df])} Set schema timestamp.column if one exists.")
     if isinstance(col, (list, tuple)):
         raw = df[col[0]].astype(str) + " " + df[col[1]].astype(str)
         rest = df.drop(columns=list(col))
@@ -52,6 +52,16 @@ def _time(df: pd.DataFrame, ts_spec: dict) -> tuple[pd.DataFrame, dict]:
     bad = out["timestamp"].isna()
     info["unparsed_rows"] = int(bad.sum())
     return out[~bad].reset_index(drop=True), info
+
+
+def _records_hint(frames) -> str:
+    """Tables keyed by a record ID with no time column (CPRI screening style) get a specific message."""
+    for df in frames:
+        ids = [c for c in df.columns if str(c).lower().endswith(("_id", "id"))]
+        if ids:
+            return (f" It looks like per-test records keyed by {str(ids[0])!r} (CPRI screening-workbook style);"
+                    " the twin needs a time series.")
+    return ""
 
 
 def _split_existing_flags(df: pd.DataFrame) -> pd.DataFrame:
@@ -120,7 +130,7 @@ def load(paths, schema=None, asset="config/asset.yaml", source: str | None = Non
         dedupe_stats[name] = st
         frames.append(m)
     if not frames:
-        raise ValueError("no trend table found")
+        raise ValueError("no trend table found." + _records_hint([d for _, d, _, _ in tables]))
     trend, merge_stats = shape.merge(frames)
     rep["dedupe"], rep["merge"] = dedupe_stats, merge_stats
     rng = sch.get("range", {})

@@ -307,6 +307,7 @@ Build with `python -m sim.fixtures` → `data/fixtures/`. Tests: `tests/test_ada
 | F4 | **Excel, 2 sheets** (Trend, Events), DD/MM/YYYY, peak current in A | `F4_excel_trend_events.xlsx` | Sheet roles, Indian dates, events → `peak_pu` | full |
 | F6 | **Line-line voltages only, kA currents** | `F6_line_line_kA.csv` | kA → A, L-L → L-N | full |
 | F8 | **kVA only**, no temperatures, no ambient | `F8_kva_only.csv` | Derive amps from kVA at nameplate V; Open-Meteo ambient; unbalance off | meter_only |
+| F15 | **Organizer style** (CPRI screening-workbook naming): README sheet + `Trend_Data`, `Title_Case_unit` headers, `Record_ID`, anonymous `Sensor_S1..S4`, `Validity_Label`, blank cells, duplicate pairs, DD-MM-YYYY | `F15_organizer_style.xlsx` | Unit-suffix mapping, single current/voltage, label → `gt_*`, sensors → `extra_*`, `DUP_IDENT` | full |
 
 Also tested: `map_row()` == batch on F3, `inspect()` proposals, A/B/C vs R/Y/B `ib` resolution, header unit hints,
 loading with the network blocked.
@@ -321,6 +322,22 @@ instead (epoch parsing exists but has no fixture).
 **Finale drill (rehearse twice):** someone not on P1 makes a fresh, weird CSV; P1 gets it running in the dashboard in ≤ 15 minutes using only the Import page / YAML.
 
 ---
+
+## 5a. Organizer format hints (from the CPRI screening workbook — structure only, no records used)
+
+`CPRI_Hackathon_Screening_Dataset_PARTICIPANT.xlsx` is a different task (per-test regression + validity), but it's
+the organizers' own file, so its conventions are our best guess at the finale format:
+
+| Convention seen | What the adapter now does |
+|---|---|
+| `Title_Case` words joined by `_`, **unit as the last token**: `Load_Current_A`, `Applied_Voltage_kV`, `Ambient_Temperature_C`, `Test_Duration_min` | Unit suffix read as a unit hint; stripped for matching only if the full name doesn't match first (so `OTI_A`/`MOG_A` alarms and `I_C` phase names are safe) |
+| One current and one voltage, not per phase | `Load_Current_A` → `I_total` (IR=IY=IB, unbalance off); `Applied_Voltage_kV`/`Voltage` → line-line; a single voltage holding 180–270 V is treated as L-N |
+| Voltages in kV at **HV/test levels** (≈ 8–31 kV) | Any voltage with median > 1000 V is set aside as `extra_<col>_hv` with a warning, never used as LV voltage |
+| **Anonymous sensors** `Sensor_S1..S4`; README: "not every sensor is useful" | Not guessed: kept as `extra_sensor_s*`, viewable, unused by the twin |
+| Hidden outputs `Reference_Parameter`, `Validity_Label` (Valid/Invalid) | Added to ground-truth synonyms → `gt_*`, quarantined from detectors |
+| Record IDs `TRN-0001` / `TST-0001`, **no timestamp at all**; `Test_Duration_min` instead | If a finale file has no time column, load fails with a specific message ("per-test records keyed by 'Test_ID' … the twin needs a time series") instead of a generic one. A records mode is **not built** [Open] |
+| README sheet + data sheets + submission template in one workbook | README/template sheets classify as `other` and are listed, not loaded. A `duration` column no longer makes a big trend sheet look like an event log |
+| Data quality: noise, blank cells, sensor faults, duplicate measurement pairs, an embedded regime change | Blanks → NaN; duplicates → `DUP_*`; regime change: not detected by the adapter (analytics/twin concern) |
 
 ## 6. Extensibility (what we say to judges)
 

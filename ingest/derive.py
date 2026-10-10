@@ -26,6 +26,16 @@ def derive(df: pd.DataFrame, asset: dict) -> tuple[pd.DataFrame, list[str]]:
     i_rated = asset.get("i_rated_A")
     v_ll_nom = asset.get("lv_voltage_V", 415)
 
+    # HV-side voltages (e.g. 11 kV, or a CPRI test "Applied_Voltage_kV") are not LV phase voltages: set aside
+    for v in VLN + VLL:
+        if _has(df, v) and df[v].median() > 1000:
+            df[f"extra_{v.lower()}_hv"] = df.pop(v)
+            log.append(f"{v}: median {df[f'extra_{v.lower()}_hv'].median():.0f} V looks HV-side; kept as extra, not used")
+    # a single "voltage" mapped to line-line that actually holds phase-neutral values
+    for vn, vl in zip(VLN, VLL):
+        if _has(df, vl) and not _has(df, vn) and 180 <= df[vl].median() <= 270:
+            df[vn] = df.pop(vl)
+            log.append(f"{vl}: values look phase-neutral, used as {vn}")
     # voltages: L-L -> L-N; L-N columns that actually hold L-L values
     for v in VLN:
         if _has(df, v) and 330 <= df[v].median() <= 470:

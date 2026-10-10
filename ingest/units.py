@@ -29,15 +29,30 @@ _HINTS = [  # (regex on raw header, unit) - order matters (kVA before VA, kA bef
 ]
 
 
+# Organizer style (CPRI screening workbook): unit as the last "_" token, e.g. Load_Current_A, Applied_Voltage_kV
+SUFFIX_UNITS = {"a": "A", "ka": "kA", "v": "V", "kv": "kV", "c": "C", "degc": "C", "f": "F", "degf": "F",
+                "w": "W", "kw": "kW", "mw": "MW", "va": "VA", "kva": "kVA", "mva": "MVA", "var": "VAr",
+                "kvar": "kVAr", "pct": "percent", "percent": "percent", "hz": "Hz", "min": "min", "s": "s",
+                "ms": "ms", "h": "h"}
+
+
+def split_unit_suffix(norm: str) -> tuple[str, str | None]:
+    """'load_current_a' -> ('load_current', 'A'). Stems shorter than 3 chars are kept whole ('i_c' is phase C)."""
+    stem, _, tok = norm.rpartition("_")
+    if tok in SUFFIX_UNITS and len(stem) >= 3:
+        return stem, SUFFIX_UNITS[tok]
+    return norm, None
+
+
 def header_hint(header: str) -> str | None:
-    """Unit named in the header, e.g. 'Oil Temp (°F)', 'I_R [kA]'."""
+    """Unit named in the header, e.g. 'Oil Temp (°F)', 'I_R [kA]', 'Load_Current_A'."""
     h = str(header).lower()
     m = re.findall(r"[\(\[]([^\)\]]*)[\)\]]", h)
     for part in m + [h]:  # bracketed units first, then the whole header
         for rx, unit in _HINTS:
             if re.search(rx, part):
                 return unit
-    return None
+    return split_unit_suffix(re.sub(r"[^a-z0-9]+", "_", h).strip("_"))[1]
 
 
 def detect(canonical: str, s: pd.Series, header: str = "") -> str:
