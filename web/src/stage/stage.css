@@ -282,3 +282,7 @@
 .compact .sim-ruler { gap: 10px; }
 .sim-presets { top: auto; bottom: 12px; }
 .compact .sim .sr-value b { font-size: 20px; }
+
+/* Live plant opened over the dashboard (the same view as ?view=tablet, same server session) */
+.live-overlay { position: fixed; inset: 0; z-index: 80; background: var(--paper); }
+.tw-back { font: 600 13px var(--cond); }

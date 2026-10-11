@@ -9,6 +9,8 @@ import { DiagnosePanel, findingMarks } from "./sheet/Diagnose";
 import { TourCaption, tour, useTourStep } from "./twin/Tour";
 import { SimPhysics, SimPresets } from "./sheet/SimPhysics";
 import { Circuit } from "./sheet/Circuit";
+import Tablet from "./tablet/Tablet";
+import "./tablet/tablet.css";
 import { DiagnoseML } from "./sheet/DiagnoseML";
 import { SimControls, SimInputs, useSettled, whatIfDayFrames, whatIfFrames } from "./sheet/Simulate";
 import { ThermalDiagram } from "./sheet/ThermalDiagram";
@@ -44,6 +46,7 @@ export default function App() {
   const [bench, setBench] = useState(false);
   const [xray, setXray] = useState(false);
   const [circuit, setCircuit] = useState(false);
+  const [liveOn, setLiveOn] = useState(false);
   const [big, setBig] = useState(false); // expanded 3D view: the model box fills the window
   useEffect(() => { if (!big) return; const k = (e: KeyboardEvent) => e.key === "Escape" && setBig(false); window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [big]);
   const touring = useTourStep() >= 0;
@@ -179,6 +182,9 @@ export default function App() {
           <button className="explain" aria-pressed={circuit} disabled={!frames} onClick={() => setCircuit(!circuit)}>
             <span className="tab-label">Circuit</span><span className="tab-hint">Electrical, live</span>
           </button>
+          <button className="explain" aria-pressed={liveOn} onClick={() => setLiveOn(true)}>
+            <span className="tab-label">Live plant</span><span className="tab-hint">Inject anomalies</span>
+          </button>
           <label className="dataset">
             <span className="dataset-label">Dataset</span>
             <select value={dataset} onChange={(e) => { setPinned([]); setMode("mirror"); setDataset(e.target.value); }}>
@@ -192,6 +198,7 @@ export default function App() {
           {V2 && (sim || info?.simulated) && <span className="v2-simpill">Simulated</span>}
           {V2 && <SectionToggle cut={cut} onCut={setCut} />}
         </header>
+        {liveOn && <div className="live-overlay"><Tablet onClose={() => { setLiveOn(false); if (frames) player.load(frames, replayT.current ?? undefined); }} /></div>}
         {circuit && <Circuit asset={(run.data?.asset as Record<string, unknown>) ?? null} onClose={() => setCircuit(false)} />}
         {bench && (
           <Workbench dataset={dataset} time={frames && i >= 0 ? frames.iso[i] : null} timeSeries={!!frames && !snapshot} snapshot={snapshot}

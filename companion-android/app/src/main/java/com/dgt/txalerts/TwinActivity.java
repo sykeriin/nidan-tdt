@@ -69,7 +69,13 @@ public class TwinActivity extends Activity {
 
     private String url() { return Store.backend(this) + "/?view=tablet"; }
 
-    private void load() { hideError(); web.loadUrl(url()); }
+    private void load() {
+        hideError();
+        new Thread(() -> {
+            String u = Store.resolve(this) + "/?view=tablet";
+            runOnUiThread(() -> web.loadUrl(u));
+        }, "resolve").start();
+    }
 
     private void showError(String t) {
         message.setText(t);

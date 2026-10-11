@@ -40,7 +40,7 @@ const post = (path: string, body?: unknown) =>
 const simTime = (iso: string | undefined | null) => (iso ? iso.slice(5, 16).replace("T", " ") : "");
 const num = (v: Cell | undefined) => (typeof v === "number" ? v : null);
 
-export default function Tablet() {
+export default function Tablet({ onClose }: { onClose?: () => void } = {}) {
   const [kinds, setKinds] = useState<Kind[]>([]);
   const [info, setInfo] = useState<Info | null>(null);
   const [responses, setResponses] = useState<Record<string, Response>>({});
@@ -175,6 +175,7 @@ export default function Tablet() {
   return (
     <div className="tw">
       <header className="tw-top">
+        {onClose && <button className="tw-back" onClick={onClose}>← Dashboard</button>}
         <b className="tw-title">Transformer-1 · live simulation</b>
         <span className="tw-sim" title="Everything on this screen is generated, not measured on a real transformer">SIMULATED</span>
         <span className="tw-clock">{simTime(row ? String(player.frames?.iso[i] ?? "") : null)}</span>

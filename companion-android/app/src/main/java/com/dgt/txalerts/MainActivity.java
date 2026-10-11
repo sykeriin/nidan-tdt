@@ -100,8 +100,8 @@ public class MainActivity extends Activity {
         root.addView(list);
 
         root.addView(text("Settings", 18, FG, true));
-        root.addView(label("Backend URL"));
-        backend = edit(Store.backend(this), InputType.TYPE_TEXT_VARIATION_URI);
+        root.addView(label("Backend URL (several allowed, separated by a comma: the first one that answers is used)"));
+        backend = edit(Store.backendSetting(this), InputType.TYPE_TEXT_VARIATION_URI);
         root.addView(backend);
         root.addView(label("Dataset (S2 = cooling fault, S4a = oil leak, S4b = oil theft, S5 = through faults)"));
         dataset = edit(Store.get(this, "dataset", "S2"), InputType.TYPE_CLASS_TEXT);

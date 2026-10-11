@@ -89,7 +89,7 @@ public class MonitorService extends Service {
         long since = -1;
         while (!stop) {
             try {
-                URL url = new URL(Store.backend(this) + "/api/companion/test-alerts" + (since < 0 ? "" : "?since=" + since));
+                URL url = new URL(Store.resolve(this) + "/api/companion/test-alerts" + (since < 0 ? "" : "?since=" + since));
                 HttpURLConnection c = (HttpURLConnection) url.openConnection();
                 c.setConnectTimeout(6000);
                 c.setReadTimeout(8000);
@@ -132,8 +132,8 @@ public class MonitorService extends Service {
     private boolean stream() throws Exception {
         String ds = Store.get(this, "dataset", "S2");
         String speed = Store.get(this, "speed", "100000");
-        URL url = new URL(Store.backend(this) + "/api/datasets/" + URLEncoder.encode(ds, "UTF-8") + "/replay?speed=" + speed + "&limit=50000");
-        status("Connecting to " + Store.backend(this) + " …");
+        URL url = new URL(Store.resolve(this) + "/api/datasets/" + URLEncoder.encode(ds, "UTF-8") + "/replay?speed=" + speed + "&limit=50000");
+        status("Connecting to " + Store.resolve(this) + " …");
         HttpURLConnection c = (HttpURLConnection) url.openConnection();
         conn = c;
         c.setConnectTimeout(8000);

@@ -23,7 +23,47 @@ final class Store {
     static String get(Context c, String k, String d) { return sp(c).getString(k, d); }
     static void put(Context c, String k, String v) { sp(c).edit().putString(k, v).apply(); }
 
-    static String backend(Context c) { return get(c, "backend", "http://100.73.168.98:8000").replaceAll("/+$", ""); }
+    /** The Backend URL setting as typed. It may hold several servers (comma or space separated), e.g. two PCs; the first reachable one is used. */
+    static String backendSetting(Context c) { return get(c, "backend", "http://100.73.168.98:8000"); }
+
+    static List<String> backends(Context c) {
+        List<String> out = new ArrayList<>();
+        for (String u : backendSetting(c).split("[,;\s]+")) {
+            u = u.trim().replaceAll("/+$", "");
+            if (!u.isEmpty() && !out.contains(u)) out.add(u);
+        }
+        return out;
+    }
+
+    private static volatile String resolved = null;
+    private static volatile long resolvedAt = 0;
+
+    /** First listed backend that answers. Opens a connection, so call it off the main thread. Cached for 20 s; falls back to the first entry. */
+    static synchronized String resolve(Context c) {
+        List<String> all = backends(c);
+        if (all.isEmpty()) return "";
+        long now = System.currentTimeMillis();
+        if (resolved != null && all.contains(resolved) && now - resolvedAt < 20000) return resolved;
+        for (String u : all) {
+            try {
+                java.net.HttpURLConnection h = (java.net.HttpURLConnection) new java.net.URL(u + "/api/live/info").openConnection();
+                h.setConnectTimeout(1500);
+                h.setReadTimeout(2500);
+                int code = h.getResponseCode();
+                h.disconnect();
+                if (code == 200) { resolved = u; resolvedAt = now; return u; }
+            } catch (Exception ignored) { /* try the next one */ }
+        }
+        resolved = null;
+        return all.get(0);
+    }
+
+    /** For display only (main thread safe): the last resolved server, else the first listed one. */
+    static String backend(Context c) {
+        List<String> all = backends(c);
+        String r = resolved;
+        return r != null && all.contains(r) ? r : (all.isEmpty() ? "" : all.get(0));
+    }
 
     static void changed() { Runnable r = onChange; if (r != null) MAIN.post(r); }
 
