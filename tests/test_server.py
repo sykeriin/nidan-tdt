@@ -198,6 +198,12 @@ def test_whatif_and_findings(client):
     assert j["hot_spot_C"] > j["top_oil_C"] > 40 and len(j["curve"]["t_min"]) == len(j["curve"]["top_oil_C"])
     assert j["start"]["from"] == "cold (ambient)"
     assert client.get("/api/whatif", params={"load_pu": 5, "ambient_C": 40}).status_code == 422
+    d = client.get("/api/datasets/S2/whatif-day", params={"load_pu": 0.8, "ambient_C": 35, "load_profile": "daily",
+                                                           "t": "2026-04-16T12:00"})
+    assert d.status_code == 200
+    j = d.json()
+    assert j["rows"] == len(j["timestamp"]) == len(j["columns"]["health_score"]) and ISO.match(j["cursor"])
+    assert client.get("/api/datasets/S2/whatif-day", params={"load_pu": 0.8, "ambient_C": 35, "pf": 2}).status_code == 422
     f = client.get("/api/datasets/S5/findings").json()
     assert f["stress"]["triggered"] and any(g["cause"] == "Short circuit" for g in f["findings"])
     assert "class" in f["stress"]["last_event"]
@@ -215,3 +221,38 @@ def test_frames(client, dataset_id):
                       params={"fields": "OTI_C", "start": j["timestamp"][10], "end": j["timestamp"][19], "every": 3}).json()
     assert part["rows"] == 4 and part["timestamp"][0] == j["timestamp"][10]
     assert client.get(f"/api/datasets/{dataset_id}/frames", params={"fields": "nope"}).status_code == 400
+
+
+def test_companion_responses_cover_every_alert_type(client):
+    from analytics.common import ALERT_MODULES
+    j = client.get("/api/companion/responses").json()
+    assert set(j["types"]) == set(ALERT_MODULES)
+    assert {"info", "warning", "critical"} <= set(j["severity_label"])
+
+
+def test_dashboard_test_alert_reaches_a_listening_companion(client):
+    first = client.get("/api/companion/test-alerts").json()          # a new client learns the latest seq, gets nothing
+    assert first["items"] == []
+    r = client.post("/api/companion/test-alert", json={"type": "loading_high", "severity": "critical"})
+    assert r.status_code == 200, r.text
+    j = client.get("/api/companion/test-alerts", params={"since": first["latest"]}).json()
+    assert [t["alert"]["type"] for t in j["items"]] == ["loading_high"]
+    a = j["items"][0]["alert"]
+    assert a["severity"] == "critical" and a["origin"] == "asset" and a["id"].startswith("test-") and a["timestamp"]
+    assert client.get("/api/companion/test-alerts", params={"since": j["latest"]}).json()["items"] == []   # delivered once
+    sensor = client.post("/api/companion/test-alert", json={"type": "stuck_sensor", "severity": "warning"}).json()["alert"]
+    assert sensor["origin"] == "sensor"
+    assert client.post("/api/companion/test-alert", json={"type": "nope", "severity": "info"}).status_code == 400
+
+
+def test_ml_endpoint_isolation_forest_and_prophet(client):
+    """Isolation Forest scores the day against the first week; Prophet is tested on the last 24 h (advisory, seeded)."""
+    r = client.get("/api/datasets/S2/ml", params={"t": "2026-04-27T12:00"})
+    assert r.status_code == 200
+    j = r.json()
+    f, p = j["isolation_forest"], j["prophet"]
+    assert f["available"] and len(f["t"]) == len(f["score"]) and f["threshold"] == 1.0 and "now" in f
+    assert p["available"] and len(p["t"]) == len(p["yhat"]) == len(p["actual"]) and p["hours_checked"] > 0
+    early = client.get("/api/datasets/S2/ml", params={"t": "2026-04-01T06:00"}).json()
+    assert early["isolation_forest"]["available"] is False  # not enough history to train on yet
+    assert client.get("/api/datasets/nope/ml", params={"t": "2026-04-27T12:00"}).status_code == 404

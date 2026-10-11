@@ -47,12 +47,17 @@ const ACTIVE: Record<MatKey, THREE.MeshStandardMaterial> = Object.fromEntries(
 // ---------------------------------------------------------------- interaction context
 interface TwinCtx {
   active: Set<PartId>;
+  picked?: Set<PartId>; // clicked (pinned) parts: lit in a different colour from hover
   onOver: (id: PartId) => void;
   onOut: (id: PartId) => void;
   onClick: (id: PartId) => void;
+  xray?: boolean; // see-through steel: the oil, windings and core show through the tank walls
 }
 export const TwinContext = createContext<TwinCtx>({ active: new Set(), onOver: () => {}, onOut: () => {}, onClick: () => {} });
 const PartCtx = createContext<PartId | null>(null);
+// a clicked part keeps its own colour and gets a soft blue wash laid over it; nothing else changes
+const PICK_WASH = new THREE.MeshBasicMaterial({ color: "#3D7BFF", transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 });
+const PICK_SKIP = new Set<MatKey>(["oil", "oilFill", "glass"]);
 
 function Part({ id, children }: { id: PartId; children: ReactNode }) {
   const { onOver, onOut, onClick } = useContext(TwinContext);
@@ -79,13 +84,16 @@ interface MeshProps {
 }
 function Mesh({ geo, m, p = [0, 0, 0], r = [0, 0, 0], edges = 25, hit = true, visible = true, override }: MeshProps) {
   const id = useContext(PartCtx);
-  const { active } = useContext(TwinContext);
+  const { active, picked } = useContext(TwinContext);
   const on = id !== null && active.has(id);
-  const glass = id === "tank" && m === "tank" && on;
+  const pick = id !== null && !!picked?.has(id) && !PICK_SKIP.has(m);
+  const { xray } = useContext(TwinContext);
+  const glass = m === "tank" && (xray === true || (id === "tank" && on));
   return (
     <mesh geometry={geo} material={override ?? (glass ? TANK_GLASS : on ? ACTIVE[m] : M[m])} position={p} rotation={r} visible={visible}
       raycast={hit ? undefined : () => null}>
       {edges !== false && <Edges threshold={edges} color={INK} transparent opacity={glass ? 0.35 : 1} />}
+      {pick && <mesh geometry={geo} material={PICK_WASH} scale={1.012} raycast={() => null} />}
     </mesh>
   );
 }

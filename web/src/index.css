@@ -632,3 +632,33 @@ button { font: inherit; color: inherit; }
 .tour-btns { display: flex; gap: 0; justify-content: flex-end; }
 .tour-btns button { font: 500 11px var(--mono); background: var(--paper); border: 1px solid var(--ink); margin-left: -1px; padding: 2px 12px; cursor: pointer; border-radius: 0; }
 .tour-btns button:disabled { color: var(--ink-3); cursor: default; }
+
+/* AC power-flow labels on the bushings */
+.pf-label { display: grid; gap: 1px; justify-items: center; padding: 2px 8px; background: rgba(242, 239, 230, 0.92); border: 1px solid var(--ink); font: 500 10px var(--mono); white-space: nowrap; }
+.pf-label b { font: 600 11px var(--cond); }
+.pf-label.in { border-color: var(--twin); color: var(--twin); }
+.pf-label.out { border-color: var(--measured); color: var(--measured); }
+.pf-ac { font-size: 14px; line-height: 1; }
+.pflow .sw { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50% 50% 0 0; vertical-align: -1px; }
+.pflow .sw.in { background: var(--twin); }
+.pflow .sw.out { background: var(--measured); }
+.pflow-note { margin: 6px 0 0; font-size: 10px; color: var(--ink-2); }
+
+/* ---------------------------------------------------------------- Simulate: six rulers, load profile, what-if day */
+.sim { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; }
+.sim-out > .approach { flex: 1 1 160px; min-width: 0; }
+.sim-rulers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, auto);
+  grid-auto-flow: column; column-gap: 18px; row-gap: 10px; align-content: center; }
+.sim-ruler { grid-template-columns: 50px minmax(0, 1fr) 76px; gap: 8px; }
+.sim-day { margin: 6px 0 0; font-size: 10.5px; color: var(--ink-2); }
+.sim-day span { display: inline-block; margin-right: 6px; white-space: nowrap; }
+.sim-day .sd-critical { color: var(--bad); font-weight: 600; }
+.sim-day .sd-warning { color: var(--warn); }
+.sim-profile { display: flex; gap: 0; margin: 4px 0 6px; }
+.sim-profile button { flex: 1; font: 600 12px var(--cond); font-variant-caps: small-caps; letter-spacing: 0.04em; padding: 3px 6px;
+  background: var(--paper); color: var(--ink); border: 1px solid var(--ink); cursor: pointer; }
+.sim-profile button + button { border-left: none; }
+.sim-profile button.on { background: var(--twin); border-color: var(--twin); color: var(--paper); }
+.sim-scrub { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 6px; align-items: center; margin-top: 6px; font-size: 11px; }
+.sim-scrub button { height: 22px; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; font-size: 10px; }
+.sim-scrub input { width: 100%; accent-color: var(--twin); }

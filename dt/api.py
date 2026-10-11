@@ -574,6 +574,107 @@ def whatif(load_pu: float, ambient_C: float, cooling: float = 1.0, dataset_id: s
     return out
 
 
+_WHATIF_REF: dict[str, dict | None] = {}  # healthy residual baseline per dataset (loading it is the slow part)
+WHATIF_PROFILES = ("steady", "daily")
+
+
+def whatif_day(dataset_id: str, t, load_pu: float, ambient_C: float, cooling: float = 1.0, voltage_pu: float = 1.0,
+               pf: float = 0.95, unbalance_pct: float = 0.0, load_profile: str = "steady") -> dict:
+    """A what-if run through the full pipeline: plant -> adapter -> twin -> analytics -> Health Index.
+
+    The plant (sim/generator.py run_plant) is this dataset's transformer at the chosen load, ambient, cooling, voltage,
+    power factor and phase unbalance; its readings go through the same adapter, twin and analytics as an uploaded file,
+    so health, alerts and every frame column come from the same code as replay. steady: constant inputs for one day.
+    daily: two days of this dataset's own hour-of-day load and ambient shape, scaled so the peaks equal load_pu and
+    ambient_C (day 1 warms the plant up). Oil level and humidity start from the replay row at t.
+    Returns frames-shaped columns plus `cursor` (steady: the end; daily: the hot-spot peak of day 2) and the alerts."""
+    import tempfile
+    from sim import generator
+    if not 0 < load_pu <= 2:
+        raise ValueError("load_pu must be within 0-2")
+    if not -10 <= ambient_C <= 60:
+        raise ValueError("ambient_C must be within -10..60")
+    if not 0.05 <= cooling <= 1.5:
+        raise ValueError("cooling must be within 0.05-1.5 (1 = radiators as designed)")
+    if not 0.8 <= voltage_pu <= 1.2:
+        raise ValueError("voltage_pu must be within 0.8-1.2")
+    if not 0.5 <= pf <= 1.0:
+        raise ValueError("pf must be within 0.5-1.0")
+    if not 0 <= unbalance_pct <= 50:
+        raise ValueError("unbalance_pct must be within 0-50")
+    if load_profile not in WHATIF_PROFILES:
+        raise ValueError(f"load_profile must be one of {', '.join(WHATIF_PROFILES)}")
+    run = get_run(dataset_id)
+    if run.mode in ("snapshot", "data_only") or "timestamp" not in run.trend:
+        raise ValueError("a what-if day needs a dataset with a time series")
+    asset = profile.complete({k: v for k, v in run.asset.items() if k not in ("tags", "profile_notes")})
+    row = run.trend.iloc[_index_at(run, t) if t is not None else len(run.trend) - 1]
+    days = 1 if load_profile == "steady" else 2
+    idx = pd.date_range(row["timestamp"].normalize(), periods=96 * days, freq="15min")
+    hour = np.asarray(idx.hour + idx.minute / 60, dtype=float)
+
+    def shape(col: str) -> np.ndarray | None:  # this dataset's mean by hour of day, at the 15-min points
+        if col not in run.trend or run.trend[col].isna().all():
+            return None
+        m = run.trend.groupby(run.trend["timestamp"].dt.hour)[col].mean().reindex(range(24)).interpolate(limit_direction="both")
+        return np.interp(hour, np.arange(25), np.append(m.to_numpy(), m.iloc[0]))
+
+    load = np.full(len(idx), float(load_pu))
+    amb = np.full(len(idx), float(ambient_C))
+    if load_profile == "daily":
+        ls, as_ = shape("load_pu"), shape("amb_C")
+        ls = ls if ls is not None and np.nanmax(ls) > 0 else 0.55 + 0.45 * generator._smooth_step(hour, 8, 18)
+        load = load_pu * ls / np.nanmax(ls)
+        amb = ambient_C + ((as_ - np.nanmax(as_)) if as_ is not None else -4 * (1 + np.cos(2 * np.pi * (hour - 15) / 24)))
+    # reduced cooling scales the top-oil rise by cooling^(-x), as in whatif(); plant and twin both get it, so the
+    # twin is the what-if transformer (it agrees with the steady answer) rather than a healthy one watching a fault
+    p = _params(run)  # d_theta_or_K = rise + ambient surcharge; whatif() scales the sum
+    asset["top_oil_rise_K"] = p["d_theta_or_K"] * float(cooling) ** -p["x"] - (p["d_theta_or_K"] - float(asset["top_oil_rise_K"]))
+    n = len(idx)
+    pc = generator.load_config()["plant"]
+    rng = np.random.default_rng(0)  # the generator's sensor noise, seeded: same inputs give the same day
+    i_ph = (load * float(asset["i_rated_A"]))[:, None] * (1 + np.array([1.0, 0.0, -1.0]) * unbalance_pct / 100)
+    plant = generator.run_plant(i_ph.mean(axis=1), amb, idx, asset)
+    oil, hs = plant["oil"].to_numpy(), plant["hs"].to_numpy()
+    i_ph = i_ph * (1 + rng.normal(0, pc["noise_vi_frac"], (n, 3)))
+    v_ln = voltage_pu * float(asset["lv_voltage_V"]) / np.sqrt(3) * (1 + rng.normal(0, pc["noise_vi_frac"], (n, 3)))
+    pf = np.clip(pf + rng.normal(0, 0.005, n), 0.5, 1.0)
+    s_kva = (v_ln * i_ph).sum(axis=1) / 1000
+    ref_oil = row.get("OTI_C") if pd.notna(row.get("OTI_C")) else row.get("twin_oil_C")
+    if pd.notna(row.get("OLI_pct")) and pd.notna(ref_oil):
+        oli = float(row["OLI_pct"]) + pc["oil_level_per_C"] * (oil - float(ref_oil))
+    else:
+        oli = pc["oil_level_base_pct"] + pc["oil_level_per_C"] * (oil - 50)
+    trend = pd.DataFrame({
+        "timestamp": idx, "IR": i_ph[:, 0], "IY": i_ph[:, 1], "IB": i_ph[:, 2], "I_mean": i_ph.mean(axis=1),
+        "IN": np.abs((i_ph * np.exp(1j * np.deg2rad([0, -120, 120]))).sum(axis=1)),
+        "VR": v_ln[:, 0], "VY": v_ln[:, 1], "VB": v_ln[:, 2],
+        "S_kVA": s_kva, "P_kW": s_kva * pf, "Q_kVAr": s_kva * np.sqrt(1 - pf ** 2), "PF": pf, "freq_Hz": 50.0,
+        "OTI_C": oil + rng.normal(0, pc["noise_temp_C"], n), "WTI_C": hs + rng.normal(0, pc["noise_temp_C"], n),
+        "ATI_C": amb + rng.normal(0, 0.3, n), "OLI_pct": np.clip(oli + rng.normal(0, 0.3, n), 0, 100)})
+    num = trend.select_dtypes("number").columns
+    trend[num] = trend[num].round(3)
+    rh = float(row["RH_pct"]) if pd.notna(row.get("RH_pct")) else 60.0
+    hourly = pd.date_range(idx[0], idx[-1] + pd.Timedelta(hours=1), freq="1h")
+    wx = pd.DataFrame({"timestamp": hourly, "temp_C": np.interp(hourly.asi8, idx.asi8, amb), "rh_pct": rh})
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "whatif.csv"
+        trend.to_csv(path, index=False)
+        ds = adapter.load([path], asset=asset, weather=wx, source="whatif", simulated=True)
+    if dataset_id not in _WHATIF_REF:
+        _WHATIF_REF[dataset_id] = _residual_reference(ds)
+    w = _build(f"whatif-{dataset_id}", "What-if", ds, residual_ref=_WHATIF_REF[dataset_id])
+    df = pd.concat([w.trend.reset_index(drop=True),
+                    profile_mod.compute(w.trend, w.asset, float(twin_config()["bottom_oil_ratio"])).reset_index(drop=True)], axis=1)
+    if len(w.health_series):
+        df = pd.concat([df, w.health_series.drop(columns=["timestamp"]).add_prefix("health_").reset_index(drop=True)], axis=1)
+    last_day = df[df["timestamp"] >= idx[-1].normalize()]
+    cursor = df["timestamp"].iloc[-1] if load_profile == "steady" else last_day.loc[last_day["twin_hs_C"].idxmax(), "timestamp"]
+    return {"frames": df, "cursor": cursor, "load_profile": load_profile,
+            "alerts": [{"timestamp": a.timestamp, "type": a.type, "severity": a.severity, "origin": a.origin,
+                        "explanation": a.explanation} for a in w.analysis.alerts]}
+
+
 def findings(dataset_id: str, t=None) -> dict:
     """Findings up to t (default: the whole run), one per alert type and part set (the latest, with a count),
     grouped by CPRI cause, each with the parts it is drawn on and its recommendation; plus the through-fault
@@ -708,6 +809,25 @@ def outlook(dataset_id: str, t, runs: int = 500) -> dict:
         "trip_risk_30d": forecast.trip_risk_30d(asset, run.trend, t, seed=seed),
         "forecast": forecast.forecast_24h(run.trend, asset, t),
     }
+
+_ML_CACHE: dict = {}
+
+
+def ml_view(dataset_id: str, t) -> dict:
+    """Isolation Forest and Prophet second opinions at time t (twin/mlview.py). Cached per dataset and hour."""
+    from twin import mlview
+    from twin.forecast import _in_zone
+    run = get_run(dataset_id)
+    if run.mode in ("snapshot", "data_only") or "timestamp" not in run.trend:
+        raise ValueError("the machine-learning checks need a time series")
+    t = _in_zone(t, run.trend)
+    key = (dataset_id, t.floor("1h").isoformat())
+    if key not in _ML_CACHE:
+        if len(_ML_CACHE) > 64:
+            _ML_CACHE.clear()
+        _ML_CACHE[key] = {"t": t.isoformat(), "isolation_forest": mlview.isolation_forest(run.trend, t),
+                          "prophet": mlview.prophet_check(run.trend, t)}
+    return _ML_CACHE[key]
 
 
 # ---------------------------------------------------------------- reporting layer

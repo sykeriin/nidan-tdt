@@ -897,6 +897,178 @@
     }
    }
   },
+  "/api/datasets/{dataset_id}/whatif-day": {
+   "get": {
+    "tags": [
+     "simulate"
+    ],
+    "summary": "Whatif Day",
+    "description": "api.whatif_day() \u2014 the what-if through plant, twin, analytics and Health Index; frames plus cursor and alerts.",
+    "operationId": "whatif_day_api_datasets__dataset_id__whatif_day_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "load_pu",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "number",
+       "maximum": 2,
+       "exclusiveMinimum": 0,
+       "title": "Load Pu"
+      }
+     },
+     {
+      "name": "ambient_C",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "number",
+       "maximum": 60,
+       "minimum": -10,
+       "title": "Ambient C"
+      }
+     },
+     {
+      "name": "cooling",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.5,
+       "minimum": 0.05,
+       "description": "1 = radiators as designed",
+       "default": 1.0,
+       "title": "Cooling"
+      },
+      "description": "1 = radiators as designed"
+     },
+     {
+      "name": "voltage_pu",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.2,
+       "minimum": 0.8,
+       "default": 1.0,
+       "title": "Voltage Pu"
+      }
+     },
+     {
+      "name": "pf",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.0,
+       "minimum": 0.5,
+       "default": 0.95,
+       "title": "Pf"
+      }
+     },
+     {
+      "name": "unbalance_pct",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 50,
+       "minimum": 0,
+       "description": "R +x %, Y nominal, B \u2212x %",
+       "default": 0.0,
+       "title": "Unbalance Pct"
+      },
+      "description": "R +x %, Y nominal, B \u2212x %"
+     },
+     {
+      "name": "load_profile",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "steady",
+        "daily"
+       ],
+       "type": "string",
+       "description": "steady: one day at constant inputs; daily: two days of this dataset's hour-of-day shape, peaks = load_pu, ambient_C",
+       "default": "steady",
+       "title": "Load Profile"
+      },
+      "description": "steady: one day at constant inputs; daily: two days of this dataset's hour-of-day shape, peaks = load_pu, ambient_C"
+     },
+     {
+      "name": "t",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "oil level and humidity from the replay row at t",
+       "title": "T"
+      },
+      "description": "oil level and humidity from the replay row at t"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WhatIfDayModel"
+        }
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
   "/api/datasets/{dataset_id}/findings": {
    "get": {
     "tags": [
@@ -1895,6 +2067,79 @@
     }
    }
   },
+  "/api/datasets/{dataset_id}/ml": {
+   "get": {
+    "tags": [
+     "run"
+    ],
+    "summary": "Get Ml",
+    "description": "api.ml_view() \u2014 Isolation Forest anomaly score and Prophet expected-vs-actual top-oil temperature at t (advisory).",
+    "operationId": "get_ml_api_datasets__dataset_id__ml_get",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     },
+     {
+      "name": "t",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date-time",
+       "description": "ISO 8601; naive = Asia/Kolkata",
+       "title": "T"
+      },
+      "description": "ISO 8601; naive = Asia/Kolkata"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
+   }
+  },
   "/api/health": {
    "get": {
     "tags": [
@@ -1902,6 +2147,137 @@
     ],
     "summary": "Healthcheck",
     "operationId": "healthcheck_api_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/companion/test-alert": {
+   "post": {
+    "tags": [
+     "companion"
+    ],
+    "summary": "Companion Test Alert",
+    "description": "Queue a TEST alert. Companion apps that are listening (they poll GET /api/companion/test-alerts) show it as a notification.",
+    "operationId": "companion_test_alert_api_companion_test_alert_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TestAlertIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "400": {
+      "description": "Bad Request",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/companion/test-alerts": {
+   "get": {
+    "tags": [
+     "companion"
+    ],
+    "summary": "Companion Test Alerts",
+    "description": "Test alerts queued from the dashboard. A client calls once without `since` to learn `latest`, then polls with since=latest.",
+    "operationId": "companion_test_alerts_api_companion_test_alerts_get",
+    "parameters": [
+     {
+      "name": "since",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "return alerts with seq > since; omit to learn the latest seq",
+       "title": "Since"
+      },
+      "description": "return alerts with seq > since; omit to learn the latest seq"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/companion/responses": {
+   "get": {
+    "tags": [
+     "companion"
+    ],
+    "summary": "Companion Responses",
+    "description": "The pre-written response for every alert type (companion/content/responses.json), for the dashboard's anomaly tests.",
+    "operationId": "companion_responses_api_companion_responses_get",
     "responses": {
      "200": {
       "description": "Successful Response",
@@ -3986,6 +4362,29 @@
     ],
     "title": "TermModel"
    },
+   "TestAlertIn": {
+    "properties": {
+     "type": {
+      "type": "string",
+      "title": "Type"
+     },
+     "severity": {
+      "type": "string",
+      "enum": [
+       "info",
+       "warning",
+       "critical"
+      ],
+      "title": "Severity",
+      "default": "warning"
+     }
+    },
+    "type": "object",
+    "required": [
+     "type"
+    ],
+    "title": "TestAlertIn"
+   },
    "ThermalProfileModel": {
     "properties": {
      "dataset_id": {
@@ -4109,6 +4508,100 @@
      "source"
     ],
     "title": "ValueModel"
+   },
+   "WhatIfAlertModel": {
+    "properties": {
+     "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Timestamp"
+     },
+     "type": {
+      "type": "string",
+      "title": "Type"
+     },
+     "severity": {
+      "type": "string",
+      "title": "Severity"
+     },
+     "origin": {
+      "type": "string",
+      "title": "Origin"
+     },
+     "explanation": {
+      "type": "string",
+      "title": "Explanation"
+     }
+    },
+    "type": "object",
+    "required": [
+     "timestamp",
+     "type",
+     "severity",
+     "origin",
+     "explanation"
+    ],
+    "title": "WhatIfAlertModel"
+   },
+   "WhatIfDayModel": {
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "title": "Dataset Id"
+     },
+     "rows": {
+      "type": "integer",
+      "title": "Rows"
+     },
+     "timestamp": {
+      "items": {
+       "type": "string",
+       "format": "date-time"
+      },
+      "type": "array",
+      "title": "Timestamp"
+     },
+     "columns": {
+      "additionalProperties": {
+       "items": {},
+       "type": "array"
+      },
+      "type": "object",
+      "title": "Columns"
+     },
+     "cursor": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Cursor"
+     },
+     "load_profile": {
+      "type": "string",
+      "enum": [
+       "steady",
+       "daily"
+      ],
+      "title": "Load Profile"
+     },
+     "alerts": {
+      "items": {
+       "$ref": "#/components/schemas/WhatIfAlertModel"
+      },
+      "type": "array",
+      "title": "Alerts"
+     }
+    },
+    "type": "object",
+    "required": [
+     "dataset_id",
+     "rows",
+     "timestamp",
+     "columns",
+     "cursor",
+     "load_profile",
+     "alerts"
+    ],
+    "title": "WhatIfDayModel",
+    "description": "A what-if day through the full pipeline: frame columns as /frames (incl. health_*), where to put the cursor,\nand the alerts the analytics raised on it."
    },
    "WhatIfIn": {
     "properties": {

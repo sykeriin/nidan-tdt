@@ -1,0 +1,18 @@
+/* Compact sheet: the 3D model sits alone in a smaller box in the middle; every reading that used to be drawn over it
+   (section thermometer, heat scale, heat balance, part detail, findings, notes) now sits in the side columns. */
+.compact .sheet { grid-template-columns: 300px minmax(0, 1fr) 300px; }
+.compact .field {
+  align-self: center; justify-self: center; width: min(100% - 32px, 780px); height: min(100% - 32px, 660px);
+  border: 1px solid var(--ink); background: rgba(255, 255, 255, 0.55); overflow: hidden;
+}
+.compact .margin-left > *, .compact .margin-right > * { position: static; }
+.compact .thermdiag, .compact .heatscale, .compact .heatbal {
+  position: static; pointer-events: auto; margin: 0; padding: 10px 12px; border-top: 1px solid var(--ink); z-index: auto; width: auto;
+}
+.compact .heatscale { display: block; }
+.compact .detail {
+  position: static; width: auto; border-left: 0; border-bottom: 1px solid var(--ink); max-height: 46vh; z-index: auto;
+}
+.compact .side-note { margin: 0; padding: 8px 12px; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: 10.5px; }
+/* the on-model tags (hot-spot and residual call-outs, kW labels on the heat-flow arrows) are in the side columns now */
+.compact .flow-label, .compact .hs-marker, .compact .residual-tag { display: none; }

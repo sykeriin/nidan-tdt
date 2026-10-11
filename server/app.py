@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
+
+from pydantic import BaseModel
 
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
@@ -293,6 +296,23 @@ def whatif(load_pu: Annotated[float, Query(ge=0, le=2)], ambient_C: Annotated[fl
     return plain(api.whatif(load_pu, ambient_C, cooling, dataset_id=dataset_id, t=_local(t)))
 
 
+@app.get("/api/datasets/{dataset_id}/whatif-day", response_model=S.WhatIfDayModel, responses=ERRORS, tags=["simulate"])
+def whatif_day(dataset_id: str, load_pu: Annotated[float, Query(gt=0, le=2)], ambient_C: Annotated[float, Query(ge=-10, le=60)],
+               cooling: Annotated[float, Query(ge=0.05, le=1.5, description="1 = radiators as designed")] = 1.0,
+               voltage_pu: Annotated[float, Query(ge=0.8, le=1.2)] = 1.0,
+               pf: Annotated[float, Query(ge=0.5, le=1.0)] = 0.95,
+               unbalance_pct: Annotated[float, Query(ge=0, le=50, description="R +x %, Y nominal, B −x %")] = 0.0,
+               load_profile: Annotated[Literal["steady", "daily"], Query(description="steady: one day at constant inputs; daily: two days of this dataset's hour-of-day shape, peaks = load_pu, ambient_C")] = "steady",
+               t: Annotated[datetime | None, Query(description="oil level and humidity from the replay row at t")] = None):
+    """api.whatif_day() — the what-if through plant, twin, analytics and Health Index; frames plus cursor and alerts."""
+    _known(dataset_id)
+    r = api.whatif_day(dataset_id, _local(t), load_pu, ambient_C, cooling, voltage_pu, pf, unbalance_pct, load_profile)
+    df = r["frames"]
+    return {"dataset_id": dataset_id, "rows": len(df), "timestamp": plain(df["timestamp"]),
+            "columns": {c: plain(df[c].round(4) if df[c].dtype.kind == "f" else df[c]) for c in df.columns if c != "timestamp"},
+            "cursor": r["cursor"], "load_profile": r["load_profile"], "alerts": plain(r["alerts"])}
+
+
 @app.get("/api/datasets/{dataset_id}/findings", response_model=S.FindingsModel, response_model_by_alias=True,
          responses=ERRORS, tags=["run"])
 def findings(dataset_id: str, t: Annotated[datetime | None, Query(description="findings up to t; omit = whole run")] = None):
@@ -426,12 +446,91 @@ def get_outlook(dataset_id: str, t: Annotated[datetime, Query(description="ISO 8
     return plain(api.outlook(dataset_id, _local(t)))
 
 
+@app.get("/api/datasets/{dataset_id}/ml", tags=["run"], responses=ERRORS)
+def get_ml(dataset_id: str, t: Annotated[datetime, Query(description="ISO 8601; naive = Asia/Kolkata")]):
+    """api.ml_view() — Isolation Forest anomaly score and Prophet expected-vs-actual top-oil temperature at t (advisory)."""
+    _known(dataset_id)
+    return plain(api.ml_view(dataset_id, _local(t)))
+
+
 @app.get("/api/health", tags=["meta"])
 def healthcheck():
     return {"status": "ok", "web_build": WEB_DIST.is_dir()}
 
 
+# ---------------------------------------------------------------- companion app: alert responses and the PWA itself
+COMPANION = ROOT / "companion"
+
+
+_TESTS: list[dict] = []          # newest last; {"seq", "alert"}. Kept in memory: a test alert is only useful for a few seconds.
+_TEST_LOCK = threading.Lock()
+_TEST_KEEP = 50
+
+
+class TestAlertIn(BaseModel):
+    type: str
+    severity: Literal["info", "warning", "critical"] = "warning"
+
+
+@app.post("/api/companion/test-alert", tags=["companion"], responses=ERRORS)
+def companion_test_alert(body: TestAlertIn):
+    """Queue a TEST alert. Companion apps that are listening (they poll GET /api/companion/test-alerts) show it as a notification."""
+    from analytics.common import ALERT_MODULES
+    from datetime import datetime
+    if body.type not in ALERT_MODULES:
+        raise HTTPException(400, f"Unknown alert type {body.type!r}. Known types: {sorted(ALERT_MODULES)}")
+    with _TEST_LOCK:
+        seq = (_TESTS[-1]["seq"] + 1) if _TESTS else 1
+        now = datetime.now().astimezone()
+        sensor = ALERT_MODULES[body.type] == "data"
+        alert = {"id": f"test-{body.type}-{seq}-{int(now.timestamp() * 1000)}", "timestamp": now.isoformat(), "type": body.type,
+                 "module": ALERT_MODULES[body.type], "severity": body.severity, "origin": "sensor" if sensor else "asset",
+                 "detector": "test", "explanation": "Test alert sent from the dashboard. Not from the transformer.",
+                 "simulated": False, "value": None, "threshold": None, "lead_time_h": None}
+        _TESTS.append({"seq": seq, "alert": alert})
+        del _TESTS[:-_TEST_KEEP]
+    return {"queued": True, "seq": seq, "alert": alert}
+
+
+@app.get("/api/companion/test-alerts", tags=["companion"])
+def companion_test_alerts(since: Annotated[int | None, Query(ge=0, description="return alerts with seq > since; omit to learn the latest seq")] = None):
+    """Test alerts queued from the dashboard. A client calls once without `since` to learn `latest`, then polls with since=latest."""
+    with _TEST_LOCK:
+        latest = _TESTS[-1]["seq"] if _TESTS else 0
+        items = [] if since is None else [t for t in _TESTS if t["seq"] > since]
+    return {"latest": latest, "items": items}
+
+
+@app.get("/api/companion/responses", tags=["companion"])
+def companion_responses():
+    """The pre-written response for every alert type (companion/content/responses.json), for the dashboard's anomaly tests."""
+    import json
+    try:
+        return json.loads((COMPANION / "content" / "responses.json").read_text(encoding="utf-8"))
+    except OSError:
+        raise HTTPException(404, "companion/content/responses.json is missing")
+
+
 # ---------------------------------------------------------------- React production build (same origin)
+# The companion PWA is served from the same origin, so it reaches the backend without CORS: http://localhost:8000/companion/
+if COMPANION.is_dir():
+    app.mount("/companion", StaticFiles(directory=COMPANION, html=True), name="companion")
+
+# Interface v2 (the first React dashboard, with its glTF transformer) is built from web-v2/ and served at /v2/.
+WEB_V2_DIST = Path(os.environ.get("DT_WEB_V2_DIST", ROOT / "web-v2" / "dist"))
+if WEB_V2_DIST.is_dir():
+    app.mount("/v2", StaticFiles(directory=WEB_V2_DIST, html=True), name="web-v2")
+
+# Interface v3 (Ahana's frontend, from the frontend-ahana-final branch) is built from web-v3/ and served at /v3/.
+WEB_V3_DIST = Path(os.environ.get("DT_WEB_V3_DIST", ROOT / "web-v3" / "dist"))
+if WEB_V3_DIST.is_dir():
+    app.mount("/v3", StaticFiles(directory=WEB_V3_DIST, html=True), name="web-v3")
+
+# Interface v4 (v1 decluttered) is built from web-v4/ and served at /v4/.
+WEB_V4_DIST = Path(os.environ.get("DT_WEB_V4_DIST", ROOT / "web-v4" / "dist"))
+if WEB_V4_DIST.is_dir():
+    app.mount("/v4", StaticFiles(directory=WEB_V4_DIST, html=True), name="web-v4")
+
 if WEB_DIST.is_dir():
     app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")
 else:

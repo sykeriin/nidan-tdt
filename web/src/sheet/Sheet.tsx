@@ -134,7 +134,7 @@ export function TwinState({ row, otiSuspect }: { row: Record<string, Cell> | nul
   );
 }
 
-export function TitleBlock({ run, time, simulated }: { run: Run | undefined; time: string | null; simulated: boolean }) {
+export function TitleBlock({ run, time }: { run: Run | undefined; time: string | null; simulated?: boolean }) {
   const a = (run?.asset ?? {}) as Record<string, unknown>;
   const kv = (v: unknown, d: number) => (typeof v === "number" ? fmt(v / 1000, d) : null);
   const volts = [kv(a.hv_voltage_V, 0), kv(a.lv_voltage_V, 3)].filter(Boolean).join(" / ");
@@ -144,7 +144,6 @@ export function TitleBlock({ run, time, simulated }: { run: Run | undefined; tim
     : "—";
   return (
     <div className="titleblock" role="contentinfo">
-      {simulated && <div className="simstamp" aria-label="Simulated data">Simulated</div>}
       <table>
         <tbody>
           <tr><th>Drawing</th><td colSpan={3} className="title">Transformer-1 digital twin</td></tr>

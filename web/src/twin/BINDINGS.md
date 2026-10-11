@@ -158,10 +158,18 @@ only), so every layer above shows the simulated state through the same bindings:
 | losses, `heat_dissipated_W`, `heat_stored_W`, `oil_flow_intensity`, `radiator_effectiveness`, `tau_*` | same names |
 | `aging_rate` / `days_aged_cum` (life clock, "full cooling") | `ageing_rate_nominal_cooling` |
 | `aging_rate_actual` / `days_aged_actual_cum` (life clock, "this cooling") | `ageing_rate` |
+| `VR`/`VY`/`VB`, `PF`, `freq_Hz`, `OLI_pct`, `RH_pct`, `health_*` | not in W: held from the replay row at the cursor when Simulate opened, then from the last what-if day (until the next one arrives) |
+
+Once the rulers rest (250 ms), `GET /api/datasets/{id}/whatif-day` (D) replaces the one-row frame with a full simulated
+day (`sheet/Simulate.tsx whatIfDayFrames`, backend columns unchanged; cursor at `D.cursor`), so the health index, the
+"around now" trends, AC power flow, oil level and the insulation-ageing card read the same columns as replay. With the
+day loaded the life clock is cumulative again (expected vs actual); on the one-row frame it shows rates per day. The
+insulation-ageing card hides "life used so far" on a one-row frame (no history). Daily profile: Schedule 1 has a
+play / scrub control over the two days. `D.alerts` are listed under Schedule 1.
 
 | Element | Field |
 |---|---|
-| Rulers (load 0.3–1.4 pu, ambient 15–50 °C, cooling 50–100 %) | request inputs; start values from the cursor's `load_pu`, `amb_C`, `radiator_effectiveness` |
+| Rulers (load 0.3–1.4 pu, ambient 15–50 °C, cooling 50–100 %; voltage 0.85–1.10 pu, PF 0.70–1.00, unbalance 0–30 %) and load profile (steady / daily) | request inputs; start values from the cursor's `load_pu`, `amb_C`, `radiator_effectiveness`, `PF` (voltage 1.00, unbalance 0, steady). Daily: load and ambient are the peaks. W uses load, ambient, cooling; D uses all |
 | Readout | `hot_spot_C`, `top_oil_C`, `ageing_rate`, `time_to_steady_min`, `hot_spot_nominal_cooling_C`, `ageing_rate_nominal_cooling`, `start.from` |
 | Approach curve | `curve.*`; dashed: `top_oil_C`, `hot_spot_C`; τ: `tau_oil_min`; "steady" mark: `time_to_steady_min` |
 | Life clock (per day) | full turn = 1 × normal ageing, pegged above |

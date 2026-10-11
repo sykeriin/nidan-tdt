@@ -1,10 +1,12 @@
 // Callouts laid out like a drawing: boxes stacked in the field's left/right gutters (ordered by height, never
 // overlapping), each tied to its part by a leader (dot → diagonal → shoulder). Boxes cite the sheet zone.
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { player, usePlayerIndex } from "../player/player";
 import * as THREE from "three";
 import { PART, type Part, type PartId } from "./parts";
 import { fmt, trustOf, type FieldRef, type Trust } from "../data/fields";
+import type { PartView } from "../api/client";
 
 export interface CalloutData {
   row: Record<string, unknown> | null;
@@ -61,7 +63,10 @@ function zoneOf(px: number, py: number, field: DOMRect | undefined, sheet: DOMRe
   return `${row}${col}`;
 }
 
-export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, height, onUnpin, fieldRect, sheetRect, bubbles = {}, bubbleClass = {} }: {
+export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, height, onUnpin, fieldRect, sheetRect, bubbles = {}, bubbleClass = {}, popover = false, views = {}, boxW = 300 }: {
+  boxW?: number;
+  popover?: boolean; // boxes open right beside the part they describe, with the part's live explanation when pinned
+  views?: Partial<Record<PartId, PartView>>;
   bubbleClass?: Partial<Record<PartId, string>>;
   bubbles?: Partial<Record<PartId, string>>; // pinned parts whose detail view is open: a lettered bubble instead of a box
   shown: PartId[]; pinned: PartId[]; anchors: Anchors; data: CalloutData; width: number; height: number;
@@ -82,7 +87,7 @@ export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, he
   if (!observer.current && typeof ResizeObserver !== "undefined") observer.current = new ResizeObserver(() => measure());
   useLayoutEffect(measure);
   useEffect(() => () => observer.current?.disconnect(), []);
-  const BOX_W = Math.round(Math.min(BOX_W_MAX, Math.max(196, width * 0.25))); // narrower boxes on laptop screens
+  const BOX_W = popover ? boxW : Math.round(Math.min(BOX_W_MAX, Math.max(196, width * 0.25))); // narrower boxes on laptop screens
   const placed: { id: PartId; x: number; y: number; h: number; side: "left" | "right" }[] = [];
   // compact mode per gutter: hide the role line when the full-size stack can't fit (decided from estimates,
   // so it can't oscillate as measured heights change)
@@ -91,6 +96,21 @@ export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, he
     const full = shown.filter((id) => PART[id].side === side).reduce((s, id) => s + estHeight(PART[id], data) + GAP, 0);
     compact[side] = full > height - 2 * GUTTER;
   }
+  if (popover) {
+    // each box opens beside its own part (right of it, or left when there is no room), kept inside the field
+    const items = shown.filter((id) => anchors[id]).map((id) => {
+      const a = anchors[id]!;
+      const side: "left" | "right" = a.x + 24 + BOX_W + GUTTER < width ? "right" : "left";
+      const h = measured[id] ?? estHeight(PART[id], data) + (pinned.includes(id) ? 220 : 0);
+      return { id, side, h, a };
+    }).sort((p, q) => p.a.y - q.a.y);
+    let floor = GUTTER;
+    for (const it of items) {
+      const want = Math.min(Math.max(floor, it.a.y - 20), Math.max(GUTTER, height - it.h - GUTTER));
+      placed.push({ id: it.id, x: it.side === "right" ? it.a.x + 26 : it.a.x - 26 - BOX_W, y: want, h: it.h, side: it.side });
+      floor = want + it.h + GAP;
+    }
+  } else
   for (const side of ["left", "right"] as const) {
     const items = shown.filter((id) => PART[id].side === side && anchors[id])
       .map((id) => ({ id, h: measured[id] ?? estHeight(PART[id], data), want: anchors[id]!.y - 24 }))
@@ -136,7 +156,7 @@ export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, he
           const a = anchors[id]!;
           const edge = side === "left" ? x + BOX_W : x;
           const ty = y + 13;
-          const shoulder = side === "left" ? edge + 22 : edge - 22;
+          const shoulder = popover ? (side === "left" ? edge + 8 : edge - 8) : side === "left" ? edge + 22 : edge - 22;
           return (
             <g key={id}>
               <polyline points={`${a.x},${a.y} ${shoulder},${ty} ${edge},${ty}`} />
@@ -164,7 +184,8 @@ export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, he
               {isPinned && <button className="unpin" onClick={() => onUnpin(id)} aria-label={`Unpin ${part.name}`}>×</button>}
             </div>
             <p className="callout-role">{part.role}</p>
-            {data.error ? (
+            {popover && isPinned && <Explain view={views[id]} big={boxW > 340} />}
+            {popover && isPinned && views[id] ? null : data.error ? (
               <p className="callout-note">{data.error}</p>
             ) : part.fields.length === 0 ? (
               <p className="callout-note">{part.note}</p>
@@ -189,6 +210,81 @@ export function CalloutLayer({ shown: allShown, pinned, anchors, data, width, he
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// 3-day history of one quantity from the replay frames: a filled trace with its range and the value now.
+function Trace({ k, unit }: { k: string; unit: string }) {
+  const i = usePlayerIndex();
+  const f = player.frames;
+  const d = useMemo(() => {
+    if (!f || i < 0 || !f.cols[k]) return null;
+    const t1 = f.t[i], t0 = t1 - 3 * 86_400_000;
+    let j = i;
+    while (j > 0 && f.t[j - 1] >= t0) j--;
+    const pts: [number, number][] = [];
+    for (let n = j; n <= i; n += Math.max(1, Math.floor((i - j) / 90))) { const v = f.cols[k][n]; if (typeof v === "number") pts.push([f.t[n], v]); }
+    if (pts.length < 3) return null;
+    let lo = Infinity, hi = -Infinity;
+    for (const [, v] of pts) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    const span = hi - lo || 1, W = 150, H = 34;
+    const xy = pts.map(([t, v]) => [((t - t0) / (t1 - t0)) * W, H - 3 - ((v - lo) / span) * (H - 6)] as const);
+    const line = xy.map(([x, y], n) => `${n ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join("");
+    return { line, area: `${line}L${xy[xy.length - 1][0].toFixed(1)} ${H}L${xy[0][0].toFixed(1)} ${H}Z`, lo, hi, last: xy[xy.length - 1] };
+  }, [f, i, k]);
+  if (!d) return <span className="trace-none" />;
+  return (
+    <span className="trace" title={`3 days: ${d.lo.toFixed(1)} to ${d.hi.toFixed(1)} ${unit}`}>
+      <svg viewBox="0 0 150 34" preserveAspectRatio="none" aria-hidden="true"><path d={d.area} className="fill" /><path d={d.line} className="ln" /><circle cx={d.last[0]} cy={d.last[1]} r={2.6} /></svg>
+      <small>{d.lo.toFixed(0)}–{d.hi.toFixed(0)}</small>
+    </span>
+  );
+}
+
+// How the part is doing, in words; its live numbers with a 3-day trace each; the governing equations with today's values.
+function Explain({ view, big }: { view: PartView | undefined; big: boolean }) {
+  if (!view) return <p className="callout-note">Reading the twin…</p>;
+  const rank = (s: string) => (s === "critical" ? 2 : s === "warning" ? 1 : 0);
+  const worst = [...view.alerts].sort((p, q) => rank(q.severity) - rank(p.severity))[0];
+  const eqs = big ? view.equations : view.equations.slice(0, 1);
+  return (
+    <div className="pop-explain">
+      <p className={"pop-status " + (worst ? `sev-${worst.severity}` : "ok")}>
+        <b>{worst ? (worst.severity === "critical" ? "Needs attention" : "Watch") : "Healthy"}</b>
+        {worst ? worst.explanation : "No findings on this part in the last 24 h."}
+      </p>
+      {view.quantities.length > 0 && (
+        <table className="pop-q">
+          <tbody>
+            {view.quantities.map((q) => (
+              <tr key={q.key + q.label} className={`k-${q.kind}`}>
+                <th scope="row">{q.label}{q.kind === "twin" && <span className="who"> twin</span>}</th>
+                <td className="num">{q.value === null ? "—" : q.value.toFixed(q.digits)}<small> {q.unit}{q.estimated ? " est." : ""}</small></td>
+                <td className="tr"><Trace k={q.key} unit={q.unit} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {eqs.map((eq) => (
+        <section key={eq.name} className="pop-eq">
+          <h4>{eq.name}{eq.estimated && <span className="who"> est.</span>}</h4>
+          <p className="sym">{eq.symbolic}</p>
+          <p className="live">{eq.substituted ?? "—"}</p>
+          {big && (
+            <table className="terms"><tbody>{eq.terms.map((t) => (
+              <tr key={t.symbol}><th>{t.symbol}</th><td className="num">{t.value === null ? "—" : t.value.toFixed(t.digits)} <small>{t.unit}</small></td><td className="mean">{t.meaning}</td></tr>
+            ))}</tbody></table>
+          )}
+          {big && eq.note && <p className="eq-note">{eq.note}</p>}
+        </section>
+      ))}
+      {!big && view.equations.length > 1 && <p className="pop-more">{view.equations.length - 1} more equation{view.equations.length > 2 ? "s" : ""} in the expanded view</p>}
+      {view.alerts.length > 1 && (
+        <ul className="pop-find">{view.alerts.slice(0, big ? 6 : 2).map((a) => <li key={a.id} className={`sev-${a.severity}`}>{a.explanation}</li>)}</ul>
+      )}
+      {view.tests[0] && <p className="pop-test"><b>Suggested test</b> {view.tests[0]}</p>}
     </div>
   );
 }
