@@ -129,9 +129,43 @@ public class MonitorService extends Service {
         }
     }
 
+    /**
+     * The default source: the simulated live transformer. Its alerts arrive through the alert queue that pollTests() already reads;
+     * this loop only keeps the plant awake, shows its health and says whether the server is reachable.
+     */
+    private boolean watchLive() throws Exception {
+        while (!stop) {
+            String base = Store.resolve(this);
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/live/state").openConnection();
+                conn = c;
+                c.setConnectTimeout(6000);
+                c.setReadTimeout(8000);
+                if (c.getResponseCode() != 200) throw new IOException("HTTP " + c.getResponseCode());
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                }
+                c.disconnect();
+                JSONObject j = new JSONObject(sb.toString());
+                JSONObject f = j.optJSONObject("frame");
+                if (f != null) Store.health = "Health " + Math.round(f.optDouble("health_score")) + " " + f.optString("health_band");
+                JSONArray inj = j.optJSONArray("injections");
+                status("Watching the live transformer · " + base.replace("http://", "") + (inj != null && inj.length() > 0 ? " · " + inj.length() + " fault(s) injected" : ""));
+            } catch (Exception e) {
+                if (stop) return false;
+                status("Cannot reach the twin server, retrying… (" + base + ")");
+            }
+            try { Thread.sleep(4000); } catch (InterruptedException ie) { return false; }
+        }
+        return false;
+    }
+
     /** Returns true when the replay ended normally. */
     private boolean stream() throws Exception {
-        String ds = Store.get(this, "dataset", "S2");
+        String ds = Store.get(this, "dataset", "live");
+        if ("live".equals(ds) || ds.isEmpty()) return watchLive();
         String speed = Store.get(this, "speed", "100000");
         URL url = new URL(Store.resolve(this) + "/api/datasets/" + URLEncoder.encode(ds, "UTF-8") + "/replay?speed=" + speed + "&limit=50000");
         status("Connecting to " + Store.resolve(this) + " …");

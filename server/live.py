@@ -147,6 +147,7 @@ def info():
 
 @router.get("/state")
 def state():
+    touch()
     s = _get()
     return plain(s.last) if s.last else {"detail": "no tick yet"}
 
