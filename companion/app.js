@@ -190,7 +190,7 @@ async function pollTests() {
     const r = await fetch(api("/api/companion/test-alerts" + (testSince == null ? "" : `?since=${testSince}`)));
     if (r.ok) {
       const j = await r.json();
-      if (testSince != null) j.items.forEach(t => addAlert(t.alert, "test", true));
+      if (testSince != null) j.items.forEach(t => (t.alert.live ? addAlert(t.alert, "live", false) : addAlert(t.alert, "test", true)));
       testSince = j.latest;
     }
   } catch { /* backend unreachable: try again on the next tick */ }

@@ -301,7 +301,11 @@ export interface paths {
          */
         get: operations["report_pdf_api_datasets__dataset_id__report_pdf_get"];
         put?: never;
-        post?: never;
+        /**
+         * Report Pdf
+         * @description PDF condition report with the snapshot of the transformer as it is now (the browser sends the picture).
+         */
+        post: operations["report_pdf_api_datasets__dataset_id__report_pdf_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -585,6 +589,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/blueprint.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Blueprint Zip
+         * @description Technical blueprint and installation kit for the transformer: drawings, schedules, limits, asset profile and a gateway script.
+         */
+        get: operations["blueprint_zip_api_blueprint_zip_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/blueprint.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Blueprint Pdf
+         * @description The drawing sheets alone (general arrangement, single-line, schedules, settings, checklist).
+         */
+        get: operations["blueprint_pdf_api_blueprint_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Status
+         * @description One small call every client can use to check the server and the live plant (the phone, the tablet and the dashboard all use it).
+         */
+        get: operations["status_api_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/companion/test-alert": {
         parameters: {
             query?: never;
@@ -790,6 +854,63 @@ export interface paths {
         };
         /** Stream */
         get: operations["stream_api_live_stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/live/service": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Service */
+        post: operations["service_api_live_service_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/live/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync
+         * @description Rebuild the `live` dataset (the simulated transformer as a source) from the session so far. Cheap when nothing changed.
+         */
+        post: operations["sync_api_live_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/live/condition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Condition
+         * @description The condition board: every quantity on the engineer's checklist with its limit and status (IS 2026 / IS 1180 / CEA profile).
+         */
+        get: operations["condition_api_live_condition_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1470,6 +1591,11 @@ export interface components {
             /** Standard Ref */
             standard_ref: string | null;
         };
+        /** ReportPdfIn */
+        ReportPdfIn: {
+            /** Snapshot */
+            snapshot?: string | null;
+        };
         /** ResultModel */
         ResultModel: {
             /** Symbol */
@@ -1547,6 +1673,14 @@ export interface components {
             t: string[];
             /** V */
             v: (number | null)[];
+        };
+        /** ServiceIn */
+        ServiceIn: {
+            /**
+             * Action
+             * @description dry_oil: dry the oil and replace the silica gel; refill: refill the oil
+             */
+            action: string;
         };
         /** SessionIn */
         SessionIn: {
@@ -2747,6 +2881,59 @@ export interface operations {
             };
         };
     };
+    report_pdf_api_datasets__dataset_id__report_pdf_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReportPdfIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     get_presets_api_presets_get: {
         parameters: {
             query?: never;
@@ -3353,6 +3540,66 @@ export interface operations {
             };
         };
     };
+    blueprint_zip_api_blueprint_zip_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    blueprint_pdf_api_blueprint_pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    status_api_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     companion_test_alert_api_companion_test_alert_post: {
         parameters: {
             query?: never;
@@ -3696,6 +3943,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    service_api_live_service_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_api_live_sync_post: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    condition_api_live_condition_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

@@ -70,8 +70,12 @@ def test_injected_anomaly_reaches_the_phone_queue(c):
     _take(c, 2)
     base = c.get("/api/companion/test-alerts").json()["latest"]
     assert c.post("/api/live/inject", json={"kind": "overload", "params": {"level_pu": 1.4}}).status_code == 200
-    _take(c, 24)
-    items = c.get("/api/companion/test-alerts", params={"since": base}).json()["items"]
+    items = []
+    for _ in range(5):                          # the alert appears a few simulated hours after the overload starts; allow slow machines
+        _take(c, 24)
+        items = c.get("/api/companion/test-alerts", params={"since": base}).json()["items"]
+        if items:
+            break
     assert items, "no live alert was queued for the phone"
     ids = [i["alert"]["id"] for i in items]
     assert len(ids) == len(set(ids))

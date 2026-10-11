@@ -286,3 +286,125 @@
 /* Live plant opened over the dashboard (the same view as ?view=tablet, same server session) */
 .live-overlay { position: fixed; inset: 0; z-index: 80; background: var(--paper); }
 .tw-back { font: 600 13px var(--cond); }
+
+/* Export menu, live chip, condition board, tablet gel swatch */
+.export-menu { position: relative; }
+.export-menu summary { list-style: none; cursor: pointer; }
+.export-menu summary::-webkit-details-marker { display: none; }
+.export-pop { position: absolute; z-index: 70; top: calc(100% + 4px); right: 0; min-width: 230px; display: grid; background: #fff; border: 1px solid var(--ink); box-shadow: 0 6px 18px rgba(27, 27, 24, 0.18); }
+.export-pop button, .export-pop a { font: 500 13px var(--cond); text-align: left; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--rule); background: #fff; color: var(--ink); text-decoration: none; cursor: pointer; }
+.export-pop button:hover, .export-pop a:hover { background: var(--ink); color: #fff; }
+.export-pop button:disabled { opacity: 0.5; cursor: default; }
+.live-chip { align-self: center; display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--cond); padding: 4px 10px; border: 1px solid var(--ink); background: #fff; cursor: pointer; }
+.live-chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.live-chip.on i { background: var(--bad); animation: live-pulse 1.4s ease-in-out infinite; }
+@keyframes live-pulse { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .live-chip.on i { animation: none; } }
+.condition .cd-actions { display: flex; gap: 8px; align-items: center; }
+.condition .cd-actions button { font: 600 12px var(--cond); padding: 6px 12px; border: 1px solid var(--ink); background: #fff; cursor: pointer; }
+.condition .cd-actions button:hover { background: var(--ink); color: #fff; }
+.cd-summary { font: 650 12px var(--cond); padding: 4px 10px; border-radius: 99px; color: #fff; }
+.cd-summary.ok { background: var(--ok); } .cd-summary.watch { background: var(--warn); } .cd-summary.alarm { background: var(--bad); }
+.cd-group h4 { margin: 14px 0 6px; font: 650 12px var(--cond); color: var(--ink-3); }
+.cd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.cd-card { border-left: 4px solid var(--rule); }
+.cd-card.ok { border-left-color: var(--ok); } .cd-card.watch { border-left-color: var(--warn); } .cd-card.alarm { border-left-color: var(--bad); background: #FFF6F4; }
+.cd-chip { float: right; font: 650 10.5px var(--cond); font-style: normal; padding: 2px 8px; border-radius: 99px; color: #fff; background: var(--ink-3); }
+.cd-chip.ok { background: var(--ok); } .cd-chip.watch { background: var(--warn); } .cd-chip.alarm { background: var(--bad); }
+.cd-val { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 4px; }
+.cd-val b { font: 650 26px var(--mono); } .cd-val span { font: 500 12px var(--cond); color: var(--ink-3); }
+.cd-limit { margin: 0; font: 600 12px var(--cond); } .cd-detail { margin: 3px 0 0; font: 12px/1.4 var(--cond); color: var(--ink-2); } .cd-std { margin: 4px 0 0; font: 10.5px var(--cond); color: var(--ink-3); }
+.cd-bar { position: relative; height: 8px; background: #ECEAE2; border-radius: 99px; margin: 4px 0 8px; }
+.cd-bar i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--bad); } .cd-bar b { position: absolute; top: -4px; width: 3px; height: 16px; background: var(--ink); }
+.cd-gel { display: flex; align-items: center; gap: 12px; margin: 4px 0 8px; }
+.cd-jar { width: 34px; height: 44px; border-radius: 6px 6px 10px 10px; border: 2px solid var(--ink); }
+.cd-scale { display: flex; } .cd-scale i { width: 26px; height: 10px; }
+.cd-foot { margin: 16px 0 0; font: 11px var(--cond); color: var(--ink-3); }
+.tw-gel { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--ink); vertical-align: -1px; }
+
+/* header fits the extra buttons; chips readable */
+.compact header .explain, .page header .explain { margin-left: 6px; padding: 4px 9px; }
+.compact header .explain .tab-hint, .page header .explain .tab-hint { font-size: 10px; }
+.dataset select { min-width: 150px; max-width: 190px; }
+.ck-card h3 em.cd-chip { color: #fff; margin-left: 0; }
+.live-chip { margin-left: 8px; }
+
+/* ---- layout v3: a bigger twin, compact strip under it, physics calculation in the right panel ---- */
+.stage { gap: 8px; padding: 8px; grid-template-columns: 176px minmax(0, 1fr) 176px; grid-template-rows: minmax(0, 1fr) 122px; }
+.stage > .field { min-height: 0; }
+.stage > .st-trends { height: 122px; min-height: 0; overflow: hidden; gap: 8px; }
+.stage > .st-col > .st-card:nth-child(3) { display: none; }
+.stage > .st-col { grid-template-rows: auto 1fr; }
+.st-trends .st-card { padding: 6px 10px 5px; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.st-trends .st-card h3 { margin: 0 0 3px; font-size: 11px; }
+.stage .st-chart { max-height: 62px; }
+.stage > .field .st-modes { top: 8px; left: 8px; }
+
+/* Diagnose strip: three compact cards */
+.ml-strip { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 0.9fr); }
+.ml-strip .ml-chart { max-height: 58px; }
+.ml-strip .ml-note { display: none; }
+.ml-strip .ml-line { margin: 2px 0 0; font-size: 11px; }
+.ml-strip .ml-card h3 em { font-size: 10px; }
+.ml-strip .ml-wait { margin: 10px 0; font-size: 11px; }
+.ml-strip .ml-vote ul { gap: 3px; margin: 0 0 3px; }
+.ml-strip .ml-vote li { font-size: 11px; padding-bottom: 2px; }
+.ml-strip .ml-verdict { font-size: 11px; line-height: 1.25; margin: 0; }
+
+/* Simulate strip: scope, heat balance and headroom, three compact cards */
+.st-physics { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); }
+.st-physics .ph-scope { max-height: 54px; }
+.st-physics .ph-readout { font-size: 10px; gap: 8px; }
+.st-physics .ph-ctl { margin-top: 2px; }
+.st-physics .ph-ctl button { padding: 1px 8px; font-size: 10px; min-height: 0; }
+.st-physics .ph-foot, .st-physics .ph-life { display: none; }
+.st-physics .ph-bal, .st-physics .ph-head { gap: 4px; }
+.st-physics .ph-bar span, .st-physics .ph-hr span { font-size: 10px; }
+.st-physics .ph-bar b, .st-physics .ph-hr b { font-size: 11.5px; }
+.st-physics .ph-bar u, .st-physics .ph-hr u { height: 5px; }
+
+/* the calculation chain in the right panel */
+.side-calc { padding: 10px 14px 12px; border-top: 1px solid var(--rule); }
+.side-calc h3 { margin: 0 0 8px; font: 600 12px var(--cond); font-variant-caps: small-caps; letter-spacing: 0.05em; color: var(--ink-2); display: flex; justify-content: space-between; align-items: baseline; }
+.side-calc h3 small { font: 500 10px var(--cond); font-variant-caps: normal; color: var(--ink-3); letter-spacing: 0; }
+.side-calc .ph-chain { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.calc-step { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; column-gap: 8px; row-gap: 1px; align-items: baseline; padding: 7px 0 7px; border-bottom: 1px solid var(--rule); }
+.calc-step:last-of-type { border-bottom: 0; }
+.calc-step .ph-n { grid-row: 1 / span 3; align-self: start; font: 600 10px var(--mono); color: #fff; background: var(--ink); border-radius: 50%; width: 16px; height: 16px; display: grid; place-items: center; margin-top: 1px; }
+.calc-step .ph-name { font: 600 12px var(--cond); color: var(--ink); }
+.calc-step .ph-out { font: 650 14px var(--mono); text-align: right; white-space: nowrap; }
+.calc-step .ph-out small { font: 500 10px var(--cond); color: var(--ink-3); margin-left: 2px; }
+.calc-step .ph-eq, .calc-step .ph-sub { grid-column: 2 / -1; font: 10.5px/1.35 var(--mono); overflow-wrap: anywhere; white-space: normal; }
+.calc-step .ph-eq { color: var(--twin); }
+.calc-step .ph-sub { color: var(--ink-2); }
+.side-calc .ph-note { list-style: none; margin: 8px 0 0; font: 10.5px/1.4 var(--cond); color: var(--ink-3); }
+
+/* Simulate, left panel: less text, room to breathe; the presets sit slim over the model */
+.sim-presets { bottom: 12px; padding: 4px; gap: 2px; }
+.sim-presets button { padding: 5px 10px; font-size: 11.5px; }
+.sim-stamp { top: 10px; right: 92px; left: auto; transform: none; padding: 3px 12px; border: 1px solid var(--ink-3); border-radius: 99px; color: var(--ink-2); font: 600 11px var(--cond); letter-spacing: 0.06em; background: rgba(255, 255, 255, 0.9); }
+
+/* ---- layout v3, second pass ---- */
+.compact .margin-left, .compact .margin-right { overflow-y: auto; scrollbar-width: thin; }
+.calc-step { padding: 5px 0 5px; row-gap: 0; }
+.calc-step .ph-name { font-size: 11.5px; }
+.calc-step .ph-out { font-size: 13px; }
+.calc-step .ph-eq, .calc-step .ph-sub { font-size: 10px; line-height: 1.3; }
+.side-calc { padding: 8px 12px 10px; }
+.side-calc h3 { margin-bottom: 4px; }
+.side-calc .ph-note { display: none; }
+/* Simulate, left panel: one short sentence instead of the paragraph; no explanatory gap */
+.sim-note { display: none; }
+.sim-day { margin: 6px 0; font-size: 11px; }
+.schedule .sim-profile { margin-bottom: 6px; }
+/* header: utility buttons lose their sub-labels when the window is not very wide, the source menu keeps its room */
+@media (max-width: 1899px) {
+  .compact header .explain .tab-hint, .page header .explain .tab-hint { display: none; }
+  .compact header .explain, .page header .explain { padding: 8px 12px; justify-content: center; }
+}
+.dataset select { min-width: 170px; max-width: 220px; }
+.dataset { margin-left: auto; padding-right: 8px; }
+.is-sim .schedule tbody tr:nth-last-child(-n+2) { display: none; }   /* measured - twin and fidelity mean nothing in a simulation */
+.is-sim .schedule th, .is-sim .schedule td { padding-top: 3px; padding-bottom: 3px; }
+.is-sim .calc-step { padding: 4px 0; }
+.is-sim .calc-step .ph-eq, .is-sim .calc-step .ph-sub { font-size: 9.8px; }

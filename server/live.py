@@ -9,7 +9,8 @@
     GET  /api/live/catalogue          the injectable anomalies and their parameters
     GET  /api/live/state              the last tick
 
-One global session (a demo, not a multi-user service). A new /stream takes over from an older one.
+One global session (a demo, not a multi-user service). A background ticker advances the plant; every /stream, the dashboard
+and the phone alerts watch the same ticks, so any number of clients can connect.
 """
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ import time
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -31,6 +32,11 @@ router = APIRouter(prefix="/api/live", tags=["live"])
 _lock = threading.Lock()
 _session: L.LiveSession | None = None
 _control = {"rate": 2.0, "paused": False, "stream": 0}
+IDLE_S = 45.0              # the ticker rests when no client has asked for live data for this long
+_cond = threading.Condition()
+_latest: dict = {"seq": 0, "tick": None}
+_demand = {"t": 0.0}
+_ticker: threading.Thread | None = None
 alert_sinks: list = []     # callables taking one alert dict; server.app registers the phone-notification queue here
 _announced: dict = {"session": None, "ids": set()}
 
@@ -51,6 +57,35 @@ def _announce(s: L.LiveSession, tick: dict) -> None:
                     sink(a)
                 except Exception:
                     pass
+
+
+def _ticker_loop() -> None:
+    while True:
+        if _control["paused"] or time.time() - _demand["t"] > IDLE_S:
+            time.sleep(0.2)
+            continue
+        t0 = time.time()
+        try:
+            s = _get()
+            tk = plain(s.tick())
+            _announce(s, tk)
+            with _cond:
+                _latest["seq"] += 1
+                _latest["tick"] = tk
+                _cond.notify_all()
+        except Exception:
+            time.sleep(0.5)
+        time.sleep(max(0.0, 1.0 / _control["rate"] - (time.time() - t0)))
+
+
+def touch() -> None:
+    """A client wants live data: start the ticker the first time and keep it running."""
+    global _ticker
+    _demand["t"] = time.time()
+    with _lock:
+        if _ticker is None or not _ticker.is_alive():
+            _ticker = threading.Thread(target=_ticker_loop, name="live-ticker", daemon=True)
+            _ticker.start()
 
 
 def _get() -> L.LiveSession:
@@ -147,21 +182,105 @@ def control(body: ControlIn):
 
 @router.get("/stream")
 def stream(limit: Annotated[int | None, Query(ge=1, le=100000, description="stop after this many ticks; omit to run until the client leaves")] = None):
-    s = _get()
+    touch()
     with _lock:
-        _control["stream"] += 1
         me = _control["stream"]
+    with _cond:
+        seen = _latest["seq"]
 
     def lines():
+        nonlocal seen
         sent = 0
         while _control["stream"] == me and (limit is None or sent < limit):
-            if _control["paused"]:
-                time.sleep(0.1)
+            touch()
+            with _cond:
+                if _latest["seq"] <= seen:
+                    _cond.wait(timeout=1.0)
+                seq, tk = _latest["seq"], _latest["tick"]
+            if seq <= seen or tk is None:
                 continue
-            t0 = time.time()
-            tk = plain(s.tick())
-            _announce(s, tk)
+            seen = seq
             yield json.dumps(tk) + "\n"
             sent += 1
-            time.sleep(max(0.0, 1.0 / _control["rate"] - (time.time() - t0)))
     return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+
+class ServiceIn(BaseModel):
+    action: str = Field(description="dry_oil: dry the oil and replace the silica gel; refill: refill the oil")
+
+
+@router.post("/service")
+def service(body: ServiceIn):
+    s = _get()
+    if body.action == "dry_oil":
+        s.dry_oil()
+    elif body.action == "refill":
+        s.refill_oil()
+    else:
+        raise HTTPException(400, "action must be dry_oil or refill")
+    return {"ok": True, "action": body.action}
+
+
+_sync = {"rows": -1, "at": 0.0}
+
+
+@router.post("/sync")
+def sync(force: bool = False):
+    """Rebuild the `live` dataset (the simulated transformer as a source) from the session so far. Cheap when nothing changed."""
+    from dt import api
+    touch()
+    s = _get()
+    with s.lock:
+        n = len(s.history)
+        if n < 8:
+            raise HTTPException(409, "the live plant has not produced enough readings yet")
+        stale = force or n != _sync["rows"] or "live" not in api._MEM
+        if stale and (force or time.time() - _sync["at"] > 4.0 or "live" not in api._MEM):
+            rows, events = list(s.history), list(s.events)
+            asset, caps, ref = dict(s.asset), s.caps, s.ref
+        else:
+            rows = None
+    if rows is not None:
+        api.set_live_run(rows, events, caps, asset, ref)
+        _sync["rows"], _sync["at"] = n, time.time()
+    run = api.get_run("live")
+    last = run.trend["timestamp"].iloc[-1]
+    return {"dataset_id": "live", "name": run.name, "rows": int(len(run.trend)), "last_timestamp": last.isoformat(),
+            "tick": s.n, "simulated": True}
+
+
+def condition_items() -> list[dict]:
+    from analytics.common import load_thresholds
+    from twin import condition as C
+    s = _get()
+    if s.last is None:
+        raise HTTPException(409, "the live plant has not produced a reading yet")
+    th = load_thresholds(asset=s.asset)
+    hist = list(s.history)[-5:]
+    rate = None
+    if len(hist) >= 5:
+        rate = (float(hist[-1]["OTI_C"]) - float(hist[0]["OTI_C"])) / (4 * 0.25)
+    return plain(C.board(s.last["frame"], th, s.params(), s.asset, s.events, rate))
+
+
+def active_injections() -> list[dict]:
+    return plain(_get().active())
+
+
+@router.get("/condition")
+def condition():
+    """The condition board: every quantity on the engineer's checklist with its limit and status (IS 2026 / IS 1180 / CEA profile)."""
+    from analytics.common import load_thresholds
+    from twin import condition as C
+    touch()
+    s = _get()
+    if s.last is None:
+        raise HTTPException(409, "the live plant has not produced a reading yet")
+    th = load_thresholds(asset=s.asset)
+    hist = list(s.history)[-5:]
+    rate = None
+    if len(hist) >= 5:
+        rate = (float(hist[-1]["OTI_C"]) - float(hist[0]["OTI_C"])) / (4 * 0.25)
+    items = C.board(s.last["frame"], th, s.params(), s.asset, s.events, rate)
+    return plain({"timestamp": s.last["frame"]["timestamp"], "standard": "India: IS 2026, IS 1180, IS 6600, IS 1866, CEA", "items": items,
+                  "silica_scale": [{"upto": t, "colour": c, "label": l} for t, c, l in C.SILICA_COLOURS]})

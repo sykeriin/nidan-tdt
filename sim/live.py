@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TICK = pd.Timedelta(minutes=15)
 WINDOW_ROWS = 672          # 7 days of samples for the analytics
 PROFILE_ROWS = 300         # rows the thermal profile needs for its rolling radiator estimate
+HISTORY_ROWS = 1500         # about 15 days kept for the dashboard's Live source
 WARMUP_ROWS = 192          # 2 days run silently before the first frame so the twin and detectors have history
 ALERT_WINDOW = pd.Timedelta(hours=24)
 SENSORS = {"OTI_C": "Top-oil temperature", "WTI_C": "Winding temperature", "OLI_pct": "Oil level"}
@@ -70,6 +71,22 @@ CATALOGUE: dict[str, dict] = {
                       "desc": "A short-circuit current passes through (one event).",
                       "params": [_p("peak_pu", "Peak current", 2, 12, 0.5, 8, "pu"),
                                  _p("duration_ms", "Duration", 100, 1000, 50, 400, "ms")]},
+    "short_circuit": {"label": "Short circuit", "group": "Electrical", "oneshot": True,
+                      "desc": "A bolted short circuit at the LV terminals: a huge current for a moment, then protection trips the load off for about an hour and a half.",
+                      "params": [_p("peak_pu", "Peak current", 8, 25, 1, 18, "pu"),
+                                 _p("duration_ms", "Time to clear", 50, 500, 25, 150, "ms")]},
+    "insulation_turn": {"label": "Turn-to-turn fault", "group": "Insulation", "oneshot": False,
+                        "desc": "Insulation between turns of one winding breaks down. The shorted turns heat that winding locally and add loss.",
+                        "params": [_p("turns_pct", "Turns shorted", 1, 10, 0.5, 4, "%")]},
+    "insulation_tank": {"label": "Winding to tank", "group": "Insulation", "oneshot": False,
+                        "desc": "Insulation between a winding and the tank leaks. Earth current rises and the neutral current with it.",
+                        "params": [_p("leak_pct", "Earth current", 0.5, 10, 0.5, 3, "% of rated")]},
+    "charging_current": {"label": "Idle line charging", "group": "Insulation", "oneshot": False,
+                         "desc": "The load is switched off but a long cable stays energised: its capacitance draws a leading charging current.",
+                         "params": [_p("km", "Idle cable", 1, 20, 1, 8, "km")]},
+    "moisture_ingress": {"label": "Moisture ingress", "group": "Oil", "oneshot": False,
+                         "desc": "The breather or a gasket fails and water gets into the oil. Moisture in oil climbs and the silica gel saturates.",
+                         "params": [_p("ppm_per_day", "Moisture gain", 2, 20, 1, 8, "ppm/day")]},
     "oil_leak": {"label": "Oil leak", "group": "Oil", "oneshot": False,
                  "desc": "Oil level falls steadily until you clear it or refill.",
                  "params": [_p("days", "Time to lose the amount", 0.5, 5, 0.25, 1.5, "days"),
@@ -152,10 +169,15 @@ class LiveSession:
         self.ar = 0.0
         self.peak, self.peak_day = 0.6, None
         self.oli_delta = 0.0
+        self.moist_extra = 0.0                   # ppm of water the oil has taken in (does not leave by itself)
+        self.gel_pct = 22.0                      # breather silica gel saturation, %
+        self.trip_left = 0                       # ticks the load stays off after a short-circuit trip
+        self._pp = None
         self.injections: list[Injection] = []
         self._next_id = 1
         self.n = 0                               # samples produced
         self.rows: deque[dict] = deque(maxlen=WINDOW_ROWS)
+        self.history: deque[dict] = deque(maxlen=HISTORY_ROWS)   # what the dashboard's Live source shows
         self.events: list[dict] = []
         self.last: dict | None = None
         self._plant_ready = False
@@ -204,6 +226,11 @@ class LiveSession:
         with self.lock:
             self.oli_delta = 0.0
             self.injections = [i for i in self.injections if i.kind != "oil_leak"]
+
+    def dry_oil(self):
+        """Service action: dry the oil and put fresh silica gel in the breather."""
+        with self.lock:
+            self.moist_extra, self.gel_pct = 0.0, 8.0
 
     def active(self) -> list[dict]:
         with self.lock:
@@ -257,6 +284,16 @@ class LiveSession:
             if v:
                 vmult *= 1 + self._ramp(el(v), 0.25) * (v.params["factor"] - 1)
 
+        tn = self._get("insulation_turn")
+        turn_w = self._ramp(el(tn), 12.0) * tn.params["turns_pct"] if tn else 0.0
+        if turn_w:
+            phase_mult[0] += 0.006 * turn_w
+        cc = self._get("charging_current")
+        if cc:
+            pu = min(pu, 0.07 + 0.02 * self.rng.random())      # the load is off: only the idle cable is energised
+        if self.trip_left > 0:
+            pu = 0.02
+            self.trip_left -= 1
         i_true = pu * self.i_rated * (1 + self.static) * phase_mult * (1 + self.rng.normal(0, L["phase_noise"], 3))
         i_mean_true = float(i_true.mean())
 
@@ -276,6 +313,10 @@ class LiveSession:
             oil, hs = oil + self.cf_w * (d_oil - oil), hs + self.cf_w * (d_hs - hs)
             if not cf and self.cf_w <= 0.0:
                 self.deg = None
+
+        if turn_w:
+            hs += turn_w * 2.2                      # shorted turns heat the winding locally; the oil barely notices
+            oil += turn_w * 0.12
 
         # ---- oil level: thermal expansion plus the leak / theft that happened to the plant
         lk = self._get("oil_leak")
@@ -298,17 +339,46 @@ class LiveSession:
         ang = np.deg2rad([0, -120, 120])
         i_n = float(np.abs((meas_i * np.exp(1j * ang)).sum()))
         s_kva = float((v_ln * meas_i).sum() / 1000)
-        pf = float(np.clip(0.93 + 0.03 * pu + self.rng.normal(0, 0.005), 0.8, 0.99))
         nt = P["noise_temp_C"]
         oli = float(np.clip(P["oil_level_base_pct"] + P["oil_level_per_C"] * (oil - 50) + self.rng.normal(0, 0.3) + self.oli_delta, 0, 100))
         ati = float(amb + self.rng.normal(0, 0.3))
+        # ---- insulation and oil-condition channels
+        mi = self._get("moisture_ingress")
+        if mi:
+            self.moist_extra += mi.params["ppm_per_day"] / 96
+            self.gel_pct = min(100.0, self.gel_pct + mi.params["ppm_per_day"] * 3 / 96)
+        self.gel_pct = min(100.0, self.gel_pct + 0.4 / 96)         # normal slow saturation of the breather
+        h2o = 9.0 + 0.10 * (oil - 50) + self.moist_extra + self.rng.normal(0, 0.25)
+        tk = self._get("insulation_tank")
+        ie = abs(self.rng.normal(0, 0.02))
+        if tk:
+            ie += self._ramp(el(tk), 6.0) * tk.params["leak_pct"] / 100 * self.i_rated
+            i_n = i_n + ie
+        q_extra = 0.0
+        if cc:
+            ic = cc.params["km"] * 21.0                                # A per km, LV equivalent of an 11 kV cable
+            q_cap = np.sqrt(3) * float(v_ln.mean()) * np.sqrt(3) * ic / 1000
+            s_kva = float(np.hypot(s_kva, q_cap))
+            q_extra = -q_cap
+        pf = float(np.clip(0.93 + 0.03 * pu + self.rng.normal(0, 0.005), 0.8, 0.99))
+        if self._pp is None:
+            self._pp = self.params()
+        P0, Pk = float(self._pp.get("P0_W", 0)), float(self._pp.get("Pk_W", 0))
+        p_out = s_kva * pf * 1000
+        pu_i = float(meas_i.mean()) / self.i_rated
+        v_pu = float(v_ln.mean()) / (float(self.asset["lv_voltage_V"]) / np.sqrt(3))
+        cu = Pk * pu_i ** 2 * (235 + 0.5 * (oil + hs)) / 310 + 0.0045 * Pk * turn_w
+        fe = P0 * v_pu ** 2
+        eta = p_out / (p_out + cu + fe) * 100 if p_out > 1 else 0.0
+        eta_ref = p_out / (p_out + Pk * pu_i ** 2 + P0) * 100 if p_out > 1 else 0.0
         row = {
             "timestamp": ts, "IR": meas_i[0], "IY": meas_i[1], "IB": meas_i[2], "I_mean": float(meas_i.mean()), "IN": i_n,
             "VR": v_ln[0], "VY": v_ln[1], "VB": v_ln[2], "S_kVA": s_kva, "P_kW": s_kva * pf,
-            "Q_kVAr": s_kva * float(np.sqrt(1 - pf ** 2)), "PF": pf, "freq_Hz": 50 + self.rng.normal(0, 0.03),
+            "Q_kVAr": s_kva * float(np.sqrt(1 - pf ** 2)) + q_extra, "PF": pf, "freq_Hz": 50 + self.rng.normal(0, 0.03),
             "loading_pct": float(meas_i.mean()) / self.i_rated * 100,
             "OTI_C": oil + self.rng.normal(0, nt), "WTI_C": hs + self.rng.normal(0, nt), "ATI_C": ati, "OLI_pct": oli,
-            "amb_C": ati, "dq_flags": "", "source": "live_sim", "simulated": True,
+            "amb_C": ati, "H2O_ppm": h2o, "SILICA_pct": self.gel_pct, "IEARTH_A": ie, "eta_pct": eta, "eta_ref_pct": eta_ref,
+            "dq_flags": "", "source": "live_sim", "simulated": True,
         }
         # sensor faults act on the reading only (the plant is fine)
         for inj in self.injections:
@@ -326,7 +396,16 @@ class LiveSession:
                 row[ch] = row[ch] + inj.params["per_hour"] * el(inj)
         # one-shot through-fault: an event row (the 15-minute trend cannot see it)
         tf = self._get("through_fault")
+        sc_ = self._get("short_circuit")
         new_events = []
+        if sc_:
+            new_events.append({"timestamp": ts + pd.Timedelta(seconds=int(self.rng.integers(30, 800))),
+                               "event_type": "through_fault", "phase": "3ph", "peak_pu": sc_.params["peak_pu"],
+                               "duration_ms": sc_.params["duration_ms"],
+                               "i2t_pu2s": sc_.params["peak_pu"] ** 2 * sc_.params["duration_ms"] / 1000,
+                               "source": "live_sim", "simulated": True})
+            self.trip_left = 6
+            self.injections.remove(sc_)
         if tf:
             pk, ms = tf.params["peak_pu"], tf.params["duration_ms"]
             new_events.append({"timestamp": ts + pd.Timedelta(seconds=int(self.rng.integers(30, 800))),
@@ -337,6 +416,7 @@ class LiveSession:
         state = self.engine.step(row)
         full = {**state.row, **state.twin, "timestamp": ts}
         self.rows.append(full)
+        self.history.append(full)
         self.events.extend(new_events)
         self.n += 1
         return full

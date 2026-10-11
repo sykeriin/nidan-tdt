@@ -854,6 +854,28 @@ def report(dataset_id: str, fmt: str = "html") -> tuple[bytes, str, str]:
     return rep.build_html(run, b, o).encode("utf-8"), "text/html; charset=utf-8", f"{name}.html"
 
 
+# ---------------------------------------------------------------- the live simulated transformer as a source
+LIVE_ID = "live"
+
+
+def set_live_run(rows: list[dict], events: list[dict], caps: dict, asset: dict, residual_ref: dict | None) -> Run:
+    """Build the Run for the live simulated transformer from the session's history and keep it in memory under `live`.
+
+    It is not one of the replay datasets: it is never written to disk or listed with them, but every dashboard call
+    (frames, findings, components, what-if, ML) works on it because they all go through get_run("live").
+    """
+    twin = pd.DataFrame(rows).reset_index(drop=True)
+    ev = pd.DataFrame(events) if events else pd.DataFrame()
+    ds = Dataset(trend=twin, events=ev, capabilities=caps, mode="full",
+                 health_report={"source": "live simulation", "simulated": True}, asset=asset)
+    full = {**asset, **_losses(asset)}
+    run = _build(LIVE_ID, "Live transformer (simulated)", ds, twin=twin, caps=caps, asset=full, residual_ref=residual_ref)
+    _MEM[LIVE_ID] = run
+    for k in [k for k in _ML_CACHE if k[0] == LIVE_ID]:
+        _ML_CACHE.pop(k, None)
+    return run
+
+
 # ---------------------------------------------------------------- live ingestion (the path to real sensors)
 _LIVE: dict[str, dict] = {}
 LIVE_MAX_ROWS = 20000

@@ -1391,6 +1391,82 @@
       "description": "Not Implemented"
      }
     }
+   },
+   "post": {
+    "tags": [
+     "reports"
+    ],
+    "summary": "Report Pdf",
+    "description": "PDF condition report with the snapshot of the transformer as it is now (the browser sends the picture).",
+    "operationId": "report_pdf_api_datasets__dataset_id__report_pdf_post",
+    "parameters": [
+     {
+      "name": "dataset_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Dataset Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/ReportPdfIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorModel"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     }
+    }
    }
   },
   "/api/presets": {
@@ -2159,6 +2235,66 @@
     }
    }
   },
+  "/api/blueprint.zip": {
+   "get": {
+    "tags": [
+     "reports"
+    ],
+    "summary": "Blueprint Zip",
+    "description": "Technical blueprint and installation kit for the transformer: drawings, schedules, limits, asset profile and a gateway script.",
+    "operationId": "blueprint_zip_api_blueprint_zip_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/blueprint.pdf": {
+   "get": {
+    "tags": [
+     "reports"
+    ],
+    "summary": "Blueprint Pdf",
+    "description": "The drawing sheets alone (general arrangement, single-line, schedules, settings, checklist).",
+    "operationId": "blueprint_pdf_api_blueprint_pdf_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/status": {
+   "get": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Status",
+    "description": "One small call every client can use to check the server and the live plant (the phone, the tablet and the dashboard all use it).",
+    "operationId": "status_api_status_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/companion/test-alert": {
    "post": {
     "tags": [
@@ -2581,6 +2717,107 @@
         "schema": {
          "$ref": "#/components/schemas/HTTPValidationError"
         }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/service": {
+   "post": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Service",
+    "operationId": "service_api_live_service_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ServiceIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/sync": {
+   "post": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Sync",
+    "description": "Rebuild the `live` dataset (the simulated transformer as a source) from the session so far. Cheap when nothing changed.",
+    "operationId": "sync_api_live_sync_post",
+    "parameters": [
+     {
+      "name": "force",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Force"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/condition": {
+   "get": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Condition",
+    "description": "The condition board: every quantity on the engineer's checklist with its limit and status (IS 2026 / IS 1180 / CEA profile).",
+    "operationId": "condition_api_live_condition_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
        }
       }
      }
@@ -4196,6 +4433,23 @@
     ],
     "title": "RecommendationModel"
    },
+   "ReportPdfIn": {
+    "properties": {
+     "snapshot": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Snapshot"
+     }
+    },
+    "type": "object",
+    "title": "ReportPdfIn"
+   },
    "ResultModel": {
     "properties": {
      "symbol": {
@@ -4399,6 +4653,20 @@
      "v"
     ],
     "title": "SeriesModel"
+   },
+   "ServiceIn": {
+    "properties": {
+     "action": {
+      "type": "string",
+      "title": "Action",
+      "description": "dry_oil: dry the oil and replace the silica gel; refill: refill the oil"
+     }
+    },
+    "type": "object",
+    "required": [
+     "action"
+    ],
+    "title": "ServiceIn"
    },
    "SessionIn": {
     "properties": {

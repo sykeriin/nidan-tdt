@@ -104,7 +104,8 @@ public class MonitorService extends Service {
                     if (since >= 0 && items != null) {
                         for (int i = 0; i < items.length(); i++) {
                             JSONObject a = items.getJSONObject(i).getJSONObject("alert");
-                            JSONObject entry = Store.add(this, a, "-", true);
+                            boolean live = a.optBoolean("live", false);   // an alert from the live simulated transformer is a real alert for the phone, not a test
+                            JSONObject entry = Store.add(this, a, live ? "live" : "-", !live);
                             if (entry != null) Notifier.post(this, entry);
                         }
                     }

@@ -13,6 +13,20 @@ operating:
   residual:              {sigma_mult: 4, persist_h: 2}       # [Assumed] threshold = mean + 4 sigma of Normal residual
   through_fault:         {moderate_pu: 3, severe_pu: 8, moderate_count: 3}  # [Assumed]
   hysteresis_clear_fraction: 0.95                            # [Assumed] clear at 95% of trip level
+  # ---- India profile (IS 2026 / IS 1180 / IS 6600 loading guide / CEA; IEC 60076-7 is the ageing model under IS 6600).
+  # Values marked [Standard] follow the cited clause; [Practice] are common Indian utility settings; confirm both with your utility.
+  voltage_band_pct:      {limit: 6}                          # [Standard] CEA supply voltage variation +-6 % (same as voltage_pu above)
+  moisture_ppm:          {watch: 20, action: 30}             # [Standard] IS 1866 / IEC 60422 oil-in-service, up to 170 kV class
+  silica_gel_saturation_pct: {replace: 66}                   # [Practice] replace when about two thirds of the gel has changed colour
+  efficiency:            {drop_points: 0.5, min_load_pu: 0.3}  # [Assumed] alert when measured efficiency is this far below the loss-based expectation
+  oil_rise_rate_K_per_h: {warning: 8}                        # [Practice] temperature increase alarm (rate of rise of top oil)
+  earth_leakage_pct_of_rated: {warning: 0.5, alarm: 2}       # [Assumed] tank earth current as % of rated current (winding to tank insulation)
+  short_circuit:         {trip_pu: 10}                       # [Standard] IS 2026-5 withstand is about 1/uk; trip declared above this peak
+  charging:              {q_frac_of_rated: -0.03, max_load_pu: 0.15}  # [Assumed] leading kVAr on an almost unloaded unit
+  turn_fault:            {hs_residual_K: 8, oil_residual_K: 4, persist_h: 1}  # [Assumed] winding hotter than the twin says while the oil is not
+  frequency_Hz:          {low: 49.0, high: 51.0}             # [Standard] IEGC band 49.9-50.05 Hz normal, +-2 % allowed
+  # Temperature alarm and trip settings (OTI / WTI contacts) used on the blueprint; the alerts above use warning/critical.
+  temperature_settings:  {oti_alarm_C: 85, oti_trip_C: 95, wti_alarm_C: 98, wti_trip_C: 120}  # [Practice] CBIP manual style
 
 # Reference values (i_rated_a, v_ln_nominal_v) come from config/asset.yaml: see analytics.common.load_thresholds.
 

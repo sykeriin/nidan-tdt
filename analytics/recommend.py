@@ -59,6 +59,23 @@ _TABLE: dict[str, tuple[str, str, str | None, str | tuple[str, str], str | None]
                       IS1180_REF),
     "through_fault_stress": ("cumulative through-fault stress", "Measure short-circuit impedance (%X) and compare with the IS 1180 limit",
                              "Short-circuit impedance (%X) measurement", "7d", IS1180_REF),
+    "short_circuit_trip": ("short-circuit event peak (pu)", "Isolate and inspect: check protection records, then measure short-circuit impedance (%X) and compare with the IS 1180 limit",
+                           "Short-circuit impedance (%X) and frequency-response (SFRA) test", "immediate", IS1180_REF),
+    "turn_fault": ("winding minus twin hot-spot temperature", "De-energise when possible; shorted turns heat one winding locally and can progress to a full fault",
+                   "Winding resistance, turns-ratio test and dissolved-gas analysis", "24h", None),
+    "earth_leakage": ("tank earth current (IEARTH_A)", "Inspect for winding-to-tank insulation breakdown; check the earthing and the oil",
+                      "Insulation resistance (megger) and tan-delta test", ("immediate", "7d"), TAN_DELTA_REF),
+    "moisture_high": ("moisture in oil (H2O_ppm)", "Dry out the oil and check the breather and gaskets",
+                      "Oil moisture (Karl Fischer) and breakdown voltage test", ("24h", "7d"), None),
+    "silica_gel_exhausted": ("silica gel saturation (SILICA_pct)", "Replace or recharge the silica gel in the breather",
+                             "Breather inspection", "7d", None),
+    "charging_current": ("reactive power at low load (Q_kVAr)", "Check for an energised idle cable or line; switch it out or compensate",
+                         None, "next_scheduled", None),
+    "efficiency_low": ("efficiency (eta_pct)", "Look for extra loss: overheating, a shorted turn, loose joints or harmonics",
+                       "Loss measurement and thermography", "7d", None),
+    "temp_rise_fast": ("top-oil temperature rise rate", "Check load and cooling now; a fast rise is faster than weather or load usually explain",
+                       "Cooling system inspection", "24h", IEC_7_REF),
+    "frequency_off": ("supply frequency (freq_Hz)", "Check the supply and the grid operator's notices", None, "7d", None),
 }
 
 

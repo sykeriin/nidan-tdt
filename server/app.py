@@ -140,7 +140,7 @@ def _local(t):
 
 def _known(dataset_id: str) -> None:
     ids = set(api.list_datasets()["dataset_id"])
-    if dataset_id not in ids:
+    if dataset_id not in ids and not (dataset_id == api.LIVE_ID and api.LIVE_ID in api._MEM):   # the live simulated transformer is a source, not a listed dataset
         raise KeyError(f"unknown dataset {dataset_id!r}; GET /api/datasets lists the available ones")
 
 
@@ -459,6 +459,86 @@ def healthcheck():
     return {"status": "ok", "web_build": WEB_DIST.is_dir()}
 
 
+class ReportPdfIn(BaseModel):
+    snapshot: str | None = None      # data:image/png;base64,... captured from the 3D twin in the browser
+
+
+@app.post("/api/datasets/{dataset_id}/report.pdf", tags=["reports"], responses=ERRORS)
+def report_pdf(dataset_id: str, body: ReportPdfIn | None = None):
+    """PDF condition report with the snapshot of the transformer as it is now (the browser sends the picture)."""
+    import base64
+    from reports import pdf as P
+    _known(dataset_id)
+    run = api.get_run(dataset_id)
+    end = run.trend["timestamp"].max() if "timestamp" in run.trend and len(run.trend) else None
+    if end is None:
+        raise HTTPException(400, "this dataset has no time axis, so there is no state to report")
+    png = None
+    if body and body.snapshot:
+        raw = body.snapshot.split(",", 1)[-1]
+        try:
+            png = base64.b64decode(raw, validate=False)
+        except Exception:
+            raise HTTPException(400, "snapshot is not valid base64 PNG data")
+        if png[:4] != bytes([137, 80, 78, 71]) and png[:3] != bytes([255, 216, 255]):
+            raise HTTPException(400, "snapshot must be a PNG or JPEG")
+        if len(png) > 8_000_000:
+            raise HTTPException(413, "snapshot is larger than 8 MB")
+    brief = api.brief(dataset_id, end)
+    try:
+        outlook = api.outlook(dataset_id, end, runs=300)
+    except ValueError:
+        outlook = None
+    condition = injections = None
+    standard = "IEC 60076-7 ageing model"
+    if dataset_id == api.LIVE_ID:
+        from server import live as LV
+        condition, injections = LV.condition_items(), LV.active_injections()
+        standard = "India: IS 2026, IS 1180, IS 6600, IS 1866, CEA"
+    data = P.build_pdf(run, brief, outlook, condition, injections, png, standard)
+    name = f"{dataset_id}-report-{pd.Timestamp(end):%Y%m%d-%H%M}.pdf"
+    from fastapi.responses import Response
+    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/blueprint.zip", tags=["reports"])
+def blueprint_zip(request: Request):
+    """Technical blueprint and installation kit for the transformer: drawings, schedules, limits, asset profile and a gateway script."""
+    from analytics.common import load_thresholds
+    from fastapi.responses import Response
+    from reports import blueprint as B
+    from ingest.enrich import read_asset
+    from twin import profile
+    asset = {k: v for k, v in profile.complete(read_asset(ROOT / "config" / "asset.yaml")).items() if k != "tags"}
+    data = B.build_zip(asset, load_thresholds(asset=asset), str(request.base_url).rstrip("/"))
+    return Response(data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{asset.get("asset_id", "transformer")}-blueprint-kit.zip"'})
+
+
+@app.get("/api/blueprint.pdf", tags=["reports"])
+def blueprint_pdf(request: Request):
+    """The drawing sheets alone (general arrangement, single-line, schedules, settings, checklist)."""
+    from analytics.common import load_thresholds
+    from fastapi.responses import Response
+    from reports import blueprint as B
+    from ingest.enrich import read_asset
+    from twin import profile
+    asset = {k: v for k, v in profile.complete(read_asset(ROOT / "config" / "asset.yaml")).items() if k != "tags"}
+    return Response(B.build_pdf(asset, load_thresholds(asset=asset), str(request.base_url).rstrip("/")), media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{asset.get("asset_id", "transformer")}-blueprint.pdf"'})
+
+
+@app.get("/api/status", tags=["live"])
+def status():
+    """One small call every client can use to check the server and the live plant (the phone, the tablet and the dashboard all use it)."""
+    from server import live as LV
+    s = LV._get()
+    last = s.last["frame"]["timestamp"] if s.last else None
+    return {"ok": True, "server_time": datetime.now().astimezone().isoformat(), "live": {
+        "ticking": (not LV._control["paused"]) and (__import__("time").time() - LV._demand["t"] < LV.IDLE_S), "paused": LV._control["paused"],
+        "rate": LV._control["rate"], "tick": s.n, "last_timestamp": None if last is None else plain(last), "injections": len(s.active()),
+        "latest_alert_seq": (_TESTS[-1]["seq"] if _TESTS else 0)}}
+
+
 # ---------------------------------------------------------------- companion app: alert responses and the PWA itself
 COMPANION = ROOT / "companion"
 
@@ -516,7 +596,7 @@ def _queue_live_alert(a: dict) -> None:
     """Alert raised by the live plant (injected on the tablet): queue it for the phones that poll /api/companion/test-alerts."""
     with _TEST_LOCK:
         seq = (_TESTS[-1]["seq"] + 1) if _TESTS else 1
-        _TESTS.append({"seq": seq, "alert": {**a, "simulated": True}})
+        _TESTS.append({"seq": seq, "alert": {**a, "simulated": True, "live": True}})
         del _TESTS[:-_TEST_KEEP]
 
 

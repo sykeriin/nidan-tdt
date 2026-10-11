@@ -24,6 +24,30 @@ function FitZoom({ tall }: { tall: number }) {
   return null;
 }
 
+/** Lets the page take a picture of the 3D twin (the PDF report uses it): composited on the paper colour, as a PNG data URL. */
+function SnapshotProbe() {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    const w = window as unknown as { __dtSnapshot?: () => string | null };
+    w.__dtSnapshot = () => {
+      try {
+        gl.render(scene, camera);
+        const src = gl.domElement;
+        const k = Math.min(1, 1800 / Math.max(src.width, 1));          // keep the picture small enough to send
+        const out = document.createElement("canvas");
+        out.width = Math.max(1, Math.round(src.width * k)); out.height = Math.max(1, Math.round(src.height * k));
+        const c = out.getContext("2d");
+        if (!c) return null;
+        c.fillStyle = "#F2EFE6"; c.fillRect(0, 0, out.width, out.height);
+        c.drawImage(src, 0, 0, out.width, out.height);
+        return out.toDataURL("image/jpeg", 0.92);
+      } catch (e) { console.warn("snapshot failed", e); return null; }
+    };
+    return () => { delete w.__dtSnapshot; };
+  }, [gl, scene, camera]);
+  return null;
+}
+
 export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = false, meterOnly = false, otiSuspect = false,
   layers = ALL_ON, ratedW = null, reserveRight = 0, xray = false, fitTall = 3.0, popover = false, popoverW = 300, views, bubbles, bubbleClass, highlight = [], markers = true, iRated = null, events = [] }: {
   bubbleClass?: Partial<Record<PartId, string>>;
@@ -86,11 +110,12 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
       <Canvas
         orthographic
         camera={{ position: [6.2, 4.4, 7.4], zoom: 140, near: -50, far: 100 }}
-        gl={{ antialias: true, alpha: true }}
+        gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
         dpr={[1, 2]}
         onPointerMissed={() => setHovered(null)}
       >
         <FitZoom tall={fitTall} />
+        <SnapshotProbe />
         <hemisphereLight args={["#FBF8F0", "#3A3A36", 0.6]} />
         <directionalLight position={[4, 9, 6]} intensity={1.3} />
         <directionalLight position={[-6, 3, -3]} intensity={0.35} />

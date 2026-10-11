@@ -12,12 +12,12 @@ const ageing = (hs: number) => 2 ** ((hs - 98) / 6); // IEC 60076-7 (non-upgrade
 /** One line of the chain: what it is, the equation, the numbers put in, the answer. */
 function Step({ n, name, eq, sub, out, unit }: { n: number; name: string; eq: string; sub: string; out: string; unit: string }) {
   return (
-    <li>
+    <li className="calc-step">
       <span className="ph-n">{n}</span>
       <span className="ph-name">{name}</span>
-      <code className="ph-eq">{eq}</code>
-      <code className="ph-sub">{sub}</code>
       <b className="ph-out">{out}<small>{unit}</small></b>
+      <code className="ph-eq">{eq}</code>
+      <code className="ph-sub">= {sub}</code>
     </li>
   );
 }
@@ -173,16 +173,27 @@ export function SimPresets({ inp, onChange }: { inp: WhatIfInput; onChange: (i: 
   );
 }
 
+/** The calculation chain with this run's numbers, in the right-hand panel (it replaces the heat balance and the life clock in Simulate). */
+export function SimCalc({ w, inp }: { w: WhatIf | undefined; inp: WhatIfInput | null }) {
+  if (!w || !inp) return null;
+  const p = w.params as unknown as P;
+  return (
+    <section className="side-calc" aria-label="The physics behind this simulation">
+      <h3>Physics, calculated live <small>IEC 60076-7</small></h3>
+      <Chain w={w} p={p} inp={inp} />
+    </section>
+  );
+}
+
 export function SimPhysics({ w, inp }: { w: WhatIf | undefined; inp: WhatIfInput | null }) {
   if (!w || !inp) return null;
-  return <SimPhysicsBody w={w} inp={inp} />;
+  return <SimPhysicsBody w={w} />;
 }
-function SimPhysicsBody({ w, inp }: { w: WhatIf; inp: WhatIfInput }) {
+function SimPhysicsBody({ w }: { w: WhatIf }) {
   const p = w.params as unknown as P;
   const it = useIntegrator(w, p);
   return (
-    <section className="st-trends st-physics" aria-label="The physics behind this simulation">
-      <div className="st-card ph-card"><h3>Calculation, live</h3><Chain w={w} p={p} inp={inp} /></div>
+    <section className="st-trends st-physics" aria-label="Warming, heat balance and headroom">
       <div className="st-card ph-card"><h3>Warming up, integrated live</h3><LiveScope w={w} p={p} it={it} /></div>
       <div className="st-card ph-card"><h3>Heat balance and ageing</h3><Balance w={w} it={it} /></div>
       <div className="st-card ph-card"><h3>Load headroom</h3><Headroom w={w} /></div>

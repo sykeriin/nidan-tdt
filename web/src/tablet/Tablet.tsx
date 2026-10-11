@@ -30,7 +30,9 @@ interface Info { i_rated_A: number; params: { P0_W: number; Pk_W: number }; asse
 interface Response { title: string; push: string; meaning: string; do_now: string[]; who: string }
 interface Logged { alert: Alert; at: string }
 
-const GROUPS = ["Load", "Thermal", "Electrical", "Oil", "Sensor"];
+const GROUPS = ["Load", "Thermal", "Electrical", "Insulation", "Oil", "Sensor"];
+// cobalt-chloride breather gel: blue dry, pink saturated (the same scale as the Condition board)
+const gelColour = (p: number) => (p < 25 ? "#2F6FD6" : p < 50 ? "#7F5FC4" : p < 66 ? "#C45FA8" : "#E26BA0");
 const SPEEDS: { label: string; rate: number }[] = [{ label: "Slow", rate: 1 }, { label: "Normal", rate: 2 }, { label: "Fast", rate: 5 }, { label: "Turbo", rate: 10 }];
 const LAYERS: Layers = { ...ALL_ON, electrical: true, lag: false };
 
@@ -144,6 +146,7 @@ export default function Tablet({ onClose }: { onClose?: () => void } = {}) {
   const clearOne = (id: number) => run(() => post("/api/live/clear", { id }));
   const clearAll = () => run(() => post("/api/live/clear", {}));
   const refill = () => run(() => post("/api/live/refill"));
+  const dryOil = () => run(() => post("/api/live/service", { action: "dry_oil" }));
   const control = (body: { rate?: number; paused?: boolean }) => run(async () => {
     const c = await post("/api/live/control", body);
     setRate(c.rate);
@@ -251,6 +254,7 @@ export default function Tablet({ onClose }: { onClose?: () => void } = {}) {
         <div className="tw-row">
           <button onClick={clearAll} disabled={!tick?.injections.length}>Clear all</button>
           <button onClick={refill} title="Undo an oil leak or theft">Refill oil</button>
+          <button onClick={dryOil} title="Dry the oil and put fresh silica gel in the breather">Dry oil, new gel</button>
         </div>
         <div className="tw-read">
           <span>Measured oil</span><b>{num(row?.OTI_C)?.toFixed(1) ?? "–"} °C</b>
@@ -258,6 +262,10 @@ export default function Tablet({ onClose }: { onClose?: () => void } = {}) {
           <span>Gap</span><b className={res !== null && Math.abs(res) > 3 ? "bad" : ""}>{res === null ? "–" : `${res >= 0 ? "+" : "−"}${Math.abs(res).toFixed(1)} K`}</b>
           <span>Load</span><b>{num(row?.load_pu) !== null ? `${(num(row?.load_pu)! * 100).toFixed(0)} %` : "–"}</b>
           <span>Oil level</span><b>{oil !== null ? `${oil.toFixed(1)} %` : "–"}</b>
+          <span>Moisture in oil</span><b className={num(row?.H2O_ppm) !== null && num(row?.H2O_ppm)! >= 20 ? "bad" : ""}>{num(row?.H2O_ppm)?.toFixed(1) ?? "–"} ppm</b>
+          <span>Silica gel</span><b>{num(row?.SILICA_pct) !== null ? <><i className="tw-gel" style={{ background: gelColour(num(row?.SILICA_pct)!) }} /> {num(row?.SILICA_pct)!.toFixed(0)} %</> : "–"}</b>
+          <span>Efficiency</span><b>{num(row?.eta_pct)?.toFixed(2) ?? "–"} %</b>
+          <span>Earth current</span><b className={num(row?.IEARTH_A) !== null && num(row?.IEARTH_A)! > 5 ? "bad" : ""}>{num(row?.IEARTH_A)?.toFixed(1) ?? "–"} A</b>
         </div>
         {live && <LifeClock meterOnly={false} />}
         <h2>Alerts</h2>

@@ -1,6 +1,6 @@
 // Typed access to the FastAPI backend (types generated from docs/openapi.json: `npm run gen:api`).
 // The frontend never computes engineering values: every number shown comes from these responses.
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { components } from "./schema";
 
 export type StateAt = components["schemas"]["StateAtModel"];
@@ -41,15 +41,42 @@ export const api = {
 };
 
 export const useDatasets = () => useQuery({ queryKey: ["datasets"], queryFn: api.datasets, staleTime: Infinity });
-export const useRunSummary = (id: string) =>
-  useQuery({ queryKey: ["run-summary", id], queryFn: () => api.runSummary(id), staleTime: Infinity });
+// `rev` changes when the live transformer has new readings, so its summary and frames are fetched again.
+export const useRunSummary = (id: string, rev = "", enabled = true) =>
+  useQuery({ queryKey: ["run-summary", id, rev], queryFn: () => api.runSummary(id), staleTime: Infinity, enabled, placeholderData: keepPreviousData });
 export const useStateAt = (id: string, t: string) =>
   useQuery({ queryKey: ["state", id, t], queryFn: () => api.stateAt(id, t), staleTime: Infinity });
 
 export type FramesResponse = components["schemas"]["FramesModel"];
 export const getFrames = (id: string) => get<FramesResponse>(`/datasets/${id}/frames`);
-export const useFramesQuery = (id: string, enabled = true) =>
-  useQuery({ queryKey: ["frames", id], queryFn: () => getFrames(id), staleTime: Infinity, enabled });
+export const useFramesQuery = (id: string, enabled = true, rev = "") =>
+  useQuery({ queryKey: ["frames", id, rev], queryFn: () => getFrames(id), staleTime: Infinity, enabled, placeholderData: keepPreviousData });
+
+// The live simulated transformer is a source, not a dataset: the server rebuilds its run from the readings so far each time this is called.
+export const LIVE = "live";
+export interface LiveSync { dataset_id: string; name: string; rows: number; last_timestamp: string; tick: number; simulated: boolean }
+export const useLiveSync = (enabled: boolean) =>
+  useQuery({
+    queryKey: ["live-sync"], enabled, refetchInterval: 6000, retry: true, retryDelay: 2500, staleTime: 0, placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const r = await fetch("/api/live/sync", { method: "POST" });
+      if (!r.ok) throw new ApiError(r.status, (await r.json().catch(() => ({}))).detail ?? r.statusText);
+      return (await r.json()) as LiveSync;
+    },
+  });
+
+/** PDF report with a snapshot of the 3D twin as it looks now. The snapshot is optional (the report still builds without it). */
+export async function downloadReport(dataset: string, snapshot: string | null): Promise<void> {
+  const r = await fetch(`/api/datasets/${encodeURIComponent(dataset)}/report.pdf`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ snapshot }),
+  });
+  if (!r.ok) throw new ApiError(r.status, (await r.json().catch(() => ({}))).detail ?? r.statusText);
+  const name = /filename="([^"]+)"/.exec(r.headers.get("content-disposition") ?? "")?.[1] ?? `${dataset}-report.pdf`;
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
 
 export type ThermalProfile = components["schemas"]["ThermalProfileModel"];
 export type Components = components["schemas"]["ComponentsModel"];
@@ -125,7 +152,6 @@ export const useFindings = (dataset: string, t: string | null, enabled: boolean)
   });
 
 // ---------------------------------------------------------------- workbench: generic profile, physics, outlook, self-test
-import { keepPreviousData } from "@tanstack/react-query";
 import type { Brief, Outlook } from "../workbench/types";
 
 export type Preset = components["schemas"]["PresetModel"];

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from analytics import electrical, health, oil, recommend, residual, rules, sensor_faults, through_fault
+from analytics import electrical, health, oil, recommend, residual, rules, sensor_faults, standards, through_fault
 from analytics.common import strip_quarantined
 from contracts.canonical import QUARANTINE_PREFIXES
 from contracts.models import AnalysisResult, TwinState
@@ -71,6 +71,7 @@ def analyze(
                   if caps.get("residual_fidelity", True) else []),
                 *electrical.detect(adf, thresholds, caps),
                 *oil.detect(adf, thresholds),
+                *standards.detect(adf, ev, thresholds),
             ],
             sensor_eps,  # asset alerts caused by a flagged sensor sample become origin="sensor" (not deleted)
         ),

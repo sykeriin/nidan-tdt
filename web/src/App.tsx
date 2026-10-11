@@ -4,12 +4,13 @@ import { PART, type PartId } from "./twin/parts";
 import { HeatScale } from "./twin/HeatScale";
 import { DataIn, Frame, SectionToggle, SheetTabs, TitleBlock, TwinState, type TwinMode } from "./sheet/Sheet";
 import { Timeline } from "./sheet/Timeline";
-import { useDatasets, useFindings, useFramesQuery, useRunSummary, useComponents, useThermalParams, useWhatIf, useWhatIfDay, type Alert, type WhatIfInput } from "./api/client";
+import { useDatasets, useFindings, useFramesQuery, useLiveSync, downloadReport, LIVE, useRunSummary, useComponents, useThermalParams, useWhatIf, useWhatIfDay, type Alert, type WhatIfInput } from "./api/client";
 import { DiagnosePanel, findingMarks } from "./sheet/Diagnose";
 import { TourCaption, tour, useTourStep } from "./twin/Tour";
-import { SimPhysics, SimPresets } from "./sheet/SimPhysics";
+import { SimCalc, SimPhysics, SimPresets } from "./sheet/SimPhysics";
 import { Circuit } from "./sheet/Circuit";
 import Tablet from "./tablet/Tablet";
+import { Condition } from "./sheet/Condition";
 import "./tablet/tablet.css";
 import { DiagnoseML } from "./sheet/DiagnoseML";
 import { SimControls, SimInputs, useSettled, whatIfDayFrames, whatIfFrames } from "./sheet/Simulate";
@@ -38,7 +39,7 @@ const DETAIL_W = 330; // px, must match .detail width in index.css
 const INITIAL_PINS = (q.get("pin") ?? "").split(",").filter((p): p is PartId => p in PART);
 
 export default function App() {
-  const [dataset, setDataset] = useState(q.get("ds") ?? "S2");
+  const [dataset, setDataset] = useState(q.get("ds") ?? LIVE);   // the simulated live transformer is the default source; the replay datasets are chosen explicitly
   const [cut, setCut] = useState(q.get("cut") === "1");
   const [mode, setMode] = useState<TwinMode>("mirror");
   const [pinned, setPinned] = useState<PartId[]>(INITIAL_PINS);
@@ -47,15 +48,22 @@ export default function App() {
   const [xray, setXray] = useState(false);
   const [circuit, setCircuit] = useState(false);
   const [liveOn, setLiveOn] = useState(false);
+  const [condOn, setCondOn] = useState(false);
+
+  const [exporting, setExporting] = useState<string | null>(null);
   const [big, setBig] = useState(false); // expanded 3D view: the model box fills the window
   useEffect(() => { if (!big) return; const k = (e: KeyboardEvent) => e.key === "Escape" && setBig(false); window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [big]);
   const touring = useTourStep() >= 0;
 
   const datasets = useDatasets();
   const info = datasets.data?.find((d) => d.dataset_id === dataset);
-  const run = useRunSummary(dataset);
+  const isLive = dataset === LIVE;
+  const sync = useLiveSync(isLive);
+  const rev = isLive ? sync.data?.last_timestamp ?? "" : "";
+  const liveReady = !isLive || sync.isSuccess;
+  const run = useRunSummary(dataset, rev, liveReady);
   const snapshot = run.data?.mode === "snapshot";
-  const framesQ = useFramesQuery(dataset, run.isSuccess && !snapshot);
+  const framesQ = useFramesQuery(dataset, run.isSuccess && !snapshot && liveReady, rev);
   const meterOnly = run.data?.mode === "meter_only";
   const otiSuspect = (run.data?.summary as Record<string, any> | undefined)?.plausibility?.OTI_C === "suspect";
 
@@ -67,8 +75,9 @@ export default function App() {
 
   useEffect(() => {
     if (!frames) return;
-    const t0 = q.get("t") && dataset === (q.get("ds") ?? "S2") ? Date.parse(q.get("t")!) : undefined;
-    player.load(frames, Number.isNaN(t0) ? undefined : t0);
+    const t0 = q.get("t") && dataset === (q.get("ds") ?? LIVE) ? Date.parse(q.get("t")!) : undefined;
+    if (dataset === LIVE) player.load(frames, frames.t[frames.t.length - 1]);   // the live transformer: always at the newest reading
+    else player.load(frames, Number.isNaN(t0) ? undefined : t0);
     if (q.get("play") === "1") player.play();
     return () => player.pause();
   }, [frames, dataset]);
@@ -183,14 +192,37 @@ export default function App() {
             <span className="tab-label">Circuit</span><span className="tab-hint">Electrical, live</span>
           </button>
           <button className="explain" aria-pressed={liveOn} onClick={() => setLiveOn(true)}>
-            <span className="tab-label">Live plant</span><span className="tab-hint">Inject anomalies</span>
+            <span className="tab-label">Inject faults</span><span className="tab-hint">Live transformer</span>
           </button>
+          <button className="explain" aria-pressed={condOn} disabled={!isLive} title={isLive ? "" : "The condition board is for the live transformer"} onClick={() => setCondOn(!condOn)}>
+            <span className="tab-label">Condition</span><span className="tab-hint">Limits, IS 2026</span>
+          </button>
+          <details className="export-menu">
+            <summary className="explain"><span className="tab-label">Export</span><span className="tab-hint">Report, blueprint</span></summary>
+            <div className="export-pop">
+              <button disabled={!frames || !!exporting} onClick={async () => {
+                setExporting("report");
+                try {
+                  const snap = (window as unknown as { __dtSnapshot?: () => string | null }).__dtSnapshot?.() ?? null;
+                  if (!snap) window.alert("The 3D picture could not be captured from this browser. The report will use a drawn picture of the transformer state instead.");
+                  await downloadReport(dataset, snap);
+                }
+                catch (e) { window.alert(`Could not make the report: ${(e as Error).message}`); }
+                finally { setExporting(null); }
+              }}>{exporting === "report" ? "Making the PDF…" : "Report (PDF with snapshot)"}</button>
+              <a href="/api/blueprint.zip" download>Blueprint kit (.zip)</a>
+              <a href="/api/blueprint.pdf" download>Blueprint drawings (.pdf)</a>
+            </div>
+          </details>
           <label className="dataset">
-            <span className="dataset-label">Dataset</span>
+            <span className="dataset-label">Source</span>
             <select value={dataset} onChange={(e) => { setPinned([]); setMode("mirror"); setDataset(e.target.value); }}>
-              {(datasets.data ?? []).map((d) => (
-                <option key={d.dataset_id} value={d.dataset_id}>{d.name}</option>
-              ))}
+              <option value={LIVE}>Live transformer</option>
+              <optgroup label="Replay datasets (recorded)">
+                {(datasets.data ?? []).map((d) => (
+                  <option key={d.dataset_id} value={d.dataset_id}>{d.name}</option>
+                ))}
+              </optgroup>
             </select>
           </label>
           <ImportData onLoaded={(id) => { setPinned([]); setMode("mirror"); setDataset(id); }} />
@@ -199,6 +231,7 @@ export default function App() {
           {V2 && <SectionToggle cut={cut} onCut={setCut} />}
         </header>
         {liveOn && <div className="live-overlay"><Tablet onClose={() => { setLiveOn(false); if (frames) player.load(frames, replayT.current ?? undefined); }} /></div>}
+        {condOn && isLive && <Condition onClose={() => setCondOn(false)} />}
         {circuit && <Circuit asset={(run.data?.asset as Record<string, unknown>) ?? null} onClose={() => setCircuit(false)} />}
         {bench && (
           <Workbench dataset={dataset} time={frames && i >= 0 ? frames.iso[i] : null} timeSeries={!!frames && !snapshot} snapshot={snapshot}
@@ -210,7 +243,7 @@ export default function App() {
               : <DataIn row={row} otiSuspect={otiSuspect} meterOnly={meterOnly} />}
             <LayerList layers={layers} onToggle={(id) => setLayers((l) => ({ ...l, [id]: !l[id] }))} />
             {frames && !sim && layers.lag && <LagTraces />}
-            {live && layers.thermometer && <ThermalDiagram meterOnly={meterOnly && !sim} otiSuspect={otiSuspect} />}
+            {live && layers.thermometer && !sim && <ThermalDiagram meterOnly={meterOnly && !sim} otiSuspect={otiSuspect} />}
             {live && <HeatScale meterOnly={meterOnly || sim} otiSuspect={otiSuspect} />}
           </>)}
         </aside>
@@ -246,17 +279,18 @@ export default function App() {
                 physicsWorst={(fq.data?.findings ?? []).some((f) => f.severity === "critical") ? "critical" : (fq.data?.findings ?? []).some((f) => f.severity === "warning") ? "warning" : null} />
             : <StageTrends />)}
         </div>
-        <aside className="margin-right">
+        <aside className={"margin-right" + (sim ? " is-sim" : "")}>
           {V2 ? <V2Right dataset={dataset} iso={frames && i >= 0 ? frames.iso[i] : null} enabled={!!frames && !snapshot && !sim} sim={sim} /> : (<>
             {diag && frames && <DiagnosePanel data={fq.data} loading={fq.isFetching} error={fq.error ? (fq.error as Error).message : null}
               focus={focusPart} onFocus={setHl} />}
             <TwinState row={row} otiSuspect={otiSuspect} />
-            {live && layers.heatflow && <HeatBalance />}
+            {live && sim && <SimCalc w={wq.data} inp={simIn} />}
+            {live && layers.heatflow && !sim && <HeatBalance />}
             {V2 && live && layers.powerflow && <PowerFlowReadout />}
             {meterOnly && !sim && <p className="field-note side-note">Meter-only data: no oil-temperature sensor. Temperatures are estimated by the twin.</p>}
             {snapshot && !sim && <p className="field-note side-note">This dataset is a set of records with no time axis: there is nothing to replay.</p>}
-            <p className="side-note hint">Hover a part to read it. Click to pin. Drag to turn. Space plays, arrows step.</p>
-            {live && layers.lifeclock && <LifeClock meterOnly={meterOnly && !sim} perDay={sim && !simDay} />}
+            {!sim && <p className="side-note hint">Hover a part to read it. Click to pin. Drag to turn. Space plays, arrows step.</p>}
+            {live && layers.lifeclock && !sim && <LifeClock meterOnly={meterOnly && !sim} perDay={sim && !simDay} />}
           </>)}
         </aside>
         <footer className="strip-bottom">
