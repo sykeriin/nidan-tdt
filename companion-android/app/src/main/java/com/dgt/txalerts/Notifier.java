@@ -14,7 +14,7 @@ import android.net.Uri;
 import org.json.JSONObject;
 
 final class Notifier {
-    static final String CH_CRIT_DND = "critical_dnd_v1", CH_CRIT_STD = "critical_std_v1", CH_WARN = "warning_v1", CH_INFO = "info_v1", CH_MON = "monitor_v1";
+    static final String CH_CRIT_DND = "critical_dnd_v1", CH_CRIT_STD = "critical_std_v1", CH_WARN = "warning_v1", CH_INFO = "info_v1", CH_MON = "monitor_v1", CH_ALARM = "alarm_v2";
 
     private static int rank(String sev) { return "critical".equals(sev) ? 2 : "warning".equals(sev) ? 1 : 0; }
 
@@ -39,6 +39,19 @@ final class Notifier {
             if (bypass) crit.setBypassDnd(true);
             nm.createNotificationChannel(crit);
         }
+
+        nm.deleteNotificationChannel("alarm_v1");
+        Uri buzzer = Uri.parse("android.resource://" + c.getPackageName() + "/" + R.raw.buzzer);   // a harsh buzzer, not a ringtone
+        NotificationChannel al = new NotificationChannel(CH_ALARM, "Critical alarm", NotificationManager.IMPORTANCE_HIGH);
+        al.setDescription("A loud, repeating alarm when something critical happens to the transformer. Acknowledge it to silence it.");
+        al.enableVibration(true);
+        al.setVibrationPattern(new long[]{0, 500, 150, 500, 150, 500, 150, 800, 400});
+        al.setSound(buzzer, aa);
+        al.enableLights(true);
+        al.setLightColor(Color.RED);
+        al.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        if (dnd) al.setBypassDnd(true);
+        nm.createNotificationChannel(al);
 
         NotificationChannel warn = new NotificationChannel(CH_WARN, "Warnings", NotificationManager.IMPORTANCE_DEFAULT);
         warn.setDescription("Needs attention soon.");
@@ -78,16 +91,27 @@ final class Notifier {
         JSONObject r = Content.resp(type);
         String title = (test ? "TEST · " : "") + r.optString("title");
         String sub = Content.sevLabel(sev) + (a.optBoolean("simulated") ? " · simulated data" : "");
-        String channel = "critical".equals(sev) ? (c.getSystemService(NotificationManager.class).isNotificationPolicyAccessGranted() ? CH_CRIT_DND : CH_CRIT_STD) : "warning".equals(sev) ? CH_WARN : CH_INFO;
+        boolean alarmOn = "critical".equals(sev) && !"0".equals(Store.get(c, "alarm", "1"));
+        String channel = alarmOn ? CH_ALARM : "critical".equals(sev) ? (c.getSystemService(NotificationManager.class).isNotificationPolicyAccessGranted() ? CH_CRIT_DND : CH_CRIT_STD) : "warning".equals(sev) ? CH_WARN : CH_INFO;
         int color = "critical".equals(sev) ? Color.parseColor("#DC2626") : "warning".equals(sev) ? Color.parseColor("#D97706") : Color.parseColor("#0284C7");
 
         String range = Content.range(a);
         String body = r.optString("push") + (range.isEmpty() ? "" : "\n" + range);
-        Notification n = new Notification.Builder(c, channel).setSmallIcon(R.drawable.ic_bolt).setColor(color)
+        Notification.Builder n = new Notification.Builder(c, channel).setSmallIcon(R.drawable.ic_bolt).setColor(color)
             .setContentTitle(title).setContentText(range.isEmpty() ? r.optString("push") : range).setSubText(sub)
             .setStyle(new Notification.BigTextStyle().bigText(body))
-            .setAutoCancel(true).setCategory(Notification.CATEGORY_STATUS).setShowWhen(true)
-            .setContentIntent(open(c, id, id.hashCode())).build();
-        c.getSystemService(NotificationManager.class).notify(id.hashCode(), n);
+            .setAutoCancel(true).setCategory(Notification.CATEGORY_STATUS).setShowWhen(true).setPriority(Notification.PRIORITY_HIGH)
+            .setContentIntent(open(c, id, id.hashCode()));
+        if (alarmOn) {
+            // an alarm, not a ping: it keeps ringing (FLAG_INSISTENT) until it is acknowledged or two minutes pass, and it lights the screen
+            Intent ack = new Intent(c, MonitorService.class).setAction(MonitorService.ACTION_ACK).putExtra("alert_id", id);
+            PendingIntent ackPi = PendingIntent.getService(c, id.hashCode(), ack, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            n.setCategory(Notification.CATEGORY_ALARM).setOngoing(false).setTimeoutAfter(120000)
+                .setFullScreenIntent(open(c, id, id.hashCode() + 7), true)
+                .addAction(new Notification.Action.Builder(null, "Silence and acknowledge", ackPi).build());
+        }
+        Notification built = n.build();
+        if (alarmOn) built.flags |= Notification.FLAG_INSISTENT;
+        c.getSystemService(NotificationManager.class).notify(id.hashCode(), built);
     }
 }

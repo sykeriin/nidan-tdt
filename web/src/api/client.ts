@@ -66,9 +66,9 @@ export const useLiveSync = (enabled: boolean) =>
   });
 
 /** PDF report with a snapshot of the 3D twin as it looks now. The snapshot is optional (the report still builds without it). */
-export async function downloadReport(dataset: string, snapshot: string | null): Promise<void> {
+export async function downloadReport(dataset: string, snapshot: string | null, snapshotCut: string | null = null): Promise<void> {
   const r = await fetch(`/api/datasets/${encodeURIComponent(dataset)}/report.pdf`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ snapshot }),
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ snapshot, snapshot_cut: snapshotCut }),
   });
   if (!r.ok) throw new ApiError(r.status, (await r.json().catch(() => ({}))).detail ?? r.statusText);
   const name = /filename="([^"]+)"/.exec(r.headers.get("content-disposition") ?? "")?.[1] ?? `${dataset}-report.pdf`;

@@ -461,7 +461,8 @@ def healthcheck():
 
 
 class ReportPdfIn(BaseModel):
-    snapshot: str | None = None      # data:image/png;base64,... captured from the 3D twin in the browser
+    snapshot: str | None = None      # data:image/...;base64,... captured from the 3D twin in the browser
+    snapshot_cut: str | None = None  # the same twin with the tank cut open (core and windings in the oil)
 
 
 @app.post("/api/datasets/{dataset_id}/report.pdf", tags=["reports"], responses=ERRORS)
@@ -474,17 +475,21 @@ def report_pdf(dataset_id: str, body: ReportPdfIn | None = None):
     end = run.trend["timestamp"].max() if "timestamp" in run.trend and len(run.trend) else None
     if end is None:
         raise HTTPException(400, "this dataset has no time axis, so there is no state to report")
-    png = None
-    if body and body.snapshot:
-        raw = body.snapshot.split(",", 1)[-1]
+    def decode(data: str | None) -> bytes | None:
+        if not data:
+            return None
         try:
-            png = base64.b64decode(raw, validate=False)
+            raw = base64.b64decode(data.split(",", 1)[-1], validate=False)
         except Exception:
-            raise HTTPException(400, "snapshot is not valid base64 PNG data")
-        if png[:4] != bytes([137, 80, 78, 71]) and png[:3] != bytes([255, 216, 255]):
+            raise HTTPException(400, "snapshot is not valid base64 image data")
+        if raw[:4] != bytes([137, 80, 78, 71]) and raw[:3] != bytes([255, 216, 255]):
             raise HTTPException(400, "snapshot must be a PNG or JPEG")
-        if len(png) > 8_000_000:
+        if len(raw) > 8_000_000:
             raise HTTPException(413, "snapshot is larger than 8 MB")
+        return raw
+
+    png = decode(body.snapshot if body else None)
+    cut_png = decode(body.snapshot_cut if body else None)
     brief = api.brief(dataset_id, end)
     try:
         outlook = api.outlook(dataset_id, end, runs=300)
@@ -496,7 +501,7 @@ def report_pdf(dataset_id: str, body: ReportPdfIn | None = None):
         from server import live as LV
         condition, injections = LV.condition_items(), LV.active_injections()
         standard = "India: IS 2026, IS 1180, IS 6600, IS 1866, CEA"
-    data = P.build_pdf(run, brief, outlook, condition, injections, png, standard)
+    data = P.build_pdf(run, brief, outlook, condition, injections, png, standard, cut_png)
     name = f"{dataset_id}-report-{pd.Timestamp(end):%Y%m%d-%H%M}.pdf"
     from fastapi.responses import Response
     return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{name}"'})

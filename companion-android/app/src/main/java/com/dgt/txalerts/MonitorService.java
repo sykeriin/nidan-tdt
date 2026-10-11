@@ -25,7 +25,7 @@ import java.util.List;
 
 /** Foreground service: holds the backend's /replay NDJSON stream open and notifies once per new alert. */
 public class MonitorService extends Service {
-    static final String ACTION_STOP = "stop";
+    static final String ACTION_STOP = "stop", ACTION_ACK = "ack";
     private static final int NOTE_ID = 1;
     static volatile boolean running;
 
@@ -38,6 +38,15 @@ public class MonitorService extends Service {
     @Override public IBinder onBind(Intent i) { return null; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && ACTION_ACK.equals(intent.getAction())) {          // "Silence and acknowledge" on the alarm notification
+            String id = intent.getStringExtra("alert_id");
+            if (id != null) {
+                Store.ack(this, id);
+                getSystemService(NotificationManager.class).cancel(id.hashCode());
+            }
+            if (!running) { stopSelf(); return START_NOT_STICKY; }
+            return START_STICKY;
+        }
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
             Store.put(this, "monitoring", "0");
             shutdown("Not monitoring");

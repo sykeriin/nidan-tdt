@@ -126,7 +126,7 @@ def _fit(png: bytes, max_w: float, max_h: float) -> Image:
 
 
 def build_pdf(run: Run, brief: dict, outlook: dict | None, condition: list[dict] | None = None, injections: list[dict] | None = None,
-              snapshot_png: bytes | None = None, standard: str = "IEC 60076-7 ageing model") -> bytes:
+              snapshot_png: bytes | None = None, standard: str = "IEC 60076-7 ageing model", cut_png: bytes | None = None) -> bytes:
     S = _styles()
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm, bottomMargin=14 * mm,
@@ -150,7 +150,17 @@ def build_pdf(run: Run, brief: dict, outlook: dict | None, condition: list[dict]
     picture, drawn = snapshot_png, False
     if not picture:
         picture, drawn = _state_png(run, condition), True
-    if picture:
+    if picture and cut_png:
+        # outside and cut open, side by side
+        cap = ParagraphStyle("cap", parent=S["small"], alignment=1)
+        tb = Table([[_fit(picture, W / 2 - 4, 92 * mm), _fit(cut_png, W / 2 - 4, 92 * mm)],
+                    [Paragraph("Outside, as it looks now", cap), Paragraph("Cut open: core and windings in the oil, coloured by temperature", cap)]],
+                   colWidths=[W / 2, W / 2])
+        tb.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER"), ("VALIGN", (0, 0), (-1, 0), "MIDDLE"), ("BOTTOMPADDING", (0, 0), (-1, 0), 2)]))
+        el.append(tb)
+        el.append(Paragraph(f"Snapshots of the digital twin at {when}. Colours show temperature; arrows show power flow and cooling.", S["small"]))
+        el.append(Spacer(1, 4))
+    elif picture:
         el.append(_fit(picture, W, 96 * mm))
         el.append(Paragraph(f"Snapshot of the digital twin at {when}. Colours show temperature; arrows show power flow and cooling." if not drawn else
                             f"Drawn picture of the transformer state at {when} (the 3D snapshot was not available from the browser). Colour shows top-oil temperature.", S["small"]))

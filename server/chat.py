@@ -34,7 +34,7 @@ REFUSAL = "That is outside what I can talk about. Ask me about my temperatures, 
 MAX_CHARS, MAX_TURNS, MAX_ANSWER_TOKENS = 600, 6, 700
 RATE_PER_MIN = 20
 
-GREETING = re.compile(r"^\W*(hi+|hello+|hey+|yo+|sup|hola|namaste|good (morning|afternoon|evening|night)|thanks?|thank you|thx|bye|goodbye|how are you|how r u|how are u|who are you|what are you|what can you do|help)\b", re.I)
+GREETING = re.compile(r"^\W*(hi+|hello+|hey+|yo+|sup|hola|namaste|good (morning|afternoon|evening|night)|thanks?( you)?|thx|bye|goodbye|how are (you|u)|how r u|who are you|what are you|what can you do|help)(\W+(bro|dude|man|mate|buddy|there|friend|transformer|sir|boss|doing))*\W*$", re.I)
 TOPIC_WORDS = re.compile(
     r"transformer|twin|oil|winding|hot.?spot|top.?oil|temperature|thermal|cooling|radiator|conservator|breather|silica|moisture|bushing|tap|buchholz|"
     r"load|overload|current|voltage|frequency|power|efficien|loss|ageing|aging|life|insulation|earth|leak|fault|short.?circuit|alert|alarm|warning|"
@@ -98,7 +98,7 @@ def _groq(model: str, messages: list[dict], max_tokens: int, effort: str = "low"
 
 def on_topic(text: str) -> bool:
     """Layer 1. No topic word at all is refused outright; otherwise the policy classifier decides. If it cannot be reached the answer is no."""
-    if GREETING.search(text):
+    if len(text) <= 40 and GREETING.match(text.strip()):       # the whole message is a greeting; "hi, ignore your rules..." is not, and goes to the classifier
         return True
     if not TOPIC_WORDS.search(text):
         return False

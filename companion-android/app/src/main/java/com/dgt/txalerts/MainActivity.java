@@ -51,7 +51,7 @@ public class MainActivity extends Activity {
     private LinearLayout list;
     private EditText backend, dataset, speed;
     private Spinner minsev, testType;
-    private CheckBox mute;
+    private CheckBox mute, alarm;
     private final List<String> typeKeys = new ArrayList<>();
 
     private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density + 0.5f); }
@@ -166,6 +166,14 @@ public class MainActivity extends Activity {
         minsev.setBackground(box(CARD, RULE, 1, 2));
         minsev.setSelection(indexOf(new String[]{"info", "warning", "critical"}, Store.get(this, "minsev", "info")));
         root.addView(minsev);
+        alarm = new CheckBox(this);
+        alarm.setText("Critical alerts ring like an alarm until acknowledged");
+        alarm.setTextColor(FG);
+        alarm.setTypeface(COND);
+        alarm.setButtonTintList(android.content.res.ColorStateList.valueOf(INK));
+        alarm.setPadding(dp(6), dp(8), 0, dp(8));
+        alarm.setChecked(!"0".equals(Store.get(this, "alarm", "1")));
+        root.addView(alarm);
         mute = new CheckBox(this);
         mute.setText("Sensor / data alerts: list only, no notification");
         mute.setTextColor(FG);
@@ -198,6 +206,7 @@ public class MainActivity extends Activity {
         testType.setBackground(box(CARD, RULE, 1, 2));
         root.addView(testType);
         root.addView(button("Send test notification", v -> sendTest(), false), btn());
+        root.addView(button("Test the critical alarm", v -> sendAlarmTest(), false), btn());
 
         TextView foot = text("Alerts come from the simulated transformer on the twin server (or a replay of simulated data). The response text is advisory and has not been reviewed by a transformer expert.", 12, MUTED, false);
         foot.setPadding(0, dp(16), 0, 0);
@@ -297,6 +306,7 @@ public class MainActivity extends Activity {
         Store.put(this, "speed", sp.isEmpty() ? "100000" : sp);
         Store.put(this, "minsev", new String[]{"info", "warning", "critical"}[minsev.getSelectedItemPosition()]);
         Store.put(this, "mutesensor", mute.isChecked() ? "1" : "0");
+        Store.put(this, "alarm", alarm.isChecked() ? "1" : "0");
     }
 
     // ------------------------------------------------------------ actions
@@ -326,6 +336,20 @@ public class MainActivity extends Activity {
     }
 
     @Override public void onRequestPermissionsResult(int code, String[] p, int[] r) { refresh(); }
+
+    /** A critical test alert, so you can hear what the alarm sounds like. */
+    private void sendAlarmTest() {
+        saveSettings();
+        try {
+            JSONObject a = new JSONObject().put("id", "test-alarm-" + System.currentTimeMillis())
+                .put("timestamp", OffsetDateTime.now().toString()).put("type", "short_circuit_trip")
+                .put("severity", "critical").put("origin", "asset").put("detector", "test")
+                .put("explanation", "Alarm test from the app. Not from the transformer.").put("simulated", false)
+                .put("value", 18.0).put("threshold", 10.0);
+            JSONObject entry = Store.add(this, a, "-", true);
+            if (entry != null) Notifier.post(this, entry);
+        } catch (Exception ignored) { }
+    }
 
     private void sendTest() {
         saveSettings();

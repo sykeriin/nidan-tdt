@@ -188,12 +188,21 @@ export default function App() {
   const doReport = async () => {
     closeMenus();
     setExporting("report");
+    const grab = () => (window as unknown as { __dtSnapshot?: () => string | null }).__dtSnapshot?.() ?? null;
+    const wasCut = cut;
     try {
-      const snap = (window as unknown as { __dtSnapshot?: () => string | null }).__dtSnapshot?.() ?? null;
-      if (!snap) window.alert("The 3D picture could not be captured from this browser. The report will use a drawn picture of the transformer state instead.");
-      await downloadReport(dataset, snap);
+      // two pictures: the tank as it is, and cut open so the core and windings show
+      setCut(false);
+      await new Promise((r) => setTimeout(r, 450));
+      const outside = grab();
+      setCut(true);
+      await new Promise((r) => setTimeout(r, 700));
+      const inside = grab();
+      setCut(wasCut);
+      if (!outside) window.alert("The 3D picture could not be captured from this browser. The report will use a drawn picture of the transformer state instead.");
+      await downloadReport(dataset, outside, inside);
     } catch (e) { window.alert(`Could not make the report: ${(e as Error).message}`); }
-    finally { setExporting(null); }
+    finally { setCut(wasCut); setExporting(null); }
   };
   const tools = [
     { k: "tour", label: touring ? "Stop tour" : "Explain", hint: "60 s guided tour", pressed: touring, disabled: !frames, title: "",
