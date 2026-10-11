@@ -445,7 +445,7 @@
 }
 .stage > .st-trends { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-height: 820px) {
-  .margin-left > *:nth-child(n+3) { display: none; }       /* layer list is enough; lag traces and the section thermometer need height */
+  .margin-left > *:nth-child(n+4) { display: none; }       /* short windows: the thermal-lag graph stays, the section thermometer and the legend scroll away */
   .margin-right .side-note.hint { display: none; }
   .stage > .st-trends { height: 108px; }
   .stage { grid-template-rows: minmax(0, 1fr) 108px; }
