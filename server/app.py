@@ -22,7 +22,7 @@ import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from dt import api
@@ -65,6 +65,26 @@ async def _not_built(_: Request, exc: NotImplementedError):
 async def _invalid(_: Request, exc: RequestValidationError):
     msgs = [f"{'.'.join(str(p) for p in e.get('loc', []) if p != 'body')}: {e.get('msg')}" for e in exc.errors()]
     return JSONResponse(status_code=422, content={"detail": "; ".join(msgs)})
+
+
+def _warm() -> None:
+    """Build the responses the dashboard asks for first, for every stored dataset, while nobody is waiting."""
+    import time
+    time.sleep(2)
+    for ds in list(api.CACHED):
+        try:
+            req = Request({"type": "http", "headers": [], "method": "GET", "path": "/", "query_string": b""})
+            frames(ds, req)
+            get_run(ds, req, max_points=10)
+        except Exception:
+            pass
+
+
+@app.on_event("startup")
+def _start_warm() -> None:
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("DT_NO_WARM"):
+        return
+    threading.Thread(target=_warm, name="warm", daemon=True).start()
 
 
 ERRORS = {400: {"model": S.ErrorModel}, 404: {"model": S.ErrorModel}, 422: {"model": S.ErrorModel}}
@@ -146,6 +166,28 @@ def _known(dataset_id: str) -> None:
 
 
 # ---------------------------------------------------------------- endpoints (one per facade function)
+_BODY_CACHE: dict[tuple, tuple[bytes, bytes]] = {}      # (kind, dataset, args) -> (json, gzip of it); the big dataset responses never change for a stored dataset
+
+
+def _cacheable(dataset_id: str) -> bool:
+    return dataset_id != api.LIVE_ID and not dataset_id.startswith("u-live-")
+
+
+def _json_response(request: Request, out: dict, key: tuple | None) -> Response:
+    """JSON the quick way: no response-model validation, compressed when the client accepts it, and remembered for the next call."""
+    import gzip
+    if key is not None and key in _BODY_CACHE:
+        raw, gz = _BODY_CACHE[key]
+    else:
+        raw = json.dumps(out, separators=(",", ":")).encode("utf-8")
+        gz = gzip.compress(raw, compresslevel=4) if len(raw) > 4000 else b""
+        if key is not None:
+            _BODY_CACHE[key] = (raw, gz)
+    if gz and "gzip" in request.headers.get("accept-encoding", ""):
+        return Response(gz, media_type="application/json", headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
+    return Response(raw, media_type="application/json")
+
+
 @app.get("/api/datasets", response_model=list[S.DatasetInfoModel], tags=["datasets"])
 def list_datasets():
     """api.list_datasets() — cached scenarios, Kaggle and uploads."""
@@ -197,12 +239,14 @@ async def load_file(
 
 
 @app.get("/api/datasets/{dataset_id}/run", response_model=S.RunModel, responses=ERRORS, tags=["run"])
-def get_run(dataset_id: str,
+def get_run(dataset_id: str, request: Request,
             start: Annotated[datetime | None, Query(description="ISO 8601; naive = Asia/Kolkata")] = None,
             end: Annotated[datetime | None, Query(description="ISO 8601; naive = Asia/Kolkata")] = None,
             max_points: Annotated[int, Query(ge=10, le=MAX_POINTS)] = MAX_POINTS):
     """api.get_run() — summary, analysis, and every numeric trend/twin/health column as a series."""
     _known(dataset_id)
+    if start is None and end is None and _cacheable(dataset_id) and ("run", dataset_id, max_points) in _BODY_CACHE:
+        return _json_response(request, {}, ("run", dataset_id, max_points))
     run = api.get_run(dataset_id)
     start, end = _local(start), _local(end)
     if start is not None and end is not None and start > end:
@@ -214,13 +258,15 @@ def get_run(dataset_id: str,
     hser, hdown = series(hs.drop(columns=["band"], errors="ignore"), max_points)
     bands = {"t": [pd.Timestamp(t).isoformat() for t in hs["timestamp"]], "band": list(hs["band"])} if len(hs) else {}
     records = table(api.snapshot_table(dataset_id)) if run.mode == "snapshot" else None
-    return {"dataset_id": run.dataset_id, "name": run.name, "mode": run.mode, "capabilities": run.capabilities,
-            "health_report": plain(run.health_report), "asset": plain(run.asset), "summary": plain(run.summary),
-            "analysis": plain(run.analysis), "series": ser, "health_series": hser,
-            "bands": bands if len(hs) <= max_points else {}, "events": table(ev), "records": records,
-            "start": plain(tr["timestamp"].min()) if "timestamp" in tr and len(tr) else None,
-            "end": plain(tr["timestamp"].max()) if "timestamp" in tr and len(tr) else None,
-            "rows_in_range": len(tr), "max_points": max_points, "downsampled": bool(down or hdown)}
+    out = {"dataset_id": run.dataset_id, "name": run.name, "mode": run.mode, "capabilities": run.capabilities,
+           "health_report": plain(run.health_report), "asset": plain(run.asset), "summary": plain(run.summary),
+           "analysis": plain(run.analysis), "series": ser, "health_series": hser,
+           "bands": bands if len(hs) <= max_points else {}, "events": table(ev), "records": records,
+           "start": plain(tr["timestamp"].min()) if "timestamp" in tr and len(tr) else None,
+           "end": plain(tr["timestamp"].max()) if "timestamp" in tr and len(tr) else None,
+           "rows_in_range": len(tr), "max_points": max_points, "downsampled": bool(down or hdown)}
+    key = ("run", dataset_id, max_points) if start is None and end is None and _cacheable(dataset_id) else None
+    return _json_response(request, plain(out), key)
 
 
 @app.get("/api/datasets/{dataset_id}/state", response_model=S.StateAtModel, responses=ERRORS, tags=["run"])
@@ -258,18 +304,22 @@ def replay(dataset_id: str,
 
 
 @app.get("/api/datasets/{dataset_id}/frames", response_model=S.FramesModel, responses=ERRORS, tags=["run"])
-def frames(dataset_id: str,
+def frames(dataset_id: str, request: Request,
            fields: Annotated[str | None, Query(description="comma-separated column names; omit = all")] = None,
            start: Annotated[datetime | None, Query()] = None,
            end: Annotated[datetime | None, Query()] = None,
            every: Annotated[int, Query(ge=1, le=1000)] = 1):
     """api.frames() — every sample, aligned on one time axis, for replay and full-resolution charts."""
     _known(dataset_id)
+    key = ("frames", dataset_id, every) if not fields and start is None and end is None and _cacheable(dataset_id) else None
+    if key is not None and key in _BODY_CACHE:
+        return _json_response(request, {}, key)
     df = api.frames(dataset_id, fields=[f.strip() for f in fields.split(",") if f.strip()] if fields else None,
                     start=_local(start), end=_local(end), every=every)
-    return {"dataset_id": dataset_id, "rows": len(df), "timestamp": plain(df["timestamp"]),
-            "columns": {c: plain(df[c].round(4) if df[c].dtype.kind == "f" else df[c])
-                        for c in df.columns if c != "timestamp"}}
+    out = {"dataset_id": dataset_id, "rows": len(df), "timestamp": plain(df["timestamp"]),
+           "columns": {c: plain(df[c].round(4) if df[c].dtype.kind == "f" else df[c])
+                       for c in df.columns if c != "timestamp"}}
+    return _json_response(request, out, key)
 
 
 @app.get("/api/datasets/{dataset_id}/thermal-profile", response_model=S.ThermalProfileModel, responses=ERRORS,
