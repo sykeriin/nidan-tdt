@@ -89,6 +89,11 @@ public class MainActivity extends Activity {
         row.addView(toggle);
         row.addView(clear);
         root.addView(row);
+        Button twin = new Button(this);
+        twin.setText("Open twin view (3D model + anomaly injection)");
+        twin.setAllCaps(false);
+        twin.setOnClickListener(v -> { saveSettings(); startActivity(new Intent(this, TwinActivity.class)); });
+        root.addView(twin);
 
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);

@@ -63,7 +63,8 @@ class ControlIn(BaseModel):
 
 def _info(s: L.LiveSession) -> dict:
     return {"tick_minutes": 15, "i_rated_A": s.i_rated, "params": plain(s.params()), "control": dict(_control),
-            "start": s.start.isoformat(), "simulated": True}
+            "start": s.start.isoformat(), "simulated": True,
+            "asset": plain({k: v for k, v in s.asset.items() if k != "tags"})}
 
 
 @router.get("/catalogue")

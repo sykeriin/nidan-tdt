@@ -357,7 +357,8 @@ class LiveSession:
             frame.update(health_score=h.score, health_band=h.band, health_capped=h.capped,
                          **{f"health_{k}": v for k, v in h.components.items()})
             alerts = [a for a in res.alerts if ts - ALERT_WINDOW < a.timestamp <= ts]
-            self.last = {"tick": self.n, "frame": frame, "alerts": alerts, "injections": self.active(), "simulated": True}
+            self.last = {"tick": self.n, "frame": frame, "alerts": alerts, "injections": self.active(), "events": self.events[-20:],
+                         "simulated": True}
             return self.last
 
     def params(self) -> dict:

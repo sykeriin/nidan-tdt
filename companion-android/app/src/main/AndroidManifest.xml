@@ -23,6 +23,9 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".TwinActivity" android:exported="true" android:label="Twin"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+
         <service android:name=".MonitorService" android:exported="false"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
