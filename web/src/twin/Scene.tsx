@@ -14,17 +14,17 @@ import { HeatFlow } from "./HeatFlow";
 import { ALL_ON, type Layers } from "./layers";
 import type { PartId } from "./parts";
 
-function FitZoom() {
+function FitZoom({ tall }: { tall: number }) {
   const { camera, size } = useThree();
   useEffect(() => {
-    camera.zoom = Math.min(size.width / 4.2, size.height / 3.0);
+    camera.zoom = Math.min(size.width / 4.2, size.height / tall);
     camera.updateProjectionMatrix();
-  }, [camera, size]);
+  }, [camera, size, tall]);
   return null;
 }
 
 export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = false, meterOnly = false, otiSuspect = false,
-  layers = ALL_ON, ratedW = null, reserveRight = 0, xray = false, bubbles, bubbleClass, highlight = [], markers = true, iRated = null, events = [] }: {
+  layers = ALL_ON, ratedW = null, reserveRight = 0, xray = false, fitTall = 3.0, bubbles, bubbleClass, highlight = [], markers = true, iRated = null, events = [] }: {
   bubbleClass?: Partial<Record<PartId, string>>;
   highlight?: PartId[];
   markers?: boolean;
@@ -36,6 +36,7 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
   ratedW?: number | null;
   reserveRight?: number;
   xray?: boolean;
+  fitTall?: number; // scene height (world units) the view fits: larger leaves more room around the model
   thermal?: boolean;
   meterOnly?: boolean;
   cut: boolean;
@@ -82,7 +83,7 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
         dpr={[1, 2]}
         onPointerMissed={() => setHovered(null)}
       >
-        <FitZoom />
+        <FitZoom tall={fitTall} />
         <hemisphereLight args={["#FBF8F0", "#3A3A36", 0.6]} />
         <directionalLight position={[4, 9, 6]} intensity={1.3} />
         <directionalLight position={[-6, 3, -3]} intensity={0.35} />

@@ -11,6 +11,28 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : n
 const HV_X = [-0.5, 0, 0.5], HV_Z = -0.15, HV_TOP = 2.98, HV_BOT = 2.58;
 const LV_X = [-0.45, -0.15, 0.15], LV_Z = 0.3, LV_BOT = 2.3, LV_TOP = 2.72;
 const N = 5;
+const PH = ["R", "Y", "B"];
+const LID = 1.585; // top face of the tank cover (TOP in Transformer.tsx plus half its thickness)
+
+/** Stencil lettering painted on the cover next to each bushing, so the terminals read as part of the transformer. */
+function Stencil({ text, color, x, z, w = 0.17, y = LID, upright = false }: { text: string; color: string; x: number; z: number; w?: number; y?: number; upright?: boolean }) {
+  const tex = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = Math.round(256 * (w / 0.17)); c.height = 256;
+    const g = c.getContext("2d")!;
+    g.font = `900 ${text.length > 1 ? 120 : 210}px Arial Narrow, Arial, sans-serif`;
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.lineJoin = "round"; g.lineWidth = 26; g.strokeStyle = "#1E2024"; g.strokeText(text, c.width / 2, 138);
+    g.fillStyle = color; g.fillText(text, c.width / 2, 138);
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t;
+  }, [text, color, w]);
+  return (
+    <mesh position={[x, y, z]} rotation={[upright ? 0 : -Math.PI / 2, 0, 0]} renderOrder={5}>
+      <planeGeometry args={[w, 0.17]} />
+      <meshBasicMaterial map={tex} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
+    </mesh>
+  );
+}
 
 export function PowerFlow({ iRated }: { iRated: number | null }) {
   const down = useRef<THREE.InstancedMesh>(null);
@@ -46,6 +68,11 @@ export function PowerFlow({ iRated }: { iRated: number | null }) {
   });
   return (
     <group>
+      {/* HV letters sit on the conservator drum, above each HV bushing: the cover itself is hidden behind the bushings from the front */}
+      {PH.map((p, i) => <Stencil key={"h" + p} text={"HV " + p} color="#8FBBFF" x={HV_X[i]} y={2.27} z={-0.29} w={0.34} upright />)}
+      {PH.map((p, i) => <Stencil key={"l" + p} text={p} color="#FFA270" x={LV_X[i]} z={0.47} />)}
+      <Stencil text="N" color="#F2F0E6" x={0.45} z={0.47} />
+      <Stencil text="LV" color="#FFA270" x={-0.82} z={0.47} w={0.25} />
       <instancedMesh ref={down} args={[undefined, undefined, 3 * N]} frustumCulled={false}>
         <coneGeometry args={[0.05, 0.15, 12]} />
         <meshBasicMaterial color="#2457A6" />

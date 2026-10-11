@@ -34,12 +34,14 @@ const INITIAL_PINS = (q.get("pin") ?? "").split(",").filter((p): p is PartId => 
 
 export default function App() {
   const [dataset, setDataset] = useState(q.get("ds") ?? "S2");
-  const [cut, setCut] = useState(q.get("cut") !== "0");
+  const [cut, setCut] = useState(q.get("cut") === "1");
   const [mode, setMode] = useState<TwinMode>("mirror");
   const [pinned, setPinned] = useState<PartId[]>(INITIAL_PINS);
   const [layers, setLayers] = useState<Layers>(V2 ? { ...ALL_ON, thermometer: false, lag: false, lifeclock: false } : ALL_ON);
   const [bench, setBench] = useState(false);
   const [xray, setXray] = useState(false);
+  const [big, setBig] = useState(false); // expanded 3D view: the model box fills the window
+  useEffect(() => { if (!big) return; const k = (e: KeyboardEvent) => e.key === "Escape" && setBig(false); window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [big]);
   const touring = useTourStep() >= 0;
 
   const datasets = useDatasets();
@@ -198,9 +200,10 @@ export default function App() {
         </aside>
         <div className={V2 ? "stage-v2" : "stage"}>
           {!V2 && live && <StageLeft />}
-        <section className="field" aria-label="Transformer-1, three-dimensional schematic">
+        <section className={"field" + (big ? " big" : "")} aria-label="Transformer-1, three-dimensional schematic">
           {!V2 && <ViewModes view={(cut ? "cut" : xray ? "xray" : "normal") as ViewMode} onView={(v) => { setCut(v === "cut"); setXray(v === "xray"); }} />}
-          <Scene cut={cut} pinned={diag ? [] : pinned} data={calloutData}
+          {!V2 && <button className="st-expand" aria-pressed={big} title={big ? "Back to the dashboard (Esc)" : "Expand the transformer view"} onClick={() => setBig(!big)}>{big ? "Close" : "Expand"}</button>}
+          <Scene fitTall={big ? 3.8 : 3.0} cut={cut} pinned={diag ? [] : pinned} data={calloutData}
             setPinned={sim ? () => {} : diag ? (ids) => setFocusPart(ids[ids.length - 1] ?? null) : setPinned}
             highlight={diag ? hl ?? (focusPart ? [focusPart] : []) : []} bubbleClass={bubbleClass}
             oilLevelPct={typeof oil === "number" ? oil : null} thermal={live} meterOnly={meterOnly && !sim} otiSuspect={otiSuspect}
