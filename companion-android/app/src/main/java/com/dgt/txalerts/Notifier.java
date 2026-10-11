@@ -81,9 +81,11 @@ final class Notifier {
         String channel = "critical".equals(sev) ? (c.getSystemService(NotificationManager.class).isNotificationPolicyAccessGranted() ? CH_CRIT_DND : CH_CRIT_STD) : "warning".equals(sev) ? CH_WARN : CH_INFO;
         int color = "critical".equals(sev) ? Color.parseColor("#DC2626") : "warning".equals(sev) ? Color.parseColor("#D97706") : Color.parseColor("#0284C7");
 
+        String range = Content.range(a);
+        String body = r.optString("push") + (range.isEmpty() ? "" : "\n" + range);
         Notification n = new Notification.Builder(c, channel).setSmallIcon(R.drawable.ic_bolt).setColor(color)
-            .setContentTitle(title).setContentText(r.optString("push")).setSubText(sub)
-            .setStyle(new Notification.BigTextStyle().bigText(r.optString("push")))
+            .setContentTitle(title).setContentText(range.isEmpty() ? r.optString("push") : range).setSubText(sub)
+            .setStyle(new Notification.BigTextStyle().bigText(body))
             .setAutoCancel(true).setCategory(Notification.CATEGORY_STATUS).setShowWhen(true)
             .setContentIntent(open(c, id, id.hashCode())).build();
         c.getSystemService(NotificationManager.class).notify(id.hashCode(), n);

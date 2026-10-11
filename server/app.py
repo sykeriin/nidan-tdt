@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 
 from dt import api
 from server import schemas as S
+from server.chat import router as chat_router
 from server.live import alert_sinks as live_alert_sinks, router as live_router
 from server.serialize import MAX_POINTS, plain, series, table, time_range
 
@@ -602,6 +603,7 @@ def _queue_live_alert(a: dict) -> None:
 
 live_alert_sinks.append(_queue_live_alert)
 app.include_router(live_router)
+app.include_router(chat_router)
 
 
 # ---------------------------------------------------------------- React production build (same origin)

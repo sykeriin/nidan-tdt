@@ -919,6 +919,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Chat
+         * @description Ask about the transformer. Returns {answer, on_topic}; off-topic questions get a fixed refusal.
+         */
+        post: operations["chat_api_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1083,6 +1103,13 @@ export interface components {
             unit: string;
             /** Why */
             why: string;
+        };
+        /** ChatIn */
+        ChatIn: {
+            /** Messages */
+            messages: components["schemas"]["Msg"][];
+            /** Dataset */
+            dataset?: string | null;
         };
         /** ClearIn */
         ClearIn: {
@@ -1423,6 +1450,16 @@ export interface components {
             duration_ms: number;
             /** Class */
             class: string;
+        };
+        /** Msg */
+        Msg: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Content */
+            content: string;
         };
         /** PartAlertModel */
         PartAlertModel: {
@@ -4027,6 +4064,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    chat_api_chat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -141,8 +141,10 @@ public class MainActivity extends Activity {
         cp.leftMargin = dp(8);
         row.addView(clear, cp);
         root.addView(row);
-        Button twin = button("Open twin view: 3D model and fault injection", v -> { saveSettings(); startActivity(new Intent(this, TwinActivity.class)); }, false);
-        root.addView(twin, new LinearLayout.LayoutParams(-1, dp(46)));
+        if (getResources().getConfiguration().smallestScreenWidthDp >= 600) {   // the twin screen is for the tablet; the phone only needs alerts
+            Button twin = button("Open twin view: 3D model and fault injection", v -> { saveSettings(); startActivity(new Intent(this, TwinActivity.class)); }, false);
+            root.addView(twin, new LinearLayout.LayoutParams(-1, dp(46)));
+        }
 
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
@@ -160,8 +162,8 @@ public class MainActivity extends Activity {
         root.addView(speed);
         root.addView(label("Notify for"));
         minsev = new Spinner(this);
-        minsev.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
-            new String[]{"All alerts", "Warning and critical", "Critical only"}));
+        minsev.setAdapter(spinnerAdapter(java.util.Arrays.asList("All alerts", "Warning and critical", "Critical only")));
+        minsev.setBackground(box(CARD, RULE, 1, 2));
         minsev.setSelection(indexOf(new String[]{"info", "warning", "critical"}, Store.get(this, "minsev", "info")));
         root.addView(minsev);
         mute = new CheckBox(this);
@@ -192,7 +194,8 @@ public class MainActivity extends Activity {
             typeKeys.add(k);
             titles.add(types.optJSONObject(k).optString("title") + "  (" + k + ")");
         }
-        testType.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, titles));
+        testType.setAdapter(spinnerAdapter(titles));
+        testType.setBackground(box(CARD, RULE, 1, 2));
         root.addView(testType);
         root.addView(button("Send test notification", v -> sendTest(), false), btn());
 
@@ -221,6 +224,25 @@ public class MainActivity extends Activity {
         e.setBackground(box(CARD, RULE, 1, 2));
         e.setPadding(dp(10), dp(10), dp(10), dp(10));
         return e;
+    }
+
+    /** Spinner rows in the app's ink on paper (the default rows are light text and vanish on the paper background). */
+    private ArrayAdapter<String> spinnerAdapter(List<String> items) {
+        return new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, items) {
+            private View style(View v, boolean drop) {
+                if (v instanceof TextView) {
+                    TextView t = (TextView) v;
+                    t.setTextColor(INK);
+                    t.setTypeface(COND);
+                    t.setTextSize(15);
+                    t.setPadding(dp(12), dp(12), dp(12), dp(12));
+                    if (drop) t.setBackgroundColor(CARD);
+                }
+                return v;
+            }
+            @Override public View getView(int i, View c, android.view.ViewGroup p) { return style(super.getView(i, c, p), false); }
+            @Override public View getDropDownView(int i, View c, android.view.ViewGroup p) { return style(super.getDropDownView(i, c, p), true); }
+        };
     }
 
     private LinearLayout.LayoutParams btn() {
@@ -378,6 +400,13 @@ public class MainActivity extends Activity {
             ti.setPadding(0, dp(4), 0, 0);
             body.addView(ti);
             body.addView(text(r.optString("push"), 14, Color.parseColor("#4A4A44"), false));
+            String rng = Content.range(a);
+            if (!rng.isEmpty()) {
+                TextView rv = text(rng, 12.5f, INK, false);
+                rv.setTypeface(MONO);
+                rv.setPadding(0, dp(6), 0, 0);
+                body.addView(rv);
+            }
             card.addView(body, new LinearLayout.LayoutParams(0, -2, 1f));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             lp.setMargins(0, 0, 0, dp(8));
@@ -415,6 +444,8 @@ public class MainActivity extends Activity {
         sb.append(Content.sevLabel(sev)).append(a.optBoolean("simulated") ? " · SIMULATED" : "").append(e.optBoolean("test") ? " · TEST" : "")
             .append("   ").append(when(a.optString("timestamp"))).append("\n");
         sb.append(Content.urgencyLabel(r, sev)).append(" · ").append(r.optString("who")).append("\n\n");
+        String rng = Content.range(a);
+        if (!rng.isEmpty()) { section(sb, "Value and expected range", rng); }
         if ("sensor".equals(a.optString("origin"))) sb.append("This points to the sensor or data link. Check the device, not the transformer.\n\n");
         section(sb, "What it means", r.optString("meaning"));
         section(sb, "Can it wait?", r.optString("safe_to_wait"));

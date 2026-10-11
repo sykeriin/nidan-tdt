@@ -41,6 +41,26 @@ final class Content {
         } catch (Exception e) { throw new RuntimeException(e); }
     }
 
+    private static String num(double v) {
+        double a = Math.abs(v);
+        String t = a >= 100 ? String.valueOf(Math.round(v)) : a >= 10 ? String.format(java.util.Locale.US, "%.1f", v) : String.format(java.util.Locale.US, "%.2f", v);
+        return t.contains(".") ? t.replaceAll("0+$", "").replaceAll("[.]$", "") : t;
+    }
+
+    /** "Now 88.1 °C · expected below 85 °C": the value that raised the alert and the range it should be in. Empty when the alert has neither. */
+    static String range(JSONObject a) {
+        JSONObject r = resp(a.optString("type"));
+        String unit = r.optString("unit", ""), exp = r.optString("expected", "");
+        StringBuilder sb = new StringBuilder();
+        if (a.has("value") && !a.isNull("value")) sb.append("Now ").append(num(a.optDouble("value"))).append(unit.isEmpty() ? "" : " " + unit);
+        if (!exp.isEmpty()) {
+            if (exp.contains("{t}") && (!a.has("threshold") || a.isNull("threshold"))) exp = "";
+            else if (a.has("threshold") && !a.isNull("threshold")) exp = exp.replace("{t}", num(a.optDouble("threshold")));
+        }
+        if (!exp.isEmpty()) sb.append(sb.length() > 0 ? " · expected " : "Expected ").append(exp);
+        return sb.toString();
+    }
+
     static String sevLabel(String sev) { return root.optJSONObject("severity_label").optString(sev, sev); }
 
     static String urgencyLabel(JSONObject r, String sev) {

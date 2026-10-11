@@ -11,6 +11,7 @@ import { SimCalc, SimPhysics, SimPresets } from "./sheet/SimPhysics";
 import { Circuit } from "./sheet/Circuit";
 import Tablet from "./tablet/Tablet";
 import { Condition } from "./sheet/Condition";
+import { ChatDock } from "./chat/Chat";
 import "./tablet/tablet.css";
 import { DiagnoseML } from "./sheet/DiagnoseML";
 import { SimControls, SimInputs, useSettled, whatIfDayFrames, whatIfFrames } from "./sheet/Simulate";
@@ -175,43 +176,54 @@ export default function App() {
   const events = (run.data?.events.rows ?? []) as Record<string, unknown>[];
   const oil = row?.OLI_pct;
 
+  const closeMenus = () => document.querySelectorAll("details.hdr-more[open], details.export-menu[open]").forEach((d) => d.removeAttribute("open"));
+  const doReport = async () => {
+    closeMenus();
+    setExporting("report");
+    try {
+      const snap = (window as unknown as { __dtSnapshot?: () => string | null }).__dtSnapshot?.() ?? null;
+      if (!snap) window.alert("The 3D picture could not be captured from this browser. The report will use a drawn picture of the transformer state instead.");
+      await downloadReport(dataset, snap);
+    } catch (e) { window.alert(`Could not make the report: ${(e as Error).message}`); }
+    finally { setExporting(null); }
+  };
+  const tools = [
+    { k: "tour", label: touring ? "Stop tour" : "Explain", hint: "60 s guided tour", pressed: touring, disabled: !frames, title: "",
+      act: () => { if (touring) { tour.stop(); return; } switchMode("mirror"); setPinned([]); setCut(true); setLayers(ALL_ON); tour.start(); } },
+    { k: "bench", label: "Workbench", hint: "Profile, physics", pressed: bench, disabled: false, title: "", act: () => setBench(true) },
+    { k: "circuit", label: "Circuit", hint: "Electrical, live", pressed: circuit, disabled: !frames, title: "", act: () => setCircuit(!circuit) },
+    { k: "inject", label: "Inject faults", hint: "Live transformer", pressed: liveOn, disabled: false, title: "", act: () => setLiveOn(true) },
+    { k: "cond", label: "Condition", hint: "Limits, IS 2026", pressed: condOn, disabled: !isLive, title: isLive ? "" : "The condition board is for the live transformer", act: () => setCondOn(!condOn) },
+  ];
+
   return (
     <div className={`page${V2 ? " v2" : " compact"}`}>
       {!V2 && <Frame />}
       <main className="sheet">
         <header className="strip-top">
           <SheetTabs mode={mode} onMode={switchMode} />
-          <button className="explain" disabled={!frames} aria-pressed={touring}
-            onClick={() => { if (touring) { tour.stop(); return; } switchMode("mirror"); setPinned([]); setCut(true); setLayers(ALL_ON); tour.start(); }}>
-            <span className="tab-label">{touring ? "Stop tour" : "Explain"}</span><span className="tab-hint">60 s guided tour</span>
-          </button>
-          <button className="explain" aria-pressed={bench} onClick={() => setBench(true)}>
-            <span className="tab-label">Workbench</span><span className="tab-hint">Profile, physics</span>
-          </button>
-          <button className="explain" aria-pressed={circuit} disabled={!frames} onClick={() => setCircuit(!circuit)}>
-            <span className="tab-label">Circuit</span><span className="tab-hint">Electrical, live</span>
-          </button>
-          <button className="explain" aria-pressed={liveOn} onClick={() => setLiveOn(true)}>
-            <span className="tab-label">Inject faults</span><span className="tab-hint">Live transformer</span>
-          </button>
-          <button className="explain" aria-pressed={condOn} disabled={!isLive} title={isLive ? "" : "The condition board is for the live transformer"} onClick={() => setCondOn(!condOn)}>
-            <span className="tab-label">Condition</span><span className="tab-hint">Limits, IS 2026</span>
-          </button>
-          <details className="export-menu">
-            <summary className="explain"><span className="tab-label">Export</span><span className="tab-hint">Report, blueprint</span></summary>
+          <div className="hdr-tools">
+            {tools.map((t) => (
+              <button key={t.k} className="explain" disabled={t.disabled} aria-pressed={t.pressed} title={t.title} onClick={t.act}>
+                <span className="tab-label">{t.label}</span><span className="tab-hint">{t.hint}</span>
+              </button>
+            ))}
+            <details className="export-menu">
+              <summary className="explain"><span className="tab-label">Export</span><span className="tab-hint">Report, blueprint</span></summary>
+              <div className="export-pop">
+                <button disabled={!frames || !!exporting} onClick={doReport}>{exporting === "report" ? "Making the PDF…" : "Report (PDF with snapshot)"}</button>
+                <a href="/api/blueprint.zip" download onClick={closeMenus}>Blueprint kit (.zip)</a>
+                <a href="/api/blueprint.pdf" download onClick={closeMenus}>Blueprint drawings (.pdf)</a>
+              </div>
+            </details>
+          </div>
+          <details className="hdr-more">
+            <summary className="explain"><span className="tab-label">Tools</span></summary>
             <div className="export-pop">
-              <button disabled={!frames || !!exporting} onClick={async () => {
-                setExporting("report");
-                try {
-                  const snap = (window as unknown as { __dtSnapshot?: () => string | null }).__dtSnapshot?.() ?? null;
-                  if (!snap) window.alert("The 3D picture could not be captured from this browser. The report will use a drawn picture of the transformer state instead.");
-                  await downloadReport(dataset, snap);
-                }
-                catch (e) { window.alert(`Could not make the report: ${(e as Error).message}`); }
-                finally { setExporting(null); }
-              }}>{exporting === "report" ? "Making the PDF…" : "Report (PDF with snapshot)"}</button>
-              <a href="/api/blueprint.zip" download>Blueprint kit (.zip)</a>
-              <a href="/api/blueprint.pdf" download>Blueprint drawings (.pdf)</a>
+              {tools.map((t) => <button key={t.k} disabled={t.disabled} title={t.title} onClick={() => { closeMenus(); t.act(); }}>{t.label}</button>)}
+              <button disabled={!frames || !!exporting} onClick={doReport}>{exporting === "report" ? "Making the PDF…" : "Export: report (PDF with snapshot)"}</button>
+              <a href="/api/blueprint.zip" download onClick={closeMenus}>Export: blueprint kit (.zip)</a>
+              <a href="/api/blueprint.pdf" download onClick={closeMenus}>Export: blueprint drawings (.pdf)</a>
             </div>
           </details>
           <label className="dataset">
@@ -230,6 +242,7 @@ export default function App() {
           {V2 && (sim || info?.simulated) && <span className="v2-simpill">Simulated</span>}
           {V2 && <SectionToggle cut={cut} onCut={setCut} />}
         </header>
+        <ChatDock dataset={dataset} hidden={circuit || condOn || bench || liveOn} />
         {liveOn && <div className="live-overlay"><Tablet onClose={() => { setLiveOn(false); if (frames) player.load(frames, replayT.current ?? undefined); }} /></div>}
         {condOn && isLive && <Condition onClose={() => setCondOn(false)} />}
         {circuit && <Circuit asset={(run.data?.asset as Record<string, unknown>) ?? null} onClose={() => setCircuit(false)} />}

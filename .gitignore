@@ -7,3 +7,6 @@ data/cache/runs/u-*/
 data/uploads/
 web/node_modules/
 web/dist/
+
+.env
+*.local

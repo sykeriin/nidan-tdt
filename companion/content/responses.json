@@ -37,7 +37,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "pu",
+   "expected": "below {t} pu"
   },
   "overcurrent": {
    "title": "Overcurrent",
@@ -59,7 +61,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "pu",
+   "expected": "below {t} pu"
   },
   "hot_spot_high": {
    "title": "Winding hot-spot too high",
@@ -81,7 +85,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "°C",
+   "expected": "below {t} °C"
   },
   "top_oil_high": {
    "title": "Top-oil temperature high",
@@ -103,7 +109,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "°C",
+   "expected": "below {t} °C"
   },
   "ageing_rate_high": {
    "title": "Insulation ageing faster than normal",
@@ -125,7 +133,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "× normal",
+   "expected": "below {t} × normal"
   },
   "residual_drift": {
    "title": "Oil is running hotter than the twin predicts",
@@ -147,7 +157,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "K",
+   "expected": "measured and twin agree to within {t} K"
   },
   "current_unbalance": {
    "title": "Phase current unbalance",
@@ -169,7 +181,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "%",
+   "expected": "below {t} %"
   },
   "voltage_unbalance": {
    "title": "Voltage unbalance",
@@ -191,7 +205,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "%",
+   "expected": "below {t} %"
   },
   "voltage_high": {
    "title": "Voltage high",
@@ -212,7 +228,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "pu",
+   "expected": "up to {t} pu"
   },
   "voltage_low": {
    "title": "Voltage low",
@@ -233,7 +251,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "pu",
+   "expected": "at least {t} pu"
   },
   "oil_low": {
    "title": "Oil level low",
@@ -255,7 +275,9 @@
     "critical": "immediate",
     "warning": "24h",
     "info": "24h"
-   }
+   },
+   "unit": "%",
+   "expected": "above {t} %"
   },
   "oil_leak": {
    "title": "Possible oil leak",
@@ -277,7 +299,9 @@
     "critical": "immediate",
     "warning": "24h",
     "info": "24h"
-   }
+   },
+   "unit": "% in 24 h",
+   "expected": "a fall of less than {t} % in 24 h"
   },
   "oil_theft": {
    "title": "Sudden oil level drop",
@@ -300,7 +324,9 @@
     "critical": "immediate",
     "warning": "immediate",
     "info": "24h"
-   }
+   },
+   "unit": "% drop",
+   "expected": "no sudden drop of {t} % or more"
   },
   "through_fault": {
    "title": "Through-fault recorded",
@@ -322,7 +348,9 @@
     "critical": "7d",
     "warning": "next_scheduled",
     "info": "next_scheduled"
-   }
+   },
+   "unit": "pu",
+   "expected": "below {t} pu"
   },
   "through_fault_stress": {
    "title": "Fault stress building up",
@@ -344,7 +372,9 @@
     "critical": "7d",
     "warning": "7d",
     "info": "next_scheduled"
-   }
+   },
+   "unit": "% of limit",
+   "expected": "inside the cumulative stress limit"
   },
   "jump_sensor": {
    "title": "Sensor reading jumped",
@@ -366,7 +396,9 @@
     "critical": "24h",
     "warning": "24h",
     "info": "7d"
-   }
+   },
+   "unit": "units",
+   "expected": "steps smaller than {t}"
   },
   "range_sensor": {
    "title": "Sensor value out of range",
@@ -388,7 +420,9 @@
     "critical": "24h",
     "warning": "24h",
     "info": "7d"
-   }
+   },
+   "unit": "",
+   "expected": "a reading inside the sensor's range"
   },
   "stuck_sensor": {
    "title": "Sensor stuck",
@@ -410,7 +444,9 @@
     "critical": "24h",
     "warning": "24h",
     "info": "7d"
-   }
+   },
+   "unit": "",
+   "expected": "a reading that keeps changing"
   },
   "dead_channel": {
    "title": "No data from a channel",
@@ -432,7 +468,9 @@
     "critical": "24h",
     "warning": "24h",
     "info": "7d"
-   }
+   },
+   "unit": "",
+   "expected": "a live signal"
   },
   "drift_sensor": {
    "title": "Sensor drifting",
@@ -454,7 +492,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "",
+   "expected": "a reading that follows the physics"
   },
   "implausible_sensor": {
    "title": "Reading is physically implausible",
@@ -476,7 +516,9 @@
     "critical": "24h",
     "warning": "24h",
     "info": "7d"
-   }
+   },
+   "unit": "",
+   "expected": "a reading the physics allows"
   },
   "short_circuit_trip": {
    "title": "Short-circuit trip",
@@ -498,7 +540,9 @@
     "critical": "immediate",
     "warning": "immediate",
     "info": "24h"
-   }
+   },
+   "unit": "pu",
+   "expected": "below {t} pu"
   },
   "turn_fault": {
    "title": "Possible shorted turns",
@@ -520,7 +564,9 @@
     "critical": "24h",
     "warning": "24h",
     "info": "7d"
-   }
+   },
+   "unit": "K",
+   "expected": "winding within {t} K of the twin"
   },
   "earth_leakage": {
    "title": "Earth leakage from a winding",
@@ -542,7 +588,9 @@
     "critical": "immediate",
     "warning": "24h",
     "info": "7d"
-   }
+   },
+   "unit": "A",
+   "expected": "below {t} A"
   },
   "moisture_high": {
    "title": "Moisture in the oil",
@@ -564,7 +612,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "7d"
-   }
+   },
+   "unit": "ppm",
+   "expected": "below {t} ppm"
   },
   "silica_gel_exhausted": {
    "title": "Silica gel used up",
@@ -585,7 +635,9 @@
     "critical": "7d",
     "warning": "7d",
     "info": "next_scheduled"
-   }
+   },
+   "unit": "% saturated",
+   "expected": "below {t} %"
   },
   "charging_current": {
    "title": "Idle line being charged",
@@ -605,7 +657,9 @@
     "critical": "next_scheduled",
     "warning": "next_scheduled",
     "info": "next_scheduled"
-   }
+   },
+   "unit": "kVAr",
+   "expected": "no leading power below {t} kVAr"
   },
   "efficiency_low": {
    "title": "Efficiency below expected",
@@ -626,7 +680,9 @@
     "critical": "7d",
     "warning": "7d",
     "info": "next_scheduled"
-   }
+   },
+   "unit": "%",
+   "expected": "at least {t} %"
   },
   "temp_rise_fast": {
    "title": "Oil temperature rising fast",
@@ -647,7 +703,9 @@
     "critical": "immediate",
     "warning": "24h",
     "info": "24h"
-   }
+   },
+   "unit": "K/h",
+   "expected": "below {t} K/h"
   },
   "frequency_off": {
    "title": "Supply frequency off",
@@ -667,7 +725,9 @@
     "critical": "24h",
     "warning": "7d",
     "info": "next_scheduled"
-   }
+   },
+   "unit": "Hz",
+   "expected": "inside the allowed band, edge {t} Hz"
   }
  }
 }

@@ -2823,6 +2823,46 @@
      }
     }
    }
+  },
+  "/api/chat": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "summary": "Chat",
+    "description": "Ask about the transformer. Returns {answer, on_topic}; off-topic questions get a fixed refusal.",
+    "operationId": "chat_api_chat_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ChatIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
@@ -3224,6 +3264,35 @@
      "why"
     ],
     "title": "ChainStepModel"
+   },
+   "ChatIn": {
+    "properties": {
+     "messages": {
+      "items": {
+       "$ref": "#/components/schemas/Msg"
+      },
+      "type": "array",
+      "maxItems": 40,
+      "minItems": 1,
+      "title": "Messages"
+     },
+     "dataset": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dataset"
+     }
+    },
+    "type": "object",
+    "required": [
+     "messages"
+    ],
+    "title": "ChatIn"
    },
    "ClearIn": {
     "properties": {
@@ -4027,6 +4096,29 @@
      "class"
     ],
     "title": "LastEventModel"
+   },
+   "Msg": {
+    "properties": {
+     "role": {
+      "type": "string",
+      "enum": [
+       "user",
+       "assistant"
+      ],
+      "title": "Role"
+     },
+     "content": {
+      "type": "string",
+      "maxLength": 2000,
+      "title": "Content"
+     }
+    },
+    "type": "object",
+    "required": [
+     "role",
+     "content"
+    ],
+    "title": "Msg"
    },
    "PartAlertModel": {
     "properties": {

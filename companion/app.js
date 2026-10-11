@@ -32,13 +32,22 @@ async function notify(entry) {
   if (SEV[a.severity] < SEV[cfg.minsev]) return;
   if (!entry.test && (snoozed[a.type] || 0) > Date.now()) return;
   const title = `${entry.test ? "TEST: " : ""}${CONTENT.severity_label[a.severity] || a.severity}: ${r.title}`;
-  const body = `${r.push}${a.simulated ? " (simulated data)" : ""}`;
+  const rng = rangeText(a);
+  const body = `${r.push}${rng ? "\n" + rng : ""}${a.simulated ? " (simulated data)" : ""}`;
   if (a.severity === "critical" && navigator.vibrate) navigator.vibrate([200, 100, 200]);
   if ("Notification" in window && Notification.permission === "granted") {
     const opts = {body, tag: a.id, data: {id: a.id}, requireInteraction: a.severity === "critical", icon: "icon.svg"};
     try { if (swReg) await swReg.showNotification(title, opts); else new Notification(title, opts); } catch { /* fall back to in-app only */ }
   }
   setNotice(`${title} — ${r.push}`);
+}
+const unitOf = r => r.unit ? " " + r.unit : "";
+function rangeText(a) {
+  const r = resp(a.type);
+  let exp = r.expected || "";
+  if (exp.includes("{t}")) exp = a.threshold == null ? "" : exp.replace("{t}", fmt(a.threshold));
+  const now = a.value == null ? "" : `Now ${fmt(a.value)}${unitOf(r)}`;
+  return [now, exp ? `expected ${exp}` : ""].filter(Boolean).join(" · ");
 }
 function setNotice(t) { const n = $("notice"); n.textContent = t; n.classList.remove("hidden"); clearTimeout(setNotice.t); setNotice.t = setTimeout(() => n.classList.add("hidden"), 8000); }
 
@@ -62,7 +71,7 @@ function render() {
     li.innerHTML = `<div class="top"><span><span class="tag ${esc(e.a.severity)}">${esc(CONTENT.severity_label[e.a.severity] || e.a.severity)}</span>
       ${e.a.simulated ? '<span class="tag sim">SIMULATED</span>' : ""}${e.test ? '<span class="tag test">TEST</span>' : ""}
       ${e.a.origin === "sensor" ? '<span class="tag">Sensor</span>' : ""}</span><span>${esc(when(e.a.timestamp))}</span></div>
-      <div class="title">${esc(r.title)}</div><div class="muted">${esc(r.push)}${e.acked ? " · Acknowledged" : ""}</div>`;
+      <div class="title">${esc(r.title)}</div><div class="muted">${esc(r.push)}${e.acked ? " · Acknowledged" : ""}</div>${rangeText(e.a) ? `<div class="muted"><b>${esc(rangeText(e.a))}</b></div>` : ""}`;
     li.onclick = () => openSheet(e.a.id);
     ul.appendChild(li);
   });
