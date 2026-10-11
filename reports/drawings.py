@@ -4,7 +4,7 @@
     DT-002  Instrumentation and signal wiring   instruments, marshalling box terminals, gateway channels, cable schedule
     DT-003  Software architecture and data flow   what runs on the server and what each interface carries
     DT-004  Single-line diagram
-    DT-005  General arrangement (schematic)
+    DT-005  General arrangement: front and side elevations, section (cut open), plan, foundation plan
 
 Each function returns a matplotlib Figure sized 420 x 297 mm with units in millimetres, so a sheet can be saved as SVG (vector) or
 rendered to PNG for the PDF. Drawing numbers, tags and signal names match sensor_schedule.csv and terminal_schedule.csv.
@@ -359,57 +359,215 @@ def single_line(asset: dict) -> plt.Figure:
     return s.fig
 
 
-# ====================================================================== DT-005 general arrangement
+# ====================================================================== DT-005 general arrangement (elevations, plan, section, foundation)
+class _V:
+    """A drawing view: real millimetres on the transformer, mapped to sheet millimetres by origin and scale."""
+
+    def __init__(self, ax, ox, oy, k=0.06):
+        self.ax, self.ox, self.oy, self.k = ax, ox, oy, k
+
+    def X(self, x):
+        return self.ox + x * self.k
+
+    def Y(self, y):
+        return self.oy + y * self.k
+
+    def rect(self, x, y, w, h, fc="none", ec=INK, lw=0.7, ls="-", hatch=None, z=2):
+        self.ax.add_patch(Rectangle((self.X(x), self.Y(y)), w * self.k, h * self.k, fc=fc, ec=ec, lw=lw, ls=ls, hatch=hatch, zorder=z))
+
+    def line(self, pts, lw=0.6, c=INK, ls="-", z=3):
+        self.ax.plot([self.X(p[0]) for p in pts], [self.Y(p[1]) for p in pts], color=c, lw=lw, ls=ls, zorder=z, solid_capstyle="butt")
+
+    def circ(self, x, y, r, fc="none", lw=0.7, z=3):
+        self.ax.add_patch(Circle((self.X(x), self.Y(y)), r * self.k, fc=fc, ec=INK, lw=lw, zorder=z))
+
+    def text(self, x, y, s, fs=6, ha="center", va="center", bold=False, c=INK, rot=0):
+        self.ax.text(self.X(x), self.Y(y), s, fontsize=fs, ha=ha, va=va, fontweight="bold" if bold else "normal", color=c, rotation=rot, zorder=6)
+
+    def centre(self, x1, y1, x2, y2):
+        self.line([(x1, y1), (x2, y2)], lw=0.35, c="#B42318", ls=(0, (10, 3, 2, 3)))
+
+    def dim(self, x1, y1, x2, y2, off, label, fs=5.6):
+        """A dimension line between two points, drawn `off` mm (real) away, with arrow heads and the value."""
+        horiz = abs(y1 - y2) < 1e-6
+        if horiz:
+            yy = y1 + off
+            self.line([(x1, y1), (x1, yy + (20 if off > 0 else -20))], lw=0.3, c=MUTED)
+            self.line([(x2, y2), (x2, yy + (20 if off > 0 else -20))], lw=0.3, c=MUTED)
+            self.ax.annotate("", xy=(self.X(x1), self.Y(yy)), xytext=(self.X(x2), self.Y(yy)), arrowprops=dict(arrowstyle="<|-|>", lw=0.5, color=INK, mutation_scale=5, shrinkA=0, shrinkB=0), zorder=5)
+            self.text((x1 + x2) / 2, yy + (35 if off > 0 else -45), label, fs=fs)
+        else:
+            xx = x1 + off
+            self.line([(x1, y1), (xx + (20 if off > 0 else -20), y1)], lw=0.3, c=MUTED)
+            self.line([(x2, y2), (xx + (20 if off > 0 else -20), y2)], lw=0.3, c=MUTED)
+            self.ax.annotate("", xy=(self.X(xx), self.Y(y1)), xytext=(self.X(xx), self.Y(y2)), arrowprops=dict(arrowstyle="<|-|>", lw=0.5, color=INK, mutation_scale=5, shrinkA=0, shrinkB=0), zorder=5)
+            self.text(xx + (-30 if off < 0 else 30), (y1 + y2) / 2, label, fs=fs, rot=90, ha="center")
+
+    def balloon(self, x, y, n, tx, ty):
+        self.line([(x, y), (tx, ty)], lw=0.35, c=MUTED)
+        self.ax.add_patch(Circle((self.X(x), self.Y(y)), 2.3, fc=PAPER, ec=INK, lw=0.7, zorder=7))
+        self.ax.text(self.X(x), self.Y(y), str(n), fontsize=5.4, ha="center", va="center", fontweight="bold", zorder=8)
+
+
+def _bushing(v, x, y0, h, tall=True, sheds=5, r=22):
+    """Porcelain bushing: flange, ribbed insulator, cap."""
+    v.rect(x - 38, y0, 76, 38, fc="#BDBAAE")
+    v.rect(x - 14, y0 + 38, 28, h - 60, fc="#E8E4D6", lw=0.5)
+    for i in range(sheds):
+        yy = y0 + 70 + i * (h - 150) / max(sheds, 1)
+        v.rect(x - r - 14, yy, 2 * r + 28, 22, fc="#F4F1E8", lw=0.5)
+    v.rect(x - 16, y0 + h - 24, 32, 24, fc="#8A867A")
+
+
 def general_arrangement(asset: dict) -> plt.Figure:
-    s = Sheet("DT-005", "General arrangement (schematic, not to scale)", 5, asset, scale="NTS")
+    s = Sheet("DT-005", "General arrangement", 5, asset, scale="1:17",
+              status="Indicative dimensions: confirm from the manufacturer's drawing")
     ax = s.ax
-    ox, oy, k = 30, 70, 3.9              # drawing origin and scale (mm per drawing unit), over the 105 x 66 unit layout used before
-    R = lambda x, y, w, h, fc, lw=1.1: ax.add_patch(Rectangle((ox + x * k, oy + y * k), w * k, h * k, fc=fc, ec=INK, lw=lw))   # noqa: E731
-    C = lambda x, y, r, fc="white": ax.add_patch(Circle((ox + x * k, oy + y * k), r * k, fc=fc, ec=INK, lw=1.0))   # noqa: E731
-    R(19, 2, 55, 4, "#BDBAAE")
-    R(22, 6, 46, 30, "#E8E6DD", 1.6)
-    R(20, 36, 54, 2.4, "#CFCCC0", 1.3)
-    for i in range(7):
-        R(68 + i * 2.1, 9, 1.5, 25, "#D9D6CB", 0.9)
-    R(67.5, 31, 16, 1.2, "#9A978C", 0.7)
-    R(67.5, 11, 16, 1.2, "#9A978C", 0.7)
-    for x, lab in zip((35, 44, 53), ("1U R", "1V Y", "1W B")):
-        R(x - 1.1, 38.4, 2.2, 4, "#8A867A", 0.9)
-        for j in range(5):
-            R(x - 2.4, 42.4 + j * 2.2, 4.8, 1.4, "#F4F1E8", 0.8)
-        s.text(ox + x * k, oy + 55.8 * k, lab, 8, True, ha="center")
-    for x, lab in zip((62, 66, 70, 73.5), ("2U R", "2V Y", "2W B", "2N N")):
-        R(x - 0.9, 38.4, 1.8, 3, "#8A867A", 0.9)
-        for j in range(2):
-            R(x - 1.7, 41 + j * 1.9, 3.4, 1.2, "#F4F1E8", 0.8)
-        s.text(ox + x * k, oy + 46.8 * k, lab, 7, True, ha="center")
-    R(9, 46, 22, 7, "#E8E6DD", 1.2)
-    R(19, 38.4, 2, 7.6, "#BDBAAE", 0.9)
-    R(18, 41, 4, 3, "#9A978C", 0.9)
-    C(28, 49.5, 1.5)
-    R(10.4, 36, 1.2, 10, "#BDBAAE", 0.9)
-    R(8.6, 30, 4.8, 6, "#9FB8E6", 1.1)
-    R(9.2, 28.6, 3.6, 1.4, "#CFCCC0", 0.9)
-    R(57.2, 38.4, 1.6, 3, "#C9A227", 0.9)
-    C(25.2, 29, 2.1)
-    C(25.2, 23, 2.1)
-    R(33, 22, 14, 8, "white", 1.0)
-    R(55, 26, 5, 6, "#BDBAAE", 1.0)
-    R(19, 12, 3, 1.6, "#2E7D4F", 0.9)
-    C(45, 9.5, 1.1, "#9A978C")
-    pts = [(1, 44, 61, 44, 53.5), (2, 67.5, 61, 67.5, 44.5), (3, 6, 60, 12, 52.5), (4, 25, 60, 28, 51), (5, 4, 46, 18, 42.5), (6, 3, 37, 8.6, 33), (7, 16.5, 32, 23.1, 29.6),
-           (8, 12, 22, 23.2, 23.2), (9, 62, 18, 58, 26), (10, 58, 55, 58, 42), (11, 92, 24, 82.8, 22), (12, 40, 15, 40, 22), (13, 10, 13, 19.2, 12.8), (14, 45, 1.8, 45, 8.4)]
-    for n, x, y, tx, ty in pts:
-        s.line([(ox + x * k, oy + y * k), (ox + tx * k, oy + ty * k)], color=MUTED, lw=0.7)
-        s.balloon(ox + x * k, oy + y * k, str(n), 3.4)
-    leg = ["HV bushings 1U 1V 1W (R Y B)", "LV bushings 2U 2V 2W 2N", "Conservator", "Oil level gauge LT-101", "Buchholz relay", "Breather, silica gel, oil seal cup",
-           "Top-oil indicator TT-101", "Winding indicator TT-102", "Off-circuit tap changer", "Pressure relief device", "Radiators", "Rating and diagram plate",
-           "Tank earthing pad (CT-205 on strap)", "Drain valve and sampling point"]
-    s.text(326, 270, "Legend", 8, True)
-    for i, t in enumerate(leg):
-        s.balloon(332, 262 - i * 9.2, str(i + 1), 3.0)
-        s.text(338, 262 - i * 9.2, t, 6.6)
-    s.text(30, 62, "Schematic only: dimensions, masses and oil volume are on the manufacturer's general arrangement drawing.", 6.6, color=MUTED)
+    kva = asset.get("rating_kVA", 1000)
+    L, W, H0 = 1150, 800, 1150                       # tank length, width, wall height (mm), indicative for a 1000 kVA ONAN unit
+    BASE, COV = 120, 40
+    TOP = BASE + H0 + COV                            # top of cover
+    RAD0 = 560                                       # radiator bank depth each end
+    OA = RAD0 * 2 + L                                # overall length
+    HVX = [RAD0 + 190, RAD0 + L / 2, RAD0 + L - 190]
+
+    # ============================================================ FRONT ELEVATION (HV side)
+    v = _V(ax, 22, 168)
+    s.text(22, 288, "FRONT ELEVATION (HV side)", 7.5, True)
+    v.rect(0, 0, OA, 14, fc="none", ec="none")
+    for xr in (RAD0 + 100, RAD0 + L - 100):         # rail channels and base
+        pass
+    v.rect(RAD0 - 40, 0, L + 80, BASE, fc="#BDBAAE")
+    v.rect(RAD0, BASE, L, H0, fc="#E8E6DD", lw=0.9)                       # tank
+    v.rect(RAD0 - 30, BASE + H0, L + 60, COV, fc="#CFCCC0", lw=0.9)         # cover
+    for bank, x0, sgn in (("L", 0, 1), ("R", RAD0 + L + 20, 1)):            # radiator banks
+        for i in range(6):
+            v.rect(x0 + 60 + i * 80, BASE + 100, 46, H0 - 200, fc="#D9D6CB", lw=0.5)
+        v.rect(x0 + 40, BASE + H0 - 190, 480, 38, fc="#9A978C", lw=0.5)
+        v.rect(x0 + 40, BASE + 150, 480, 38, fc="#9A978C", lw=0.5)
+    # conservator behind, above the bushings
+    v.rect(RAD0 + 60, TOP + 190, 820, 240, fc="#DAD7CB", lw=0.8, ls="--")
+    v.rect(RAD0 + 300, TOP + 60, 70, 140, fc="#C9C5B8", lw=0.6, ls="--")
+    for x in HVX:
+        _bushing(v, x, TOP, 520)
+    v.rect(RAD0 + L - 380, TOP + 150, 70, 60, fc="#9A978C")                 # Buchholz relay
+    v.circ(RAD0 + 620, TOP + 330, 36, fc="#fff")                            # oil level gauge on the conservator end
+    v.line([(RAD0 + 880, TOP + 300), (RAD0 + 940, TOP + 300), (RAD0 + 940, BASE + 760)], lw=0.8)       # breather pipe
+    v.rect(RAD0 + 905, BASE + 560, 70, 200, fc="#9FB8E6", lw=0.7)                                   # silica gel jar
+    v.circ(RAD0 + 170, BASE + 820, 46, fc="#fff"); v.circ(RAD0 + 170, BASE + 640, 46, fc="#fff")     # OTI, WTI dials
+    v.rect(RAD0 + 400, BASE + 380, 360, 260, fc="#fff", lw=0.6)                                    # rating plate
+    v.rect(RAD0 + L - 220, BASE + 560, 120, 150, fc="#BDBAAE", lw=0.7)                               # tap changer handle
+    v.circ(RAD0 + 700, BASE + 90, 26, fc="#9A978C")                                                  # drain valve
+    v.rect(RAD0 + 20, BASE + 30, 80, 40, fc="#2E7D4F", lw=0.6)                                       # earthing pad
+    v.rect(RAD0 + L - 150, TOP, 40, 90, fc="#C9A227")                                                # pressure relief device
+    for x in (RAD0 + 60, RAD0 + L - 60):                                                              # lifting lugs
+        v.circ(x, BASE + H0 + COV + 40, 26, fc="#fff")
+    v.centre(HVX[1], -40, HVX[1], TOP + 640)
+    for k_, x in enumerate(HVX):
+        v.text(x, TOP + 560, ("1U", "1V", "1W")[k_], 6, bold=True)
+    # dimensions
+    v.dim(0, 0, OA, 0, -110, f"{OA:g}")
+    v.dim(RAD0, 0, RAD0 + L, 0, -230, f"{L:g} tank")
+    v.dim(OA, 0, OA, TOP + 520, 170, f"{TOP + 520:g}")
+    v.dim(OA, 0, OA, BASE + H0 + COV, 330, f"{BASE + H0 + COV:g}")
+    for n, (x, y, tx, ty) in enumerate([(HVX[2] + 120, TOP + 480, HVX[2] + 40, TOP + 400), (RAD0 + 880, TOP + 480, RAD0 + 800, TOP + 380), (RAD0 + 1100, TOP + 330, RAD0 + L - 340, TOP + 190),
+                                        (RAD0 + 940, BASE + 880, RAD0 + 940, BASE + 760), (330, BASE + 1000, 330, BASE + 900), (RAD0 + 300, BASE + 830, RAD0 + 216, BASE + 830),
+                                        (RAD0 + 280, BASE + 560, RAD0 + 216, BASE + 640), (RAD0 + 600, BASE + 300, RAD0 + 580, BASE + 380), (RAD0 + L - 80, BASE + 470, RAD0 + L - 130, BASE + 560),
+                                        (RAD0 + 760, 80, RAD0 + 726, BASE + 90), (RAD0 - 130, BASE + 100, RAD0 + 20, BASE + 55), (RAD0 + L - 20, TOP + 220, RAD0 + L - 112, TOP + 70)], start=1):
+        v.balloon(x, y, n, tx, ty)
+
+    # ============================================================ SIDE ELEVATION (LV end)
+    v2 = _V(ax, 188, 168)
+    s.text(188, 288, "SIDE ELEVATION (LV end)", 7.5, True)
+    v2.rect(0, 0, W + 160, BASE, fc="#BDBAAE")
+    v2.rect(80, BASE, W, H0, fc="#E8E6DD", lw=0.9)
+    v2.rect(50, BASE + H0, W + 60, COV, fc="#CFCCC0", lw=0.9)
+    for i in range(6):                                                            # radiator bank seen end-on
+        v2.rect(80 + 40 + i * 118, BASE + 90, 72, H0 - 180, fc="#D9D6CB", lw=0.5)
+    v2.circ(80 + W / 2, TOP + 310, 120, fc="#DAD7CB", lw=0.7)                     # conservator seen end-on
+    for k_, x in enumerate((220, 400, 580, 760)):
+        _bushing(v2, x, TOP, 300, sheds=2, r=16)
+        v2.text(x, TOP + 370, ("2U", "2V", "2W", "2N")[k_], 6, bold=True)
+    v2.rect(80 + W / 2 - 40, TOP + 520, 80, 40, fc="none", ec="none")
+    v2.centre(80 + W / 2, -40, 80 + W / 2, TOP + 700)
+    v2.dim(80, 0, 80 + W, 0, -110, f"{W:g}")
+    v2.dim(0, 0, W + 160, 0, -230, f"{W + 160:g} overall")
+    v2.balloon(120, TOP + 480, 2, 220, TOP + 330)
+    v2.balloon(80 + W + 120, TOP + 360, 3, 80 + W / 2 + 100, TOP + 330)
+
+    # ============================================================ SECTION A-A (cut open)
+    v3 = _V(ax, 268, 168)
+    s.text(268, 288, "SECTION A-A  (cut open)", 7.5, True)
+    v3.rect(RAD0 // 3, 0, L + 120, BASE, fc="#BDBAAE")
+    v3.rect(RAD0 // 3 + 60, BASE, L, H0, fc="#F4F1E8", lw=0.9)                    # tank wall
+    v3.rect(RAD0 // 3 + 60, BASE, L, H0 - 150, fc="#F6E7B8", ec="none", lw=0, z=1)   # oil
+    v3.rect(RAD0 // 3 + 30, BASE + H0, L + 60, COV, fc="#CFCCC0", lw=0.9)
+    cx0 = RAD0 // 3 + 60
+    v3.line([(cx0, BASE + H0 - 150), (cx0 + L, BASE + H0 - 150)], lw=0.5, c="#B7791F", ls="--")
+    v3.text(cx0 + L - 20, BASE + H0 - 100, "oil level", 5.4, ha="right", c="#8A6D1F")
+    v3.rect(cx0 + 120, BASE + 120, L - 240, 70, fc="#9A978C", lw=0.7)               # bottom yoke
+    v3.rect(cx0 + 120, BASE + H0 - 420, L - 240, 70, fc="#9A978C", lw=0.7)          # top yoke
+    for i, lx in enumerate((cx0 + 250, cx0 + L / 2, cx0 + L - 250)):
+        v3.rect(lx - 55, BASE + 190, 110, H0 - 610, fc="#9A978C", lw=0.6)           # core limb
+        v3.rect(lx - 150, BASE + 240, 95, H0 - 700, fc="#9FB8E6", hatch="////", lw=0.6)    # LV coil
+        v3.rect(lx + 55, BASE + 240, 95, H0 - 700, fc="#9FB8E6", hatch="////", lw=0.6)
+        v3.rect(lx - 215, BASE + 215, 65, H0 - 650, fc="#F2B79A", hatch="\\\\\\\\", lw=0.6)  # HV coil
+        v3.rect(lx + 150, BASE + 215, 65, H0 - 650, fc="#F2B79A", hatch="\\\\\\\\", lw=0.6)
+        v3.line([(lx, BASE + H0 - 350), (lx, TOP)], lw=0.9)                           # lead to the HV bushing
+    for x in (cx0 + 250, cx0 + L / 2, cx0 + L - 250):
+        _bushing(v3, x, TOP, 420, sheds=4)
+    v3.rect(cx0 + L - 230, BASE + 520, 110, 190, fc="#BDBAAE", lw=0.7)               # tap changer
+    v3.text(cx0 + 250, BASE + H0 - 470, "iron core", 5.6, c=INK)
+    v3.balloon(cx0 + 40, BASE + 800, 13, cx0 + 140, BASE + 760)
+    v3.balloon(cx0 + 40, BASE + 560, 14, cx0 + 250 - 180, BASE + 560)
+    v3.balloon(cx0 + L - 40, BASE + 340, 15, cx0 + L - 120, BASE + 400)
+    v3.dim(cx0, 0, cx0 + L, 0, -110, f"{L:g}")
+    for (lab, xx, yy) in (("HV coil", cx0 - 120, BASE + 900), ("LV coil", cx0 + 62, BASE + 40), ("core", cx0 + 250, BASE + 20)):
+        pass
+
+    # ============================================================ PLAN VIEW
+    v4 = _V(ax, 22, 62)
+    s.text(22, 150, "PLAN VIEW", 7.5, True)
+    v4.rect(RAD0, 0, L, W, fc="#E8E6DD", lw=0.9)
+    for x0 in (0, RAD0 + L + 20):
+        v4.rect(x0 + 40, 90, 480, W - 180, fc="#D9D6CB", lw=0.5)
+        for i in range(6):
+            v4.line([(x0 + 60 + i * 80, 90), (x0 + 60 + i * 80, W - 90)], lw=0.4)
+    for x in HVX:
+        v4.circ(x, W - 220, 40, fc="#F4F1E8", lw=0.8); v4.text(x, W - 330, ("1U", "1V", "1W")[HVX.index(x)], 5.4, bold=True)
+    for i, x in enumerate((RAD0 + 250, RAD0 + 450, RAD0 + 650, RAD0 + 850)):
+        v4.circ(x, 190, 28, fc="#F4F1E8", lw=0.8); v4.text(x, 110, ("2U", "2V", "2W", "2N")[i], 5.4, bold=True)
+    v4.rect(RAD0 + 90, W / 2 - 130, 820, 260, fc="none", ec=MUTED, lw=0.6, ls="--")
+    v4.text(RAD0 + 500, W / 2, "conservator (above)", 5.4, c=MUTED)
+    v4.circ(RAD0 + 40, 40, 18, fc="#fff"); v4.circ(RAD0 + L - 40, 40, 18, fc="#fff"); v4.circ(RAD0 + 40, W - 40, 18, fc="#fff"); v4.circ(RAD0 + L - 40, W - 40, 18, fc="#fff")
+    v4.centre(HVX[1], -60, HVX[1], W + 60)
+    v4.dim(0, 0, OA, 0, -110, f"{OA:g}")
+    v4.dim(RAD0 + L, 0, RAD0 + L, W, 520, f"{W:g}")
+
+    # ============================================================ FOUNDATION PLAN
+    v5 = _V(ax, 178, 62, 0.047)
+    s.text(178, 150, "FOUNDATION PLAN", 7.5, True)
+    fw = 1000
+    v5.rect(0, 0, L + 400, fw, fc="none", ec=MUTED, lw=0.6, ls="--")
+    for yy in (200, fw - 200):
+        v5.rect(100, yy - 50, L + 200, 100, fc="#BDBAAE", lw=0.8)                   # rail channels
+    for xx in (250, L + 150):
+        for yy in (200, fw - 200):
+            v5.circ(xx, yy, 40, fc="#fff", lw=0.8)                                    # rollers
+    v5.centre(L / 2 + 200, -60, L / 2 + 200, fw + 60); v5.centre(-60, fw / 2, L + 460, fw / 2)
+    v5.dim(250, 0, L + 150, 0, -110, f"{L - 100:g} roller centres")
+    v5.dim(L + 400, 200, L + 400, fw - 200, 190, f"{fw - 400:g} rail gauge")
+    v5.text(L / 2 + 200, fw / 2 + 120, "anchor bolts and jacking pads per site", 5, c=MUTED)
+
+    # ============================================================ TABLES
+    s.text(264, 150, "KEY TO BALLOONS", 7.5, True)
+    keys = ["HV bushings 1U 1V 1W", "Conservator", "Buchholz relay", "Breather, silica gel", "Oil level gauge LT-101", "Top-oil indicator TT-101", "Winding indicator TT-102",
+            "Rating and diagram plate", "Off-circuit tap changer", "Drain valve, sampling point", "Earthing pad (CT-205 on strap)", "Pressure relief device", "HV winding", "LV winding", "Core"]
+    s.table(264, 146, [8, 60, 8, 60], [("No.", "Item", "No.", "Item")] + [[str(i + 1), keys[i], str(i + 9) if i + 9 <= len(keys) else "", keys[i + 8] if i + 8 < len(keys) else ""] for i in range(8)], fs=5.6, rh=4.3)
+    s.text(264, 100, "INDICATIVE DATA", 7.5, True)
+    s.table(264, 96, [34, 102], [("Item", "Value"), ("Rating", f"{kva} kVA, {asset.get('cooling', 'ONAN')}"), ("Voltage", f"{asset.get('hv_voltage_V', 0) / 1000:g} / {asset.get('lv_voltage_V', 0) / 1000:g} kV, {asset.get('vector_group', '')}"),
+                                       ("Overall", f"{OA:g} x {W + 160:g} x {TOP + 520:g} mm (L x W x H)"), ("Terminals", "HV 1U 1V 1W on cover; LV 2U 2V 2W 2N on cover"),
+                                       ("Mass, oil", "from the rating plate (not estimated here)")], fs=5.6, rh=4.6)
     return s.fig
 
 
