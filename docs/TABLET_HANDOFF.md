@@ -155,6 +155,6 @@ Things that went wrong on this setup:
 - **`dead_channel` does not fire** in live injection (it needs a channel that is near zero over the whole window), so a dead temperature sensor shows as `jump_sensor` then `stuck_sensor`.
 - **The faults are fast-forwarded** (a cooling fault builds over 36 simulated hours, a leak over 1-5 simulated days). At *Turbo* that is seconds to a minute of real time. This is a demo timescale, not a realistic one.
 - **Not run on the full suite**: only `tests/test_live.py` and `tests/test_live_api.py` were run on this branch. Run the whole suite before merging.
-- The TX Alerts apps still show the replay-based alerts; the live injection alerts are shown on the twin screen only (they are not pushed as notifications).
+- Live injection alerts are also pushed to the phone apps: while a twin screen is streaming, each newly raised live alert is queued for /api/companion/test-alerts, which TX Alerts (Android and PWA) already poll, and shows as a TEST notification. Alerts present when a stream connects are not replayed.
 - The response text (`companion/content/responses.json`) is advisory and not expert-reviewed.
 - Debug-signed APK, sideloaded. No Play Store setup.

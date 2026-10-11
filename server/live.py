@@ -31,6 +31,26 @@ router = APIRouter(prefix="/api/live", tags=["live"])
 _lock = threading.Lock()
 _session: L.LiveSession | None = None
 _control = {"rate": 2.0, "paused": False, "stream": 0}
+alert_sinks: list = []     # callables taking one alert dict; server.app registers the phone-notification queue here
+_announced: dict = {"session": None, "ids": set()}
+
+
+def _announce(s: L.LiveSession, tick: dict) -> None:
+    """Hand each newly raised live alert to the sinks once, so a phone listening to the companion queue is notified when an anomaly is injected on the tablet. Alerts already present when a stream (re)connects are not replayed."""
+    first = _announced["session"] is not s
+    if first:
+        _announced["session"], _announced["ids"] = s, set()
+    for a in tick.get("alerts") or []:
+        aid = a.get("id")
+        if aid in _announced["ids"]:
+            continue
+        _announced["ids"].add(aid)
+        if not first:
+            for sink in alert_sinks:
+                try:
+                    sink(a)
+                except Exception:
+                    pass
 
 
 def _get() -> L.LiveSession:
@@ -139,7 +159,9 @@ def stream(limit: Annotated[int | None, Query(ge=1, le=100000, description="stop
                 time.sleep(0.1)
                 continue
             t0 = time.time()
-            yield json.dumps(plain(s.tick())) + "\n"
+            tk = plain(s.tick())
+            _announce(s, tk)
+            yield json.dumps(tk) + "\n"
             sent += 1
             time.sleep(max(0.0, 1.0 / _control["rate"] - (time.time() - t0)))
     return StreamingResponse(lines(), media_type="application/x-ndjson")

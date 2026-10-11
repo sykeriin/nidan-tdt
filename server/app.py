@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 
 from dt import api
 from server import schemas as S
-from server.live import router as live_router
+from server.live import alert_sinks as live_alert_sinks, router as live_router
 from server.serialize import MAX_POINTS, plain, series, table, time_range
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -512,6 +512,15 @@ def companion_responses():
         raise HTTPException(404, "companion/content/responses.json is missing")
 
 
+def _queue_live_alert(a: dict) -> None:
+    """Alert raised by the live plant (injected on the tablet): queue it for the phones that poll /api/companion/test-alerts."""
+    with _TEST_LOCK:
+        seq = (_TESTS[-1]["seq"] + 1) if _TESTS else 1
+        _TESTS.append({"seq": seq, "alert": {**a, "simulated": True}})
+        del _TESTS[:-_TEST_KEEP]
+
+
+live_alert_sinks.append(_queue_live_alert)
 app.include_router(live_router)
 
 

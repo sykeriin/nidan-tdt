@@ -61,3 +61,18 @@ def test_control_sets_rate_and_pause(c):
     assert c.post("/api/live/control", json={"paused": True}).json()["paused"] is True
     assert c.post("/api/live/control", json={"paused": False, "rate": 20}).json()["paused"] is False
     assert c.post("/api/live/control", json={"rate": 0}).status_code == 422
+
+
+def test_injected_anomaly_reaches_the_phone_queue(c):
+    """An anomaly injected on the tablet must show up in the queue the phone apps poll, once per alert."""
+    c.post("/api/live/clear")
+    c.post("/api/live/session", json={"seed": 0})
+    _take(c, 2)
+    base = c.get("/api/companion/test-alerts").json()["latest"]
+    assert c.post("/api/live/inject", json={"kind": "overload", "params": {"level_pu": 1.4}}).status_code == 200
+    _take(c, 24)
+    items = c.get("/api/companion/test-alerts", params={"since": base}).json()["items"]
+    assert items, "no live alert was queued for the phone"
+    ids = [i["alert"]["id"] for i in items]
+    assert len(ids) == len(set(ids))
+    assert all(i["alert"]["simulated"] for i in items)
