@@ -512,3 +512,9 @@
 .compact .margin-left .heatscale { position: static; margin: 12px 14px 16px; }
 .stage > .st-col { grid-template-rows: auto auto; align-content: start; }
 .stage > .st-col .st-card { flex: none; }
+
+/* three-phase circuit page */
+.ck-sld-svg { max-height: 460px; }
+.ck-rat { width: 100%; border-collapse: collapse; margin-top: 8px; font: 12px var(--cond); }
+.ck-rat th { text-align: left; font-weight: 600; color: var(--ink-2); padding: 6px 10px 6px 0; white-space: nowrap; border-top: 1px solid var(--rule); }
+.ck-rat td { padding: 6px 18px 6px 0; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: 11.5px; }

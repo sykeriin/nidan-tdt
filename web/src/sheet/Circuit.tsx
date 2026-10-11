@@ -23,6 +23,19 @@ function useClock() {
 }
 const f = (v: number | null, d = 1) => (v == null ? "—" : v.toFixed(d));
 
+/** A winding drawn as humps along the line from (x1,y1) to (x2,y2). */
+function coil(x1: number, y1: number, x2: number, y2: number, color: string, n = 4, amp = 4.5) {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+  const pad = Math.min(10, len * 0.12), seg = (len - 2 * pad) / n;
+  let d = `M${x1} ${y1} L${(x1 + ux * pad).toFixed(1)} ${(y1 + uy * pad).toFixed(1)}`;
+  for (let i = 0; i < n; i++) {
+    const sx = x1 + ux * (pad + seg * i), sy = y1 + uy * (pad + seg * i), ex = x1 + ux * (pad + seg * (i + 1)), ey = y1 + uy * (pad + seg * (i + 1));
+    d += ` Q${((sx + ex) / 2 + nx * amp * 2).toFixed(1)} ${((sy + ey) / 2 + ny * amp * 2).toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+  }
+  d += ` L${x2} ${y2}`;
+  return <path key={`${x1}-${y1}-${x2}-${y2}`} d={d} fill="none" stroke={color} strokeWidth="2.4" />;
+}
+
 export function Circuit({ asset, onClose }: { asset: Record<string, unknown> | null; onClose: () => void }) {
   const i = usePlayerIndex();
   const r = i >= 0 ? player.row(i) : {};
@@ -73,39 +86,106 @@ export function Circuit({ asset, onClose }: { asset: Record<string, unknown> | n
   return (
     <div className="circuit" role="dialog" aria-label="Electrical circuit">
       <header className="ck-head">
-        <h2>Electrical circuit <span>live from the replay clock</span></h2>
+        <h2>Electrical circuit <span>live from the transformer</span></h2>
         <button className="unpin" onClick={onClose} aria-label="Close circuit page">×</button>
       </header>
       <div className="ck-body">
         <section className="ck-card ck-sld">
-          <h3>One-line diagram</h3>
-          <svg viewBox="0 0 1180 215" className="ck-svg ck-sld-svg" role="img" aria-label="One-line diagram">
-            {/* grid */}
-            <g transform="translate(30,70)"><circle cx="30" cy="35" r="26" fill="none" stroke={C.ink} strokeWidth="2" /><path d="M14 35 q8 -14 16 0 t16 0" fill="none" stroke={C.hv} strokeWidth="2.4" /><text x="30" y="82" textAnchor="middle" className="t b">Grid</text><text x="30" y="97" textAnchor="middle" className="t m">{(Vhv / 1000).toFixed(0)} kV, {hz.toFixed(2)} Hz</text></g>
-            <Flow d="M120 105 H 300" color={C.hv} />
-            {/* HV breaker */}
-            <g transform="translate(300,90)"><rect width="30" height="30" fill="#fff" stroke={C.ink} strokeWidth="2" /><path d="M5 25 L25 5" stroke={C.ink} strokeWidth="2.4" /><text x="15" y="52" textAnchor="middle" className="t m">HV breaker</text><text x="15" y="66" textAnchor="middle" className="t ok">closed</text></g>
-            <Flow d="M330 105 H 480" color={C.hv} n={5} />
-            <text x="405" y="92" textAnchor="middle" className="t v">{f(Ihv, 1)} A</text>
-            {/* transformer */}
-            <g transform="translate(480,40)">
-              <circle cx="70" cy="65" r="48" fill="#fff" stroke={C.hv} strokeWidth="3" /><circle cx="130" cy="65" r="48" fill="#fff" stroke={C.lv} strokeWidth="3" opacity="0.92" />
-              <text x="100" y="132" textAnchor="middle" className="t b">Transformer-1</text><text x="100" y="147" textAnchor="middle" className="t m">{Sn} kVA · Dyn11 · {(Vhv / 1000).toFixed(0)} / {(Vn / 1000).toFixed(3)} kV</text>
-              <text x="70" y="62" textAnchor="middle" className="t big" fill={C.hv}>HV</text><text x="130" y="62" textAnchor="middle" className="t big" fill={C.lv}>LV</text>
-              <text x="100" y="82" textAnchor="middle" className="t m">{f(K * 100, 0)} % load</text>
+          <h3>Three-phase circuit <em>{(Vhv / 1000).toFixed(0)} kV / {(Vn / 1000).toFixed(3)} kV, Dyn11: delta on the HV side, star with a solidly earthed neutral on the LV side</em></h3>
+          <svg viewBox="0 0 1180 372" className="ck-svg ck-sld-svg" role="img" aria-label="Three-phase transformer circuit">
+            {/* ---- supply */}
+            <circle cx="50" cy="160" r="30" fill="#fff" stroke={C.ink} strokeWidth="2" />
+            <path d="M34 160 q8 -14 16 0 t16 0" fill="none" stroke={C.hv} strokeWidth="2.4" />
+            <text x="50" y="212" textAnchor="middle" className="t b">Grid</text>
+            <text x="50" y="226" textAnchor="middle" className="t m">{(Vhv / 1000).toFixed(0)} kV · {hz.toFixed(2)} Hz</text>
+            {[110, 160, 210].map((y, k) => <path key={"fan" + k} d={`M80 160 L ${100} ${y}`} stroke={phc[k]} strokeWidth="2.2" fill="none" />)}
+            {/* phase labels */}
+            {[110, 160, 210].map((y, k) => <text key={"pl" + k} x="106" y={y - 6} className="t b" fill={phc[k]}>{"RYB"[k]}</text>)}
+            {/* HV flow */}
+            {[110, 160, 210].map((y, k) => <Flow key={"hf" + k} d={`M100 ${y} H 372`} color={phc[k]} n={6} />)}
+            {/* surge arrester on R, one of three */}
+            <path d="M150 110 V 70" stroke={C.ink} strokeWidth="1.6" fill="none" /><rect x="143" y="56" width="14" height="20" fill="#fff" stroke={C.ink} strokeWidth="1.6" /><path d="M150 56 V 44 M140 44 H160 M143 40 H157 M146 36 H154" stroke={C.ink} strokeWidth="1.5" fill="none" />
+            <text x="168" y="62" className="t m">surge arresters ×3</text>
+            {/* HV breaker, three poles */}
+            {[110, 160, 210].map((y, k) => <g key={"hb" + k}><circle cx="222" cy={y} r="3" fill={C.ink} /><path d={`M222 ${y} L 244 ${y - 14}`} stroke={C.ink} strokeWidth="2.4" fill="none" /><circle cx="250" cy={y} r="3" fill={C.ink} /></g>)}
+            <path d="M236 100 V 214" stroke={C.mute} strokeDasharray="3 3" strokeWidth="1.2" fill="none" />
+            <text x="236" y="236" textAnchor="middle" className="t b">HV VCB 52-1</text><text x="236" y="250" textAnchor="middle" className="t ok">closed</text>
+            {/* HV protection CTs */}
+            {[110, 160, 210].map((y, k) => <circle key={"hc" + k} cx="300" cy={y} r="8" fill="#fff" stroke={C.ink} strokeWidth="1.8" />)}
+            <text x="300" y="266" textAnchor="middle" className="t m">protection CTs</text>
+            <text x="336" y="98" textAnchor="middle" className="t v">{f(Ihv, 1)} A</text>
+
+            {/* ---- tank */}
+            <rect x="372" y="34" width="418" height="300" rx="14" fill="#FBFAF6" stroke={C.ink} strokeWidth="2" strokeDasharray="7 4" />
+            <text x="581" y="26" textAnchor="middle" className="t b">Transformer-1 · {Sn} kVA · ONAN · {f(K * 100, 0)} % loaded</text>
+            {/* bushings */}
+            {[110, 160, 210].map((y, k) => <g key={"hbu" + k}><circle cx="372" cy={y} r="7" fill="#fff" stroke={C.ink} strokeWidth="2" /><text x="385" y={y - 10} className="t m">1{"UVW"[k]}</text></g>)}
+            {[110, 160, 210].map((y, k) => <g key={"lbu" + k}><circle cx="790" cy={y} r="7" fill="#fff" stroke={C.ink} strokeWidth="2" /><text x="768" y={y - 10} className="t m">2{"UVW"[k]}</text></g>)}
+            <g><circle cx="790" cy="262" r="7" fill="#fff" stroke={C.ink} strokeWidth="2" /><text x="768" y="252" className="t m">2N</text></g>
+            {/* HV delta: sides are the three coils; the tap changer sits on the U-W coil */}
+            <path d="M380 110 H 530 M380 160 H 412 M380 210 H 530" stroke={C.hv} strokeWidth="2" fill="none" />
+            {coil(412, 160, 530, 110, C.hv, 5)}{coil(530, 110, 530, 210, C.hv, 6)}{coil(530, 210, 412, 160, C.hv, 5)}
+            <path d="M548 128 L 512 192" stroke={C.ink} strokeWidth="1.6" markerEnd="url(#ah)" fill="none" />
+            <text x="470" y="258" textAnchor="middle" className="t m">tap changer on the HV coil, ±2 × 2.5 %</text>
+            <text x="470" y="94" textAnchor="middle" className="t b" fill={C.hv}>HV delta</text>
+            {/* core */}
+            <path d="M582 88 V 232 M590 88 V 232" stroke={C.ink} strokeWidth="2.4" fill="none" />
+            <path d="M582 88 H 590 M582 232 H 590" stroke={C.ink} strokeWidth="2.4" fill="none" />
+            <text x="586" y="78" textAnchor="middle" className="t m">iron core</text>
+            <text x="586" y="248" textAnchor="middle" className="t m">flux φ</text>
+            {/* LV star */}
+            {coil(640, 160, 730, 110, C.lv, 4)}{coil(640, 160, 730, 160, C.lv, 4)}{coil(640, 160, 730, 210, C.lv, 4)}{coil(640, 160, 640, 240, C.lv, 4)}
+            <circle cx="640" cy="160" r="3.5" fill={C.ink} />
+            <path d="M730 110 H 790 M730 160 H 790 M730 210 H 790" stroke={C.lv} strokeWidth="2" fill="none" />
+            <path d="M640 240 V 262 H 790" stroke={C.lv} strokeWidth="2" fill="none" />
+            <text x="690" y="94" textAnchor="middle" className="t b" fill={C.lv}>LV star</text>
+            {/* instruments on the tank */}
+            <g>
+              <circle cx="420" cy="58" r="9" fill="#fff" stroke={C.ink} strokeWidth="1.4" /><text x="420" y="61" textAnchor="middle" className="t m" fontSize="8">OTI</text>
+              <circle cx="452" cy="58" r="9" fill="#fff" stroke={C.ink} strokeWidth="1.4" /><text x="452" y="61" textAnchor="middle" className="t m" fontSize="8">WTI</text>
+              <rect x="476" y="49" width="34" height="18" fill="#fff" stroke={C.ink} strokeWidth="1.4" /><text x="493" y="61" textAnchor="middle" className="t m" fontSize="8">Buchh.</text>
+              <rect x="516" y="49" width="26" height="18" fill="#fff" stroke={C.ink} strokeWidth="1.4" /><text x="529" y="61" textAnchor="middle" className="t m" fontSize="8">PRD</text>
+              <text x="556" y="62" className="t m" fontSize="9.5">oil {f(num(r.OTI_C), 0)} °C · winding {f(num(r.WTI_C), 0)} °C</text>
             </g>
-            <Flow d="M680 105 H 840" color={C.lv} n={8} />
-            <text x="760" y="92" textAnchor="middle" className="t v">{f(I, 0)} A</text>
-            {/* LV breaker */}
-            <g transform="translate(840,90)"><rect width="30" height="30" fill="#fff" stroke={C.ink} strokeWidth="2" /><path d="M5 25 L25 5" stroke={C.ink} strokeWidth="2.4" /><text x="15" y="52" textAnchor="middle" className="t m">LV breaker</text><text x="15" y="66" textAnchor="middle" className="t ok">closed</text></g>
-            <Flow d="M870 105 H 1010" color={C.lv} n={5} />
-            {/* load */}
-            <g transform="translate(1010,70)"><rect width="130" height="70" rx="6" fill="#fff" stroke={C.ink} strokeWidth="2" /><text x="65" y="26" textAnchor="middle" className="t b">Campus load</text><text x="65" y="44" textAnchor="middle" className="t v">{f(P, 0)} kW</text><text x="65" y="60" textAnchor="middle" className="t m">{f(Q, 0)} kvar · PF {f(pf, 2)}</text></g>
-            {/* meters */}
-            <text x="410" y="170" textAnchor="middle" className="t m">HV side: {f(Ihv, 1)} A line, {(Vhv / 1000).toFixed(1)} kV</text>
-            <text x="760" y="170" textAnchor="middle" className="t m">LV side: {f(V, 0)} V per phase, {f(V * Math.sqrt(3), 0)} V line</text>
-            <text x="590" y="209" textAnchor="middle" className="t m">Losses now: core {f(core, 0)} W + copper {f(cu, 0)} W = {f(core + cu, 0)} W · efficiency {f(eff, 2)} %</text>
+            <path d="M420 67 V 300 M452 67 V 300 M493 67 V 300 M529 67 V 300" stroke={C.mute} strokeDasharray="2 3" strokeWidth="1" fill="none" />
+            <rect x="404" y="294" width="150" height="30" rx="4" fill="#fff" stroke={C.ink} strokeWidth="1.6" /><text x="479" y="313" textAnchor="middle" className="t b">protection relay</text>
+            <path d="M404 309 H 236 V 258" stroke="#B42318" strokeDasharray="5 3" strokeWidth="1.6" fill="none" markerEnd="url(#ah)" /><text x="320" y="324" textAnchor="middle" className="t m">trip</text>
+            {/* tank earth */}
+            <path d="M700 334 V 350 M690 350 H 710 M693 354 H 707 M696 358 H 704" stroke={C.ink} strokeWidth="1.6" fill="none" /><text x="718" y="354" className="t m">tank earth, CT-205 {f(num(r.IEARTH_A), 1)} A</text>
+
+            {/* ---- LV side */}
+            {[110, 160, 210].map((y, k) => <Flow key={"lf" + k} d={`M790 ${y} H 990`} color={phc[k]} n={5} />)}
+            {[110, 160, 210].map((y, k) => <circle key={"lc" + k} cx="830" cy={y} r="8" fill="#fff" stroke={C.ink} strokeWidth="1.8" />)}
+            <text x="830" y="236" textAnchor="middle" className="t m">CT-201..203</text>
+            <text x="880" y="98" textAnchor="middle" className="t v">{f(I, 0)} A</text>
+            {[110, 160, 210].map((y, k) => <g key={"lb" + k}><circle cx="900" cy={y} r="3" fill={C.ink} /><path d={`M900 ${y} L 922 ${y - 14}`} stroke={C.ink} strokeWidth="2.4" fill="none" /><circle cx="928" cy={y} r="3" fill={C.ink} /></g>)}
+            <path d="M914 100 V 214" stroke={C.mute} strokeDasharray="3 3" strokeWidth="1.2" fill="none" />
+            <text x="914" y="236" textAnchor="middle" className="t b">LV ACB 52-2</text><text x="914" y="250" textAnchor="middle" className="t ok">closed</text>
+            {/* neutral: CT and earth */}
+            <path d="M797 262 H 860" stroke={C.lv} strokeWidth="2" fill="none" /><circle cx="826" cy="262" r="8" fill="#fff" stroke={C.ink} strokeWidth="1.8" /><path d="M860 262 V 284 M850 284 H 870 M853 288 H 867 M856 292 H 864" stroke={C.ink} strokeWidth="1.6" fill="none" />
+            <text x="810" y="288" textAnchor="middle" className="t m" fontSize="9.5">CT-204 · {f(num(r.IN), 1)} A</text>
+            <text x="880" y="300" className="t m">neutral solidly earthed</text>
+            {/* busbar, load, meter */}
+            <path d="M990 96 V 224" stroke={C.ink} strokeWidth="5" fill="none" />
+            <path d="M990 160 H 1020" stroke={C.lv} strokeWidth="2" fill="none" />
+            <rect x="1020" y="104" width="148" height="112" rx="6" fill="#fff" stroke={C.ink} strokeWidth="2" />
+            <text x="1094" y="130" textAnchor="middle" className="t b">Campus load</text>
+            <text x="1094" y="152" textAnchor="middle" className="t v">{f(P, 0)} kW</text>
+            <text x="1094" y="170" textAnchor="middle" className="t m">{f(Q, 0)} kvar · PF {f(pf, 2)}</text>
+            <text x="1094" y="190" textAnchor="middle" className="t m">{f(V, 0)} V per phase</text>
+            <text x="1094" y="204" textAnchor="middle" className="t m">{f(V * Math.sqrt(3), 0)} V line</text>
+            <rect x="1000" y="262" width="130" height="40" rx="4" fill="#fff" stroke={C.ink} strokeWidth="1.6" /><text x="1065" y="280" textAnchor="middle" className="t b">PM-201 meter</text><text x="1065" y="294" textAnchor="middle" className="t m">S P Q PF Hz</text>
+            <path d="M990 224 V 244 H 1065 V 262" stroke={C.mute} strokeDasharray="3 3" strokeWidth="1.2" fill="none" />
+            <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill={C.ink} /></marker></defs>
+            <text x="590" y="368" textAnchor="middle" className="t m">Losses now: core {f(core, 0)} W + copper {f(cu, 0)} W = {f(core + cu, 0)} W · efficiency {f(eff, 2)} %</text>
           </svg>
+          <table className="ck-rat">
+            <tbody>
+              <tr><th>Rating</th><td>{Sn} kVA, ONAN</td><th>HV rated</th><td>{(Vhv / 1000).toFixed(0)} kV, {f((Sn * 1000) / (Math.sqrt(3) * Vhv), 1)} A</td><th>LV rated</th><td>{Vn} V, {f(Ir, 0)} A</td></tr>
+              <tr><th>Vector group</th><td>Dyn11 (LV leads HV by 30°)</td><th>Impedance</th><td>{(UK * 100).toFixed(0)} % (assumed)</td><th>Losses (rated)</th><td>core {f(P0, 0)} W · load {f(Pk, 0)} W</td></tr>
+              <tr><th>Loading now</th><td>{f(K * 100, 0)} % · {f(I, 0)} A of {f(Ir, 0)} A</td><th>HV current now</th><td>{f(Ihv, 1)} A line</td><th>Voltage drop / efficiency</th><td>{f(reg, 2)} % · {f(eff, 2)} %</td></tr>
+            </tbody>
+          </table>
         </section>
 
         <section className="ck-card">
