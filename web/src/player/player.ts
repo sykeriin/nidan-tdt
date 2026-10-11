@@ -32,6 +32,36 @@ class Player {
     this.idx = -1;
     this.sync(true);
   }
+  /** Live feed (Tablet view): add one sample and move the clock to it. Keeps the last `max` samples. */
+  append(iso: string, row: Record<string, Cell>, dataset = "LIVE", max = 1500) {
+    let f = this.frames;
+    if (!f || f.dataset !== dataset) { f = { dataset, t: [], iso: [], cols: {} }; this.frames = f; }
+    const n = f.t.length;
+    for (const k of Object.keys(row)) if (!(k in f.cols)) f.cols[k] = new Array(n).fill(null);
+    f.t.push(Date.parse(iso));
+    f.iso.push(iso);
+    for (const k of Object.keys(f.cols)) f.cols[k].push(k in row ? row[k] : null);
+    if (f.t.length > max) {
+      const cut = f.t.length - max;
+      f.t.splice(0, cut);
+      f.iso.splice(0, cut);
+      for (const k in f.cols) f.cols[k].splice(0, cut);
+    }
+    this.playing = false;
+    this.rev++;
+    this.t = f.t[f.t.length - 1];
+    this.idx = f.t.length - 1;
+    this.notify(this.indexFns);
+    this.notify(this.tickFns);
+  }
+  /** Drop all samples (a restarted live session). */
+  clear() {
+    this.pause();
+    this.frames = null;
+    this.idx = -1;
+    this.rev++;
+    this.notify(this.indexFns);
+  }
   get index() { return this.idx; }
   get start() { return this.frames?.t[0] ?? 0; }
   get end() { return this.frames ? this.frames.t[this.frames.t.length - 1] : 0; }

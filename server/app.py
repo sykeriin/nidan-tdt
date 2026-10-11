@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 
 from dt import api
 from server import schemas as S
+from server.live import router as live_router
 from server.serialize import MAX_POINTS, plain, series, table, time_range
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -509,6 +510,9 @@ def companion_responses():
         return json.loads((COMPANION / "content" / "responses.json").read_text(encoding="utf-8"))
     except OSError:
         raise HTTPException(404, "companion/content/responses.json is missing")
+
+
+app.include_router(live_router)
 
 
 # ---------------------------------------------------------------- React production build (same origin)

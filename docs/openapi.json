@@ -2289,6 +2289,303 @@
      }
     }
    }
+  },
+  "/api/live/catalogue": {
+   "get": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Catalogue",
+    "operationId": "catalogue_api_live_catalogue_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/session": {
+   "post": {
+    "tags": [
+     "live"
+    ],
+    "summary": "New Session",
+    "operationId": "new_session_api_live_session_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/SessionIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/info": {
+   "get": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Info",
+    "operationId": "info_api_live_info_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/state": {
+   "get": {
+    "tags": [
+     "live"
+    ],
+    "summary": "State",
+    "operationId": "state_api_live_state_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/inject": {
+   "post": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Inject",
+    "operationId": "inject_api_live_inject_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InjectIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/clear": {
+   "post": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Clear",
+    "operationId": "clear_api_live_clear_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/ClearIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/refill": {
+   "post": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Refill",
+    "operationId": "refill_api_live_refill_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/control": {
+   "post": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Control",
+    "operationId": "control_api_live_control_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ControlIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/live/stream": {
+   "get": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Stream",
+    "operationId": "stream_api_live_stream_get",
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 100000,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "stop after this many ticks; omit to run until the client leaves",
+       "title": "Limit"
+      },
+      "description": "stop after this many ticks; omit to run until the client leaves"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
@@ -2691,6 +2988,34 @@
     ],
     "title": "ChainStepModel"
    },
+   "ClearIn": {
+    "properties": {
+     "id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind"
+     }
+    },
+    "type": "object",
+    "title": "ClearIn"
+   },
    "ComponentsModel": {
     "properties": {
      "dataset_id": {
@@ -2728,6 +3053,37 @@
     ],
     "title": "ComponentsModel",
     "description": "Per-part view at one instant; part ids match web/src/twin/parts.ts."
+   },
+   "ControlIn": {
+    "properties": {
+     "rate": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 20.0,
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rate",
+      "description": "ticks (15 simulated minutes each) per real second"
+     },
+     "paused": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Paused"
+     }
+    },
+    "type": "object",
+    "title": "ControlIn"
    },
    "CurveModel": {
     "properties": {
@@ -3330,6 +3686,37 @@
      "rows"
     ],
     "title": "IngestIn"
+   },
+   "InjectIn": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "channel": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Channel"
+     },
+     "params": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Params"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind"
+    ],
+    "title": "InjectIn"
    },
    "InspectResultModel": {
     "properties": {
@@ -4012,6 +4399,17 @@
      "v"
     ],
     "title": "SeriesModel"
+   },
+   "SessionIn": {
+    "properties": {
+     "seed": {
+      "type": "integer",
+      "title": "Seed",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "title": "SessionIn"
    },
    "SimulateIn": {
     "properties": {

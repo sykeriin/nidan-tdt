@@ -8,13 +8,17 @@ import "@fontsource/ibm-plex-sans-condensed/500.css";
 import "@fontsource/ibm-plex-sans-condensed/600.css";
 import "./index.css";
 import App from "./App";
+import Tablet from "./tablet/Tablet";
+
+// ?view=tablet: the live-simulation view for the tablet (3D twin + anomaly injection)
+const TABLET = new URLSearchParams(window.location.search).get("view") === "tablet";
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={client}>
-      <App />
+      {TABLET ? <Tablet /> : <App />}
     </QueryClientProvider>
   </StrictMode>,
 );
