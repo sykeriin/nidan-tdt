@@ -8,7 +8,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { player } from "../player/player";
 import { heatColor } from "../data/heat";
-import { HEAT_MATS, LIMBS, Y0, H, W, D, tube } from "./Transformer";
+import { HEAT_MATS, LIMBS, SILICA_MAT, Y0, H, W, D, tube } from "./Transformer";
 import { TWIN } from "../theme";
 import { trustOf } from "../data/fields";
 
@@ -31,6 +31,27 @@ export function thermalValues(i = player.index, otiSuspect = false) {
     alert: player.value("fidelity_alert", i) === true,
     sensorSuspect, otiRaw,
   };
+}
+
+const GEL = [[0, "#2F6FD6"], [25, "#2F6FD6"], [50, "#7F5FC4"], [66, "#C45FA8"], [100, "#E26BA0"]] as const;
+/** Blue when the gel is dry, through violet to pink as it saturates; grey when this source has no gel reading. */
+export function gelColor(pct: number | null, out: THREE.Color): THREE.Color {
+  if (pct === null || Number.isNaN(pct)) return out.set("#8E9EA8");
+  for (let i = 1; i < GEL.length; i++) {
+    if (pct <= GEL[i][0]) {
+      const a = new THREE.Color(GEL[i - 1][1]), b = new THREE.Color(GEL[i][1]);
+      return out.copy(a).lerp(b, (pct - GEL[i - 1][0]) / (GEL[i][0] - GEL[i - 1][0] || 1));
+    }
+  }
+  return out.set(GEL[GEL.length - 1][1]);
+}
+
+export function GelDriver() {
+  useFrame(() => {
+    const v = player.index >= 0 ? player.value("SILICA_pct") : null;
+    gelColor(typeof v === "number" ? v : null, SILICA_MAT.color);
+  });
+  return null;
 }
 
 export function ThermalDriver({ otiSuspect }: { otiSuspect: boolean }) {

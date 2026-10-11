@@ -11,6 +11,7 @@ import { SimCalc, SimPhysics, SimPresets } from "./sheet/SimPhysics";
 import { Circuit } from "./sheet/Circuit";
 import Tablet from "./tablet/Tablet";
 import { Condition } from "./sheet/Condition";
+import { GelBadge } from "./twin/GelBadge";
 import { ChatDock } from "./chat/Chat";
 import "./tablet/tablet.css";
 import { DiagnoseML } from "./sheet/DiagnoseML";
@@ -277,7 +278,6 @@ export default function App() {
             <LayerList layers={layers} onToggle={(id) => setLayers((l) => ({ ...l, [id]: !l[id] }))} />
             {frames && !sim && layers.lag && <LagTraces />}
             {live && layers.thermometer && !sim && <ThermalDiagram meterOnly={meterOnly && !sim} otiSuspect={otiSuspect} />}
-            {live && <HeatScale meterOnly={meterOnly || sim} otiSuspect={otiSuspect} />}
           </>)}
         </aside>
         <div className={V2 ? "stage-v2" : "stage"}>
@@ -297,7 +297,8 @@ export default function App() {
           {V2 && diag && frames && <DiagnosePanel data={fq.data} loading={fq.isFetching} error={fq.error ? (fq.error as Error).message : null}
             focus={focusPart} onFocus={setHl} />}
           {V2 && frames && !sim && !diag && <Detail dataset={dataset} pinned={pinned} onClose={() => setPinned([])} />}
-          {V2 && live && <HeatScale meterOnly={meterOnly || sim} otiSuspect={otiSuspect} />}
+          {live && <HeatScale meterOnly={meterOnly || sim} otiSuspect={otiSuspect} />}
+          {live && !sim && <GelBadge />}
           {sim && simIn && !V2 && <SimPresets inp={simIn} onChange={setSimIn} />}
           {sim && <div className="sim-stamp" aria-label="Simulation, not measured data">Simulation</div>}
           {V2 && meterOnly && !sim && <p className="field-note">Meter-only data: no oil-temperature sensor. Temperatures are estimated by the twin.</p>}

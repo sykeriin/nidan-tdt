@@ -93,6 +93,7 @@ export function DataIn({ row, otiSuspect, meterOnly }: { row: Record<string, Cel
       m("Current R", "IR", "A", 0), m("Current Y", "IY", "A", 0), m("Current B", "IB", "A", 0), m("Neutral", "IN", "A", 1),
       m("Voltage R", "VR", "V"), m("Voltage Y", "VY", "V"), m("Voltage B", "VB", "V"),
       m("Power factor", "PF", "", 3), m("Frequency", "freq_Hz", "Hz", 2), m("Oil level", "OLI_pct", "%"), m("Humidity", "RH_pct", "%", 0),
+      ...(r.H2O_ppm !== undefined ? [m("Moisture in oil", "H2O_ppm", "ppm"), m("Silica gel", "SILICA_pct", "% sat."), m("Earth current", "IEARTH_A", "A", 1)] : []),
     ]} />
   );
 }

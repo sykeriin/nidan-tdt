@@ -5,7 +5,7 @@ import { OrbitControls } from "@react-three/drei";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Transformer, TwinContext } from "./Transformer";
 import { AnchorTracker, CalloutLayer, type Anchors, type CalloutData } from "./Callout";
-import { ThermalDriver, ThermalMarkers, TwinGhost } from "./Thermal";
+import { GelDriver, ThermalDriver, ThermalMarkers, TwinGhost } from "./Thermal";
 import { OilFlow } from "./OilFlow";
 import { Electrical, ThroughFaults } from "./Electrical";
 import { PowerFlow } from "./PowerFlow";
@@ -124,6 +124,7 @@ export function Scene({ cut, pinned, setPinned, data, oilLevelPct, thermal = fal
         </TwinContext.Provider>
         {thermal && <>
           {layers.temperature && <ThermalDriver otiSuspect={otiSuspect} />}
+          <GelDriver />
           {layers.ghost && <TwinGhost otiSuspect={otiSuspect} />}
           {markers && <ThermalMarkers meterOnly={meterOnly} otiSuspect={otiSuspect} />}
           {layers.oilflow && <OilFlow cut={cut || active.has("tank")} otiSuspect={otiSuspect} />}

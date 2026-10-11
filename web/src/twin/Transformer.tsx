@@ -27,6 +27,8 @@ const M = {
   skid: mat("#5C5E5A"),
 };
 type MatKey = keyof typeof M;
+// the breather's silica gel is recoloured every frame by GelDriver (Thermal.tsx) from the SILICA_pct reading
+export const SILICA_MAT = M.silica;
 // hovering or pinning the tank turns its steel to faint glass, so the oil, windings and circulation show inside
 const TANK_GLASS = mat("#9A9C96", { transparent: true, opacity: 0.12, depthWrite: false });
 // Heat materials: recoloured every frame by ThermalDriver (Thermal.tsx) from the replay clock, never by React.
@@ -235,7 +237,7 @@ export function Transformer({ cut, oilLevelPct, thermal = false }: { cut: boolea
       <Part id="breather">
         <Mesh geo={cyl(0.018, 0.4)} m="metalDark" p={[-0.74, 2.05, -0.5]} />
         <Mesh geo={box(0.12, 0.03, 0.03)} m="metalDark" p={[-0.69, 2.25, -0.5]} />
-        <Mesh geo={cyl(0.06, 0.24, 28)} m="silica" p={[-0.74, 1.74, -0.5]} edges={60} />
+        <Mesh geo={cyl(0.085, 0.3, 28)} m="silica" p={[-0.74, 1.72, -0.5]} edges={60} />
         <Mesh geo={cyl(0.045, 0.05, 28)} m="metalDark" p={[-0.74, 1.6, -0.5]} />
       </Part>
 
