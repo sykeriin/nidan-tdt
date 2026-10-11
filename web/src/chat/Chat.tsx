@@ -3,10 +3,9 @@ import { useEffect, useRef, useState } from "react";
 
 interface Msg { role: "user" | "assistant"; content: string; off?: boolean }
 
-const IDEAS = ["Is the transformer healthy right now?", "Why is the hot spot where it is?", "What should I check if the earth current rises?", "What do the silica gel colours mean?"];
+const IDEAS = ["Hi, how are you?", "Are you healthy right now?", "Why is your hot spot where it is?", "What should I check if your earth current rises?"];
 
-export function ChatDock({ dataset, hidden = false }: { dataset: string; hidden?: boolean }) {
-  const [open, setOpen] = useState(false);
+export function ChatDock({ dataset, open, onClose }: { dataset: string; open: boolean; onClose: () => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,17 +30,15 @@ export function ChatDock({ dataset, hidden = false }: { dataset: string; hidden?
     } finally { setBusy(false); }
   };
 
-  if (hidden) return null;
   return (
     <>
-      <button className="chat-fab" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Close" : "Ask the twin"}</button>
       {open && (
         <section className="chat-panel" role="dialog" aria-label="Ask about Transformer-1">
-          <header><b>Ask about Transformer-1</b><span>Simulated data · answers only about this transformer</span></header>
+          <header><div><b>Transformer-1</b><span>Ask me about my readings, alerts and upkeep</span></div><button aria-label="Close chat" onClick={onClose}>×</button></header>
           <div className="chat-log">
             {!msgs.length && (
               <div className="chat-ideas">
-                <p>Ask about its readings, alerts, limits or maintenance.</p>
+                <p>Hi, I'm Transformer-1. Ask me how I'm doing.</p>
                 {IDEAS.map((i) => <button key={i} onClick={() => ask(i)}>{i}</button>)}
               </div>
             )}
@@ -50,7 +47,7 @@ export function ChatDock({ dataset, hidden = false }: { dataset: string; hidden?
             <div ref={end} />
           </div>
           <form onSubmit={(e) => { e.preventDefault(); ask(text); }}>
-            <input value={text} maxLength={600} placeholder="Ask about the transformer…" onChange={(e) => setText(e.target.value)} aria-label="Your question" />
+            <input value={text} maxLength={600} placeholder="Say hi or ask how I am…" onChange={(e) => setText(e.target.value)} aria-label="Your question" />
             <button disabled={busy || !text.trim()}>Send</button>
           </form>
         </section>

@@ -50,6 +50,7 @@ export default function App() {
   const [circuit, setCircuit] = useState(false);
   const [liveOn, setLiveOn] = useState(false);
   const [condOn, setCondOn] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const [exporting, setExporting] = useState<string | null>(null);
   const [big, setBig] = useState(false); // expanded 3D view: the model box fills the window
@@ -176,6 +177,13 @@ export default function App() {
   const events = (run.data?.events.rows ?? []) as Record<string, unknown>[];
   const oil = row?.OLI_pct;
 
+  // one page at a time: opening one closes the others, and so does choosing a sheet tab or another source
+  const closeAll = () => { setCircuit(false); setCondOn(false); setBench(false); setLiveOn(false); setChatOpen(false); closeMenus(); };
+  const openOnly = (k: "circuit" | "cond" | "bench" | "inject" | "chat") => {
+    const was = { circuit, cond: condOn, bench, inject: liveOn, chat: chatOpen }[k];
+    closeAll();
+    if (!was) ({ circuit: setCircuit, cond: setCondOn, bench: setBench, inject: setLiveOn, chat: setChatOpen })[k](true);
+  };
   const closeMenus = () => document.querySelectorAll("details.hdr-more[open], details.export-menu[open]").forEach((d) => d.removeAttribute("open"));
   const doReport = async () => {
     closeMenus();
@@ -189,11 +197,11 @@ export default function App() {
   };
   const tools = [
     { k: "tour", label: touring ? "Stop tour" : "Explain", hint: "60 s guided tour", pressed: touring, disabled: !frames, title: "",
-      act: () => { if (touring) { tour.stop(); return; } switchMode("mirror"); setPinned([]); setCut(true); setLayers(ALL_ON); tour.start(); } },
-    { k: "bench", label: "Workbench", hint: "Profile, physics", pressed: bench, disabled: false, title: "", act: () => setBench(true) },
-    { k: "circuit", label: "Circuit", hint: "Electrical, live", pressed: circuit, disabled: !frames, title: "", act: () => setCircuit(!circuit) },
-    { k: "inject", label: "Inject faults", hint: "Live transformer", pressed: liveOn, disabled: false, title: "", act: () => setLiveOn(true) },
-    { k: "cond", label: "Condition", hint: "Limits, IS 2026", pressed: condOn, disabled: !isLive, title: isLive ? "" : "The condition board is for the live transformer", act: () => setCondOn(!condOn) },
+      act: () => { if (touring) { tour.stop(); return; } closeAll(); switchMode("mirror"); setPinned([]); setCut(true); setLayers(ALL_ON); tour.start(); } },
+    { k: "bench", label: "Workbench", hint: "Profile, physics", pressed: bench, disabled: false, title: "", act: () => openOnly("bench") },
+    { k: "circuit", label: "Circuit", hint: "Electrical, live", pressed: circuit, disabled: !frames, title: "", act: () => openOnly("circuit") },
+    { k: "inject", label: "Inject faults", hint: "Live transformer", pressed: liveOn, disabled: false, title: "", act: () => openOnly("inject") },
+    { k: "cond", label: "Condition", hint: "Limits, IS 2026", pressed: condOn, disabled: !isLive, title: isLive ? "" : "The condition board is for the live transformer", act: () => openOnly("cond") },
   ];
 
   return (
@@ -201,7 +209,7 @@ export default function App() {
       {!V2 && <Frame />}
       <main className="sheet">
         <header className="strip-top">
-          <SheetTabs mode={mode} onMode={switchMode} />
+          <SheetTabs mode={mode} onMode={(m) => { closeAll(); switchMode(m); }} />
           <div className="hdr-tools">
             {tools.map((t) => (
               <button key={t.k} className="explain" disabled={t.disabled} aria-pressed={t.pressed} title={t.title} onClick={t.act}>
@@ -217,6 +225,9 @@ export default function App() {
               </div>
             </details>
           </div>
+          <button className="explain ask-btn" aria-pressed={chatOpen} onClick={() => openOnly("chat")}>
+            <span className="tab-label">Ask</span><span className="tab-hint">The transformer</span>
+          </button>
           <details className="hdr-more">
             <summary className="explain"><span className="tab-label">Tools</span></summary>
             <div className="export-pop">
@@ -228,7 +239,7 @@ export default function App() {
           </details>
           <label className="dataset">
             <span className="dataset-label">Source</span>
-            <select value={dataset} onChange={(e) => { setPinned([]); setMode("mirror"); setDataset(e.target.value); }}>
+            <select value={dataset} onChange={(e) => { closeAll(); setPinned([]); setMode("mirror"); setDataset(e.target.value); }}>
               <option value={LIVE}>Live transformer</option>
               <optgroup label="Replay datasets (recorded)">
                 {(datasets.data ?? []).map((d) => (
@@ -242,7 +253,7 @@ export default function App() {
           {V2 && (sim || info?.simulated) && <span className="v2-simpill">Simulated</span>}
           {V2 && <SectionToggle cut={cut} onCut={setCut} />}
         </header>
-        <ChatDock dataset={dataset} hidden={circuit || condOn || bench || liveOn} />
+        <ChatDock dataset={dataset} open={chatOpen} onClose={() => setChatOpen(false)} />
         {liveOn && <div className="live-overlay"><Tablet onClose={() => { setLiveOn(false); if (frames) player.load(frames, replayT.current ?? undefined); }} /></div>}
         {condOn && isLive && <Condition onClose={() => setCondOn(false)} />}
         {circuit && <Circuit asset={(run.data?.asset as Record<string, unknown>) ?? null} onClose={() => setCircuit(false)} />}

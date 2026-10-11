@@ -471,3 +471,11 @@
 .chat-panel form button { font: 600 13px var(--cond); padding: 0 14px; background: var(--ink); color: var(--paper); border: 0; cursor: pointer; }
 .chat-panel form button:disabled { opacity: 0.4; cursor: default; }
 @media (max-height: 820px) { .chat-fab { bottom: 128px; } .chat-panel { bottom: 172px; height: min(460px, calc(100vh - 200px)); } }
+
+/* chat now opens from the header, under the Ask button */
+.chat-fab { display: none; }
+.chat-panel { top: 62px; bottom: auto; right: 12px; height: min(520px, calc(100vh - 150px)); }
+.chat-panel header { display: flex; justify-content: space-between; align-items: flex-start; }
+.chat-panel header div { display: grid; gap: 1px; }
+.chat-panel header button { border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; padding: 0 2px; }
+@media (max-width: 1699px) { .ask-btn .tab-hint { display: none; } }

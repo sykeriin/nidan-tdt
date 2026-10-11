@@ -42,7 +42,7 @@ def test_on_topic_question_reaches_the_main_model_with_the_live_data(client):
     assert "test-key-not-real" not in str(client.calls)                       # the key is never put in a prompt
 
 
-@pytest.mark.parametrize("q", ["Write me a poem about cats", "hello", "What is the capital of France?"])
+@pytest.mark.parametrize("q", ["Write me a poem about cats", "tell me a joke", "What is the capital of France?"])
 def test_off_topic_is_refused_without_a_main_model_call(client, q):
     r = ask(client, q)
     assert r.json() == {"answer": C.REFUSAL, "on_topic": False}
@@ -77,4 +77,15 @@ def test_limits_on_size_roles_and_rate(client):
 
 
 def test_prompt_rules_pin_the_scope():
-    assert "Answer only about this transformer" in C.SYSTEM and C.REFUSAL in C.SYSTEM.format(refusal=C.REFUSAL, context="")
+    assert "Talk only about yourself" in C.SYSTEM and C.REFUSAL in C.SYSTEM.format(refusal=C.REFUSAL, context="")
+
+
+def test_greetings_get_an_answer(client):
+    r = ask(client, "hi bro")
+    assert r.json()["on_topic"] is True
+    assert client.calls[-1][0] == C.MAIN_MODEL               # no classifier call needed for a greeting
+
+
+def test_answers_are_plain_text_and_the_prompt_makes_it_the_transformer():
+    assert C._plain("**Hot spot** is:\n- 81 \u00b0C\n- fine") == "Hot spot is:\n81 \u00b0C\nfine"
+    assert "Transformer-1 itself" in C.SYSTEM and "plain text only" in C.SYSTEM.lower()
